@@ -53,6 +53,11 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardHtml).not.toContain('<section class="card" id="prerequisites">');
   });
 
+  it('offers the install script when the aap-demo CLI is unavailable', () => {
+    expect(dashboardHtml).toContain('id="install-cli"');
+    expect(dashboardHtml).toContain('Install aap-demo');
+  });
+
   it('places start and stop controls beside Deploy AAP', () => {
     const actionsStart = dashboardHtml.indexOf('<div class="actions">');
     const actionsEnd = dashboardHtml.indexOf('</div>', actionsStart);

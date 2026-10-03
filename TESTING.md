@@ -107,6 +107,12 @@ In Podman Desktop:
    bottom of the Podman Desktop window, or press **F1**, search for
    **AAP Demo: Open Dashboard**, and press **Enter**.
 
+If the `aap-demo` CLI is missing, the Status box shows **Install aap-demo**.
+Click it to run the repository's `install.sh`. Set
+`aap-demo.installScriptPath` in Podman Desktop settings if the extension cannot
+find the script automatically. The install output appears under **Command
+output**.
+
 After backend changes, stop and start the local extension if the extension host
 does not reload. After webview changes, close and reopen the dashboard. If the
 dashboard still shows old markup, confirm the watch terminal rebuilt the files

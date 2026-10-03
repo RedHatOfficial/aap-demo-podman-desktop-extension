@@ -12,6 +12,10 @@ describe('isDashboardMessage', () => {
     expect(isDashboardMessage({ type: 'run', action: 'stop' })).toBe(true);
   });
 
+  it('accepts an install CLI request from the dashboard', () => {
+    expect(isDashboardMessage({ type: 'install-cli' })).toBe(true);
+  });
+
   it('accepts safe external URL requests', () => {
     expect(isDashboardMessage({ type: 'open-url', url: 'https://example.test/path' })).toBe(true);
   });

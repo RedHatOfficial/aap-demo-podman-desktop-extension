@@ -44,6 +44,7 @@ const routes = document.querySelector<HTMLDivElement>('#routes');
 const credentials = document.querySelector<HTMLDivElement>('#credentials');
 const addonActions = document.querySelector<HTMLDivElement>('#addon-actions');
 const prerequisiteList = document.querySelector<HTMLDivElement>('#prerequisite-list');
+const installCli = document.querySelector<HTMLButtonElement>('#install-cli');
 const idleToggle = document.querySelector<HTMLButtonElement>('#idle-toggle');
 let idleState = true;
 
@@ -199,6 +200,11 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
   if (!prerequisiteList) return;
   const checks = [
     {
+      label: 'aap-demo CLI',
+      valid: prerequisites.cli.available,
+      detail: prerequisites.cli.path ?? 'Not installed',
+    },
+    {
       label: 'OpenShift Local (CRC)',
       valid: prerequisites.crc.available,
       detail: prerequisites.crc.path ?? 'Set aap-demo.crcPath in settings',
@@ -225,6 +231,13 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
     row.append(label, detail);
     prerequisiteList.append(row);
   }
+  if (installCli) {
+    installCli.hidden = prerequisites.cli.available;
+    installCli.disabled = !prerequisites.installScript.available;
+    installCli.title = prerequisites.installScript.available
+      ? `Run ${prerequisites.installScript.path}`
+      : 'Set aap-demo.installScriptPath to the install.sh path';
+  }
 }
 
 for (const button of document.querySelectorAll<HTMLButtonElement>('[data-action]')) {
@@ -238,6 +251,11 @@ idleToggle?.addEventListener('click', () => {
   postAction('idle', idleState);
   idleState = !idleState;
   idleToggle.textContent = idleState ? 'Set idle' : 'Wake AAP';
+});
+
+installCli?.addEventListener('click', () => {
+  if (statusSummary) statusSummary.textContent = 'Running install.sh...';
+  postToHost({ type: 'install-cli' });
 });
 
 window.addEventListener('message', event => {

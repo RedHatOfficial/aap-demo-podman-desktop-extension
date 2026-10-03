@@ -23,6 +23,10 @@
         "title": "AAP Demo: Open Dashboard"
       },
       {
+        "command": "aap-demo.installCli",
+        "title": "AAP Demo: Install aap-demo CLI"
+      },
+      {
         "command": "aap-demo.create",
         "title": "AAP Demo: Create Cluster"
       },
@@ -74,6 +78,11 @@
           "type": "string",
           "default": "aap-demo",
           "description": "Path to the aap-demo executable."
+        },
+        "aap-demo.installScriptPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the aap-demo install.sh script. Common locations are detected automatically."
         },
         "aap-demo.crcPath": {
           "type": "string",

@@ -78,15 +78,20 @@ actions:
 - View routes, masked credentials, add-on state, and prerequisite readiness
 - Enable or disable reported add-ons from the dashboard
 
+If `aap-demo` is not installed, the dashboard shows **Install aap-demo** in the
+Status box. That action runs the existing `install.sh`, streams its output, and
+refreshes the checks when it finishes. The extension detects common repository
+locations; set `aap-demo.installScriptPath` when the script is elsewhere. The
+same action is available from the command palette as **AAP Demo: Install
+aap-demo CLI**.
+
 The `aap-demo.pullSecretPath` and `aap-demo.memory` settings are passed to the
 CLI as `PULL_SECRET_PATH` and `CRC_MEMORY` when commands run. CRC is detected
 from the configured `aap-demo.crcPath` or common installation locations.
 
 The dashboard provides lifecycle controls, prerequisite checks, streamed command
 output, parsed routes and credentials, add-on controls, and periodic status
-refresh. Automatic CLI installation is not yet included; install `aap-demo`
-separately or set `aap-demo.cliPath` to its full path. A leading `~` is
-expanded to the current user's home directory.
+refresh. A leading `~` is expanded to the current user's home directory.
 
 To load the extension locally, enable Podman Desktop development extensions and
 point the Local Extensions page at this repository. Keep `npm run watch` running

@@ -2,17 +2,22 @@ import { existsSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { resolveExecutablePath } from './executable-path';
+import { resolveInstallScriptPath } from './install-script';
 
 const MINIMUM_MEMORY = 16_384;
 
 export interface PrerequisiteSettings {
+  cliPath: string;
   crcPath: string;
+  installScriptPath?: string;
   pullSecretPath?: string;
   memory?: number;
 }
 
 export interface PrerequisiteStatus {
+  cli: { available: boolean; path?: string };
   crc: { available: boolean; path?: string };
+  installScript: { available: boolean; path?: string };
   pullSecret: { configured: boolean; exists: boolean; path?: string };
   memory: { value: number; valid: boolean; minimum: number };
   ready: boolean;
@@ -48,6 +53,8 @@ export function checkPrerequisites(
   pathValue = process.env.PATH ?? '',
 ): PrerequisiteStatus {
   const crcPath = resolveExecutablePath(settings.crcPath, pathValue);
+  const cliPath = resolveExecutablePath(settings.cliPath, pathValue);
+  const installScriptPath = resolveInstallScriptPath(settings.installScriptPath);
   const pullSecret = findPullSecret(settings.pullSecretPath);
   const memory = settings.memory ?? 24_576;
   const memoryStatus = {
@@ -57,9 +64,13 @@ export function checkPrerequisites(
   };
 
   return {
+    cli: cliPath ? { available: true, path: cliPath } : { available: false },
     crc: crcPath ? { available: true, path: crcPath } : { available: false },
+    installScript: installScriptPath
+      ? { available: true, path: installScriptPath }
+      : { available: false },
     pullSecret,
     memory: memoryStatus,
-    ready: Boolean(crcPath && pullSecret.exists && memoryStatus.valid),
+    ready: Boolean(cliPath && crcPath && pullSecret.exists && memoryStatus.valid),
   };
 }

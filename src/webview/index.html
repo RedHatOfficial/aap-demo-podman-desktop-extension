@@ -47,6 +47,7 @@
       .prerequisite { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; }
       .prerequisite.ready { color: #7ee787; }
       .prerequisite.failed { color: #ff7b72; }
+      .prerequisite-action { margin-top: 8px; }
       details { margin-top: 18px; }
       pre { min-height: 90px; max-height: 240px; padding: 12px; overflow: auto; background: #0d1117; border-radius: 6px; white-space: pre-wrap; }
       @media (max-width: 600px) { body { padding: 16px; } .status-header { align-items: flex-start; flex-direction: column; } header { align-items: flex-start; flex-direction: column; } }
@@ -73,6 +74,7 @@
         </div>
         <div class="status-prerequisites">
           <div id="prerequisite-list"><p class="empty">Checking prerequisites...</p></div>
+          <button class="small primary prerequisite-action" id="install-cli" hidden>Install aap-demo</button>
         </div>
       </div>
       <div class="actions">

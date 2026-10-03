@@ -13,6 +13,7 @@ const supportedActions = new Set<AapDemoAction>([
 
 export type DashboardMessage =
   | { type: 'ready' }
+  | { type: 'install-cli' }
   | { type: 'run'; action: AapDemoAction; idleState?: boolean }
   | { type: 'addon'; action: AddonAction; addon: string }
   | { type: 'open-url'; url: string };
@@ -62,6 +63,7 @@ export function isDashboardMessage(message: unknown): message is DashboardMessag
   if (typeof message !== 'object' || message === null) return false;
   const candidate = message as Partial<DashboardMessage>;
   if (candidate.type === 'ready') return true;
+  if (candidate.type === 'install-cli') return true;
   if (candidate.type === 'run') {
     return supportedActions.has(candidate.action as AapDemoAction);
   }

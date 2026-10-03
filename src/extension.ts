@@ -14,6 +14,7 @@ import { detectCliVersion } from './cli-version';
 import { isDashboardMessage } from './dashboard-protocol';
 import { augmentPath, resolveConfiguredExecutable, resolveExecutablePath } from './executable-path';
 import { checkPrerequisites } from './prerequisites';
+import { resolveInstallScriptPath } from './install-script';
 import { parseStatusOutput } from './status-parser';
 import { formatStatusBarText } from './status-bar';
 
@@ -54,6 +55,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   const runner = new CommandRunner();
   const configuration = extensionApi.configuration.getConfiguration('aap-demo');
   const cliPath = resolveConfiguredExecutable(configuration.get('cliPath', 'aap-demo'));
+  const installScriptSetting = configuration.get('installScriptPath', '');
   const crcPath = configuration.get('crcPath', 'crc');
   const settings: AapDemoSettings = {
     pullSecretPath: configuration.get('pullSecretPath', ''),
@@ -134,6 +136,47 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     }
   };
 
+  const runInstall = async (): Promise<void> => {
+    const installScriptPath = resolveInstallScriptPath(installScriptSetting);
+    if (!installScriptPath) {
+      const message = 'Could not find install.sh. Set aap-demo.installScriptPath to its full path.';
+      await postDashboardMessage({ type: 'command-error', action: 'install-cli', message });
+      await extensionApi.window.showWarningMessage(message);
+      return;
+    }
+
+    try {
+      const result = await runner.run('bash', [installScriptPath], {
+        cwd: path.dirname(installScriptPath),
+        env: { ...process.env, PATH: settings.pathValue },
+        onStdout: chunk => {
+          console.log(`[aap-demo install] ${chunk.trimEnd()}`);
+          void postDashboardMessage({ type: 'command-output', stream: 'stdout', text: chunk });
+        },
+        onStderr: chunk => {
+          console.warn(`[aap-demo install] ${chunk.trimEnd()}`);
+          void postDashboardMessage({ type: 'command-output', stream: 'stderr', text: chunk });
+        },
+      });
+      await postDashboardMessage({ type: 'command-result', action: 'install-cli', stdout: result.stdout, stderr: result.stderr });
+      await extensionApi.window.showInformationMessage('aap-demo installed. Refreshing status.');
+      await runAction('status');
+      await postDashboardMessage({
+        type: 'prerequisites',
+        prerequisites: checkPrerequisites({
+          cliPath,
+          crcPath,
+          installScriptPath: installScriptSetting,
+          ...settings,
+        }),
+      });
+    } catch (error) {
+      const message = formatCommandError(error);
+      await postDashboardMessage({ type: 'command-error', action: 'install-cli', message });
+      await extensionApi.window.showWarningMessage(`aap-demo install failed: ${message}`);
+    }
+  };
+
   const runAddon = async (action: AddonAction, addon: string): Promise<void> => {
     try {
       const result = await service.runAddon(action, addon, {
@@ -180,13 +223,20 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       await runAction('status');
       await postDashboardMessage({
         type: 'prerequisites',
-        prerequisites: checkPrerequisites({ crcPath, ...settings }),
+        prerequisites: checkPrerequisites({
+          cliPath,
+          crcPath,
+          installScriptPath: installScriptSetting,
+          ...settings,
+        }),
       });
     };
     const messageSubscription = panel.webview.onDidReceiveMessage(async message => {
       if (isDashboardMessage(message)) {
         if (message.type === 'ready') {
           void initializeDashboard();
+        } else if (message.type === 'install-cli') {
+          await runInstall();
         } else if (message.type === 'addon') {
           await runAddon(message.action, message.addon);
         } else if (message.type === 'open-url') {
@@ -223,6 +273,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       'aap-demo.idle',
       (idleState: boolean = true) => runAction('idle', idleState),
     ),
+    extensionApi.commands.registerCommand('aap-demo.installCli', () => runInstall()),
   );
 
   await checkCrc(crcPath);
