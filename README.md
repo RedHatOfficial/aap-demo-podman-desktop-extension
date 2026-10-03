@@ -79,11 +79,11 @@ actions:
 - Enable or disable reported add-ons from the dashboard
 
 If `aap-demo` is not installed, the dashboard shows **Install aap-demo** in the
-Status box. That action runs the existing `install.sh`, streams its output, and
-refreshes the checks when it finishes. The extension detects common repository
-locations; set `aap-demo.installScriptPath` when the script is elsewhere. The
-same action is available from the command palette as **AAP Demo: Install
-aap-demo CLI**.
+Status box. That action clones or updates the official repository in
+`~/.aap-demo`, runs its `install.sh`, streams its output, and refreshes the
+checks when it finishes. Set `aap-demo.installLocation` to use another
+directory. The same action is available from the command palette as **AAP Demo:
+Install aap-demo CLI**.
 
 The `aap-demo.pullSecretPath`, `aap-demo.cpus`, and `aap-demo.memory` settings
 are passed to the CLI as `PULL_SECRET_PATH`, `CRC_CPUS`, and `CRC_MEMORY` when

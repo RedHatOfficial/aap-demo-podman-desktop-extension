@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { resolveExecutablePath } from './executable-path';
-import { resolveInstallScriptPath } from './install-script';
+import { resolveInstallLocation, resolveInstallScriptPath } from './install-script';
 
 const MINIMUM_CPUS = 4;
 const MINIMUM_MEMORY = 16_384;
@@ -11,7 +11,7 @@ export interface PrerequisiteSettings {
   cliPath: string;
   cpus?: number;
   crcPath: string;
-  installScriptPath?: string;
+  installLocation?: string;
   pullSecretPath?: string;
   memory?: number;
 }
@@ -57,7 +57,7 @@ export function checkPrerequisites(
 ): PrerequisiteStatus {
   const crcPath = resolveExecutablePath(settings.crcPath, pathValue);
   const cliPath = resolveExecutablePath(settings.cliPath, pathValue);
-  const installScriptPath = resolveInstallScriptPath(settings.installScriptPath);
+  const installScriptPath = resolveInstallScriptPath(resolveInstallLocation(settings.installLocation));
   const pullSecret = findPullSecret(settings.pullSecretPath);
   const cpus = settings.cpus ?? 8;
   const cpuStatus = {

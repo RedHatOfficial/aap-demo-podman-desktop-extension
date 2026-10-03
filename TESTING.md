@@ -108,10 +108,11 @@ In Podman Desktop:
    **AAP Demo: Open Dashboard**, and press **Enter**.
 
 If the `aap-demo` CLI is missing, the Status box shows **Install aap-demo**.
-Click it to run the repository's `install.sh`. Set
-`aap-demo.installScriptPath` in Podman Desktop settings if the extension cannot
-find the script automatically. The install output appears under **Command
-output**.
+Click it to clone or update the repository in `~/.aap-demo` and run its
+`install.sh`. Set `aap-demo.installLocation` in Podman Desktop settings to use
+another directory. The install output appears under **Command output**. The
+selected location must be empty or an existing aap-demo Git checkout; the
+extension will not overwrite an unrelated directory.
 
 After backend changes, stop and start the local extension if the extension host
 does not reload. After webview changes, close and reopen the dashboard. If the

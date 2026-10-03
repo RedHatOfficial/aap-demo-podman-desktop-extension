@@ -85,10 +85,10 @@
           "default": "aap-demo",
           "description": "Path to the aap-demo executable."
         },
-        "aap-demo.installScriptPath": {
+        "aap-demo.installLocation": {
           "type": "string",
-          "default": "",
-          "description": "Path to the aap-demo install.sh script. Common locations are detected automatically."
+          "default": "~/.aap-demo",
+          "description": "Directory where the aap-demo repository is cloned and installed."
         },
         "aap-demo.crcPath": {
           "type": "string",

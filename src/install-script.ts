@@ -2,6 +2,8 @@ import { accessSync, constants, statSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
+export const AAP_DEMO_REPOSITORY_URL = 'https://github.com/RedHatOfficial/aap-demo.git';
+
 function expandHome(value: string): string {
   if (value === '~') return os.homedir();
   if (value.startsWith('~/') || value.startsWith('~\\')) {
@@ -20,14 +22,15 @@ function isReadableFile(candidate: string): boolean {
 }
 
 export function resolveInstallScriptPath(configuredPath = ''): string | undefined {
-  const configured = configuredPath.trim();
-  const candidates = configured
-    ? [expandHome(configured)]
-    : [
-        path.join(os.homedir(), 'Documents', 'GitHub', 'aap-demo', 'install.sh'),
-        path.join(os.homedir(), 'Projects', 'aap-demo', 'install.sh'),
-        path.join(os.homedir(), 'aap-demo', 'install.sh'),
-      ];
+  const candidate = installScriptPathFor(configuredPath);
+  return isReadableFile(candidate) ? candidate : undefined;
+}
 
-  return candidates.find(isReadableFile);
+export function resolveInstallLocation(configuredPath = ''): string {
+  const configured = configuredPath.trim();
+  return expandHome(configured || '~/.aap-demo');
+}
+
+export function installScriptPathFor(installLocation: string): string {
+  return path.join(resolveInstallLocation(installLocation), 'install.sh');
 }

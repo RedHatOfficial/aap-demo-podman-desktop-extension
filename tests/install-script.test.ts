@@ -1,12 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { resolveInstallScriptPath } from '../src/install-script';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import {
+  installScriptPathFor,
+  resolveInstallLocation,
+  resolveInstallScriptPath,
+} from '../src/install-script';
 
-describe('resolveInstallScriptPath', () => {
-  it('uses a configured readable install script path', () => {
-    expect(resolveInstallScriptPath('/bin/sh')).toBe('/bin/sh');
+describe('install locations', () => {
+  it('defaults the repository location to ~/.aap-demo', () => {
+    expect(resolveInstallLocation()).toBe(path.join(os.homedir(), '.aap-demo'));
   });
 
-  it('returns undefined when the configured script does not exist', () => {
-    expect(resolveInstallScriptPath('/tmp/aap-demo-install-script-does-not-exist')).toBeUndefined();
+  it('expands a configured home-relative repository location', () => {
+    expect(resolveInstallLocation('~/custom-aap-demo')).toBe(path.join(os.homedir(), 'custom-aap-demo'));
+  });
+
+  it('resolves install.sh inside the selected repository location', () => {
+    expect(installScriptPathFor('/tmp/aap-demo')).toBe('/tmp/aap-demo/install.sh');
+    expect(resolveInstallScriptPath('/tmp/aap-demo')).toBeUndefined();
   });
 });

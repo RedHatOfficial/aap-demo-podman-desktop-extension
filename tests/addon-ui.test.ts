@@ -91,6 +91,11 @@ describe('getAddonTogglePresentation', () => {
     expect(containerfile).toContain('COPY icon.png /extension/icon.png');
   });
 
+  it('declares the configurable aap-demo repository install location', () => {
+    expect(packageJson).toContain('"aap-demo.installLocation"');
+    expect(packageJson).toContain('"default": "~/.aap-demo"');
+  });
+
   it('adds space below the Addons section', () => {
     expect(dashboardHtml).toContain('.addons-card { margin-bottom: 14px; }');
     expect(dashboardHtml).toContain('<section class="card addons-card">');

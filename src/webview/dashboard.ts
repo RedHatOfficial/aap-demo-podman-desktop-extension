@@ -238,10 +238,8 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
   }
   if (installCli) {
     installCli.hidden = prerequisites.cli.available;
-    installCli.disabled = !prerequisites.installScript.available;
-    installCli.title = prerequisites.installScript.available
-      ? `Run ${prerequisites.installScript.path}`
-      : 'Set aap-demo.installScriptPath to the install.sh path';
+    installCli.disabled = false;
+    installCli.title = 'Clone the aap-demo repository and run install.sh';
   }
 }
 

@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import * as path from 'node:path';
 import type { ExtensionContext, WebviewPanel } from '@podman-desktop/api';
 import * as extensionApi from '@podman-desktop/api';
@@ -14,7 +15,11 @@ import { detectCliVersion } from './cli-version';
 import { isDashboardMessage } from './dashboard-protocol';
 import { augmentPath, resolveConfiguredExecutable, resolveExecutablePath } from './executable-path';
 import { checkPrerequisites } from './prerequisites';
-import { resolveInstallScriptPath } from './install-script';
+import {
+  AAP_DEMO_REPOSITORY_URL,
+  installScriptPathFor,
+  resolveInstallLocation,
+} from './install-script';
 import { parseStatusOutput } from './status-parser';
 import { formatStatusBarText } from './status-bar';
 
@@ -55,7 +60,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   const runner = new CommandRunner();
   const configuration = extensionApi.configuration.getConfiguration('aap-demo');
   const cliPath = resolveConfiguredExecutable(configuration.get('cliPath', 'aap-demo'));
-  const installScriptSetting = configuration.get('installScriptPath', '');
+  const installLocationSetting = configuration.get('installLocation', '~/.aap-demo');
   const crcPath = configuration.get('crcPath', 'crc');
   const settings: AapDemoSettings = {
     cpus: configuration.get('cpus', 8),
@@ -138,26 +143,33 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   };
 
   const runInstall = async (): Promise<void> => {
-    const installScriptPath = resolveInstallScriptPath(installScriptSetting);
-    if (!installScriptPath) {
-      const message = 'Could not find install.sh. Set aap-demo.installScriptPath to its full path.';
-      await postDashboardMessage({ type: 'command-error', action: 'install-cli', message });
-      await extensionApi.window.showWarningMessage(message);
-      return;
-    }
-
+    const installLocation = resolveInstallLocation(installLocationSetting);
+    const installScriptPath = installScriptPathFor(installLocation);
+    const streamOptions = {
+      env: { ...process.env, PATH: settings.pathValue },
+      onStdout: (chunk: string) => {
+        console.log(`[aap-demo install] ${chunk.trimEnd()}`);
+        void postDashboardMessage({ type: 'command-output', stream: 'stdout', text: chunk });
+      },
+      onStderr: (chunk: string) => {
+        console.warn(`[aap-demo install] ${chunk.trimEnd()}`);
+        void postDashboardMessage({ type: 'command-output', stream: 'stderr', text: chunk });
+      },
+    };
     try {
+      if (existsSync(installLocation)) {
+        if (!existsSync(path.join(installLocation, '.git'))) {
+          throw new Error(
+            `Install location already exists and is not an aap-demo Git checkout: ${installLocation}. Set aap-demo.installLocation to another directory.`,
+          );
+        }
+        await runner.run('git', ['-C', installLocation, 'pull', '--ff-only'], streamOptions);
+      } else {
+        await runner.run('git', ['clone', AAP_DEMO_REPOSITORY_URL, installLocation], streamOptions);
+      }
       const result = await runner.run('bash', [installScriptPath], {
         cwd: path.dirname(installScriptPath),
-        env: { ...process.env, PATH: settings.pathValue },
-        onStdout: chunk => {
-          console.log(`[aap-demo install] ${chunk.trimEnd()}`);
-          void postDashboardMessage({ type: 'command-output', stream: 'stdout', text: chunk });
-        },
-        onStderr: chunk => {
-          console.warn(`[aap-demo install] ${chunk.trimEnd()}`);
-          void postDashboardMessage({ type: 'command-output', stream: 'stderr', text: chunk });
-        },
+        ...streamOptions,
       });
       await postDashboardMessage({ type: 'command-result', action: 'install-cli', stdout: result.stdout, stderr: result.stderr });
       await extensionApi.window.showInformationMessage('aap-demo installed. Refreshing status.');
@@ -167,7 +179,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         prerequisites: checkPrerequisites({
           cliPath,
           crcPath,
-          installScriptPath: installScriptSetting,
+          installLocation: installLocationSetting,
           ...settings,
         }),
       });
@@ -227,7 +239,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         prerequisites: checkPrerequisites({
           cliPath,
           crcPath,
-          installScriptPath: installScriptSetting,
+          installLocation: installLocationSetting,
           ...settings,
         }),
       });
