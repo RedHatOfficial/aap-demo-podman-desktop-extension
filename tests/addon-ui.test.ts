@@ -61,4 +61,8 @@ describe('getAddonTogglePresentation', () => {
     expect(actionRow).toContain('data-action="stop"');
     expect(actionRow).toContain('>Stop</button>');
   });
+
+  it('shows the Ansible Automation Platform logo in the dashboard header', () => {
+    expect(dashboardHtml).toContain('<img src="./assets/ansible-logo.png" alt="Ansible Automation Platform logo"');
+  });
 });
