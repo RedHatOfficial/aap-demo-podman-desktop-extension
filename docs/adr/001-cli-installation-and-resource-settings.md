@@ -54,6 +54,13 @@ item or using **F1 → AAP Demo: Open Dashboard**. Opening the source HTML with
 `file://` is not a supported test path because it does not provide the host
 bridge.
 
+The extension does not provide a self-update operation for its own OCI image.
+Disabling and re-enabling a local folder extension reloads rebuilt files, but
+disabling and re-enabling an OCI extension only restarts the installed image.
+Updating a Quay image therefore requires uninstalling the installed extension
+and reinstalling the desired image tag from **Extensions → Install custom...**.
+Commit-specific or version-specific tags are preferred for repeatable testing.
+
 ## Consequences
 
 This gives users a discoverable installation path without requiring a separate

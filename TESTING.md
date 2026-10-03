@@ -79,6 +79,18 @@ authenticated to Quay before installation. Use the `:main` tag when testing
 the branch-specific image directly. Configure the repository secrets
 `QUAY_USERNAME` and `QUAY_PASSWORD` for GitHub Actions publishing.
 
+### Updating an installed image
+
+For a local folder extension, run `npm run build`, then disable and re-enable
+the extension to reload the rebuilt files. For the Quay-hosted OCI extension,
+disable/re-enable only restarts the image already installed. To pull a newly
+published image, uninstall it from **Extensions → Installed**, then reinstall
+it through **Extensions → Install custom...** using the desired image tag.
+
+Prefer a commit-specific or version-specific tag when verifying an image. The
+mutable `:latest` and `:main` tags may not force Podman Desktop to pull a new
+image when the extension is only disabled and re-enabled.
+
 ## Local development without manually rebuilding
 
 Start the continuous compiler:

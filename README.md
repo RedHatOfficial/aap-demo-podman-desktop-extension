@@ -82,6 +82,23 @@ to `main`. Configure the repository secrets `QUAY_USERNAME` and
 `QUAY_PASSWORD` before enabling the workflow. The branch-specific `:main` tag
 is also available for testing and troubleshooting.
 
+## Updating the extension image
+
+For a local folder extension, rebuild the extension and disable/re-enable it
+in Podman Desktop to reload the changed files. For the Quay OCI extension,
+disable/re-enable only restarts the currently installed image; it does not
+guarantee a fresh pull of a changed `:latest` or `:main` tag.
+
+To install a newly published OCI image, uninstall the extension from
+**Extensions → Installed**, then use **Extensions → Install custom...** with:
+
+```text
+quay.io/cferman/aap-demo-podman-desktop-extension:latest
+```
+
+Use a commit-specific or version-specific tag when possible so the image being
+tested is unambiguous.
+
 See [TESTING.md](TESTING.md) for the Podman Desktop local-extension setup,
 automated checks, smoke tests, and troubleshooting.
 
