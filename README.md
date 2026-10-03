@@ -12,9 +12,7 @@ Image**, and enter:
 quay.io/cferman/aap-demo-podman-desktop-extension:latest
 ```
 
-Select **Install**. The Quay repository must be public, or Podman must be
-authenticated to Quay. The extension still requires the `aap-demo` CLI and a
-running local AAP Demo environment.
+Select **Install**
 
 ## Development
 
