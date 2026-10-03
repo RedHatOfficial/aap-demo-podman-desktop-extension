@@ -65,4 +65,16 @@ describe('getAddonTogglePresentation', () => {
   it('shows the Ansible Automation Platform logo in the dashboard header', () => {
     expect(dashboardHtml).toContain('<img src="./assets/ansible-logo.png" alt="Ansible Automation Platform logo"');
   });
+
+  it('keeps the primary lifecycle actions ordered beside Deploy AAP', () => {
+    const actionsStart = dashboardHtml.indexOf('<div class="actions">');
+    const actionsEnd = dashboardHtml.indexOf('</div>', actionsStart);
+    const actionRow = dashboardHtml.slice(actionsStart, actionsEnd);
+
+    expect(actionRow).not.toContain('data-action="create"');
+    expect(actionRow).toContain('<button class="primary" data-action="start">Start</button>');
+    expect(actionRow).toContain('<button class="primary" data-action="diagnose">Diagnose</button>');
+    expect(actionRow).toContain('<button class="primary" id="idle-toggle">Set idle</button>');
+    expect(actionRow.indexOf('data-action="deploy"')).toBeLessThan(actionRow.indexOf('data-action="start"'));
+  });
 });
