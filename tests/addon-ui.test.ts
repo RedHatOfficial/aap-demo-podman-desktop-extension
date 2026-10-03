@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { getAddonTogglePresentation, sortAddons } from '../src/webview/addon-ui';
 
 const dashboardHtml = readFileSync(resolve(__dirname, '../src/webview/index.html'), 'utf8');
+const packageJson = readFileSync(resolve(__dirname, '../package.json'), 'utf8');
+const containerfile = readFileSync(resolve(__dirname, '../Containerfile'), 'utf8');
 
 describe('getAddonTogglePresentation', () => {
   it('uses a green enabled toggle that disables the add-on when clicked', () => {
@@ -76,5 +78,16 @@ describe('getAddonTogglePresentation', () => {
     expect(actionRow).toContain('<button class="primary" data-action="diagnose">Diagnose</button>');
     expect(actionRow).toContain('<button class="primary" id="idle-toggle">Set idle</button>');
     expect(actionRow.indexOf('data-action="deploy"')).toBeLessThan(actionRow.indexOf('data-action="start"'));
+  });
+
+  it('declares and packages the extension icon for Podman Desktop', () => {
+    expect(packageJson).toContain('"icon": "icon.png"');
+    expect(packageJson).toContain('"activationEvents": ["onStartupFinished"]');
+    expect(containerfile).toContain('COPY icon.png /extension/icon.png');
+  });
+
+  it('adds space below the Addons section', () => {
+    expect(dashboardHtml).toContain('.addons-card { margin-bottom: 14px; }');
+    expect(dashboardHtml).toContain('<section class="card addons-card">');
   });
 });

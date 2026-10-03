@@ -4,6 +4,8 @@
   "version": "0.1.0",
   "description": "Podman Desktop extension for the local AAP Demo environment",
   "publisher": "redhat",
+  "icon": "icon.png",
+  "activationEvents": ["onStartupFinished"],
   "repository": {
     "type": "git",
     "url": "https://github.com/RedHatOfficial/aap-demo-podman-desktop-extension.git"

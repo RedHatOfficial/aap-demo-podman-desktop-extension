@@ -17,5 +17,6 @@ LABEL org.opencontainers.image.title="AAP Demo Podman Desktop extension" \
       io.podman-desktop.api.version=">= 1.12.0"
 
 COPY --from=build /extension-source/package.json /extension/package.json
+COPY icon.png /extension/icon.png
 COPY --from=build /extension-source/dist /extension/dist
 COPY --from=build /extension-source/media /extension/media
