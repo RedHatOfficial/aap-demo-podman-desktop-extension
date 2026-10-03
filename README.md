@@ -13,8 +13,9 @@ quay.io/cferman/aap-demo-podman-desktop-extension:latest
 ```
 
 Select **Install**. The Quay repository must be public, or Podman must be
-authenticated to Quay. The extension still requires the `aap-demo` CLI and a
-running local AAP Demo environment.
+authenticated to Quay. The extension can install the `aap-demo` CLI, but you
+still need OpenShift Local (CRC), a Red Hat pull secret, and enough host
+resources for the AAP Demo environment.
 
 ## Open the dashboard
 
@@ -28,6 +29,23 @@ Desktop in either of these ways:
 Do not open `src/webview/index.html` directly in a browser. That bypasses
 Podman Desktop's extension host bridge and the dashboard actions will not
 work.
+
+## Install the aap-demo CLI
+
+If the CLI is missing, click **Install aap-demo** in the dashboard's **Status**
+box, or run **AAP Demo: Install aap-demo CLI** from the **F1** Command Palette.
+The extension clones or updates the official repository and runs its
+`install.sh`:
+
+```text
+~/.aap-demo/install.sh
+```
+
+Set `aap-demo.installLocation` in Podman Desktop settings to use a different
+directory. An existing Git checkout is updated with `git pull --ff-only`; an
+existing non-Git directory is never overwritten. The install output is shown
+under **Command output**. If the script needs an interactive administrator
+password or dependency installation, run it from a terminal instead.
 
 ## Development
 
@@ -93,6 +111,9 @@ from the configured `aap-demo.crcPath` or common installation locations.
 The dashboard provides lifecycle controls, prerequisite checks, streamed command
 output, parsed routes and credentials, add-on controls, and periodic status
 refresh. A leading `~` is expanded to the current user's home directory.
+
+The installation and resource-setting decisions are recorded in
+[ADR-001](docs/adr/001-cli-installation-and-resource-settings.md).
 
 To load the extension locally, enable Podman Desktop development extensions and
 point the Local Extensions page at this repository. Keep `npm run watch` running
