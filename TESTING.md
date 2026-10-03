@@ -103,12 +103,27 @@ In Podman Desktop:
    ```
 
 6. Start the extension and confirm it is **ACTIVE**.
-7. Open **AAP Demo Dashboard** from the navigation or the status bar.
+7. Open the dashboard by clicking the `AAP Demo: ...` status item at the
+   bottom of the Podman Desktop window, or press **F1**, search for
+   **AAP Demo: Open Dashboard**, and press **Enter**.
 
 After backend changes, stop and start the local extension if the extension host
 does not reload. After webview changes, close and reopen the dashboard. If the
 dashboard still shows old markup, confirm the watch terminal rebuilt the files
 and reload the local extension.
+
+### Opening the dashboard
+
+The dashboard is hosted by Podman Desktop and must be opened through the
+extension host:
+
+- Click the `AAP Demo: ...` status item at the bottom of the Podman Desktop
+  window; or
+- Press **F1**, search for **AAP Demo: Open Dashboard**, and press **Enter**.
+
+Opening `src/webview/index.html` directly with `file://` does not provide the
+Podman Desktop host bridge, so dashboard buttons and status updates will not
+work there.
 
 ## Manual smoke test
 

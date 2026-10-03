@@ -16,6 +16,19 @@ Select **Install**. The Quay repository must be public, or Podman must be
 authenticated to Quay. The extension still requires the `aap-demo` CLI and a
 running local AAP Demo environment.
 
+## Open the dashboard
+
+After the extension is installed and active, open the dashboard from Podman
+Desktop in either of these ways:
+
+- Click the `AAP Demo: ...` status item at the bottom of the Podman Desktop
+  window.
+- Press **F1**, search for **AAP Demo: Open Dashboard**, and press **Enter**.
+
+Do not open `src/webview/index.html` directly in a browser. That bypasses
+Podman Desktop's extension host bridge and the dashboard actions will not
+work.
+
 ## Development
 
 ```bash
