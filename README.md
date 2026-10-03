@@ -85,8 +85,9 @@ locations; set `aap-demo.installScriptPath` when the script is elsewhere. The
 same action is available from the command palette as **AAP Demo: Install
 aap-demo CLI**.
 
-The `aap-demo.pullSecretPath` and `aap-demo.memory` settings are passed to the
-CLI as `PULL_SECRET_PATH` and `CRC_MEMORY` when commands run. CRC is detected
+The `aap-demo.pullSecretPath`, `aap-demo.cpus`, and `aap-demo.memory` settings
+are passed to the CLI as `PULL_SECRET_PATH`, `CRC_CPUS`, and `CRC_MEMORY` when
+commands run. CPU count defaults to 8, with a minimum of 4. CRC is detected
 from the configured `aap-demo.crcPath` or common installation locations.
 
 The dashboard provides lifecycle controls, prerequisite checks, streamed command

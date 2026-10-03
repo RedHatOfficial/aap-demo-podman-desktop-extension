@@ -205,6 +205,11 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
       detail: prerequisites.cli.path ?? 'Not installed',
     },
     {
+      label: 'CPUs',
+      valid: prerequisites.cpus.valid,
+      detail: `${prerequisites.cpus.value} (minimum ${prerequisites.cpus.minimum})`,
+    },
+    {
       label: 'OpenShift Local (CRC)',
       valid: prerequisites.crc.available,
       detail: prerequisites.crc.path ?? 'Set aap-demo.crcPath in settings',

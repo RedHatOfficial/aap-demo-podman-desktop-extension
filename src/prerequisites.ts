@@ -4,10 +4,12 @@ import * as path from 'node:path';
 import { resolveExecutablePath } from './executable-path';
 import { resolveInstallScriptPath } from './install-script';
 
+const MINIMUM_CPUS = 4;
 const MINIMUM_MEMORY = 16_384;
 
 export interface PrerequisiteSettings {
   cliPath: string;
+  cpus?: number;
   crcPath: string;
   installScriptPath?: string;
   pullSecretPath?: string;
@@ -16,6 +18,7 @@ export interface PrerequisiteSettings {
 
 export interface PrerequisiteStatus {
   cli: { available: boolean; path?: string };
+  cpus: { value: number; valid: boolean; minimum: number };
   crc: { available: boolean; path?: string };
   installScript: { available: boolean; path?: string };
   pullSecret: { configured: boolean; exists: boolean; path?: string };
@@ -56,6 +59,12 @@ export function checkPrerequisites(
   const cliPath = resolveExecutablePath(settings.cliPath, pathValue);
   const installScriptPath = resolveInstallScriptPath(settings.installScriptPath);
   const pullSecret = findPullSecret(settings.pullSecretPath);
+  const cpus = settings.cpus ?? 8;
+  const cpuStatus = {
+    value: cpus,
+    valid: Number.isInteger(cpus) && cpus >= MINIMUM_CPUS,
+    minimum: MINIMUM_CPUS,
+  };
   const memory = settings.memory ?? 24_576;
   const memoryStatus = {
     value: memory,
@@ -65,12 +74,13 @@ export function checkPrerequisites(
 
   return {
     cli: cliPath ? { available: true, path: cliPath } : { available: false },
+    cpus: cpuStatus,
     crc: crcPath ? { available: true, path: crcPath } : { available: false },
     installScript: installScriptPath
       ? { available: true, path: installScriptPath }
       : { available: false },
     pullSecret,
     memory: memoryStatus,
-    ready: Boolean(cliPath && crcPath && pullSecret.exists && memoryStatus.valid),
+    ready: Boolean(cliPath && crcPath && pullSecret.exists && memoryStatus.valid && cpuStatus.valid),
   };
 }

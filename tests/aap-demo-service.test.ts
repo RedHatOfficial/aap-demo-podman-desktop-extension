@@ -61,10 +61,11 @@ describe('AapDemoService', () => {
     ]);
   });
 
-  it('passes configured pull secret and memory settings to the CLI', async () => {
+  it('passes configured pull secret, CPU, and memory settings to the CLI', async () => {
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor, 'aap-demo', {
       pullSecretPath: '/tmp/pull-secret.txt',
+      cpus: 8,
       memory: 24576,
     });
 
@@ -72,6 +73,7 @@ describe('AapDemoService', () => {
 
     expect(executor.calls[0]?.options?.env).toMatchObject({
       PULL_SECRET_PATH: '/tmp/pull-secret.txt',
+      CRC_CPUS: '8',
       CRC_MEMORY: '24576',
     });
   });

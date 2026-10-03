@@ -8,6 +8,7 @@ describe('checkPrerequisites', () => {
         {
           cliPath: '/bin/sh',
           crcPath: '/bin/sh',
+          cpus: 8,
           installScriptPath: '/tmp/aap-demo-install-script-does-not-exist',
           pullSecretPath: '/etc/hosts',
           memory: 24576,
@@ -18,6 +19,7 @@ describe('checkPrerequisites', () => {
       crc: { available: true, path: '/bin/sh' },
       cli: { available: true, path: '/bin/sh' },
       installScript: { available: false },
+      cpus: { value: 8, valid: true, minimum: 4 },
       pullSecret: { configured: true, exists: true, path: '/etc/hosts' },
       memory: { value: 24576, valid: true, minimum: 16384 },
       ready: true,
@@ -30,6 +32,7 @@ describe('checkPrerequisites', () => {
         {
           cliPath: 'missing-cli',
           crcPath: 'missing-crc',
+          cpus: 2,
           installScriptPath: '/tmp/aap-demo-install-script-does-not-exist',
           pullSecretPath: '/tmp/missing-pull-secret',
           memory: 8192,
@@ -40,6 +43,7 @@ describe('checkPrerequisites', () => {
       crc: { available: false },
       cli: { available: false },
       installScript: { available: false },
+      cpus: { value: 2, valid: false, minimum: 4 },
       pullSecret: { configured: true, exists: false, path: '/tmp/missing-pull-secret' },
       memory: { value: 8192, valid: false, minimum: 16384 },
       ready: false,

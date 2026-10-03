@@ -58,6 +58,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   const installScriptSetting = configuration.get('installScriptPath', '');
   const crcPath = configuration.get('crcPath', 'crc');
   const settings: AapDemoSettings = {
+    cpus: configuration.get('cpus', 8),
     pullSecretPath: configuration.get('pullSecretPath', ''),
     memory: configuration.get('memory', 24_576),
     pathValue: augmentPath(),

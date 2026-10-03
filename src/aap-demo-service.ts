@@ -7,6 +7,7 @@ export type AapDemoAction = 'create' | 'start' | 'deploy' | 'stop' | 'destroy' |
 export type AddonAction = 'enable' | 'disable';
 
 export interface AapDemoSettings {
+  cpus?: number;
   pullSecretPath?: string;
   memory?: number;
   pathValue?: string;
@@ -48,7 +49,7 @@ export class AapDemoService {
   }
 
   private withSettings(options?: CommandRunnerOptions): CommandRunnerOptions | undefined {
-    if (!options && !this.settings.pullSecretPath && !this.settings.memory && !this.settings.pathValue) {
+    if (!options && !this.settings.pullSecretPath && !this.settings.cpus && !this.settings.memory && !this.settings.pathValue) {
       return undefined;
     }
     const configuredEnvironment: NodeJS.ProcessEnv = {
@@ -56,6 +57,9 @@ export class AapDemoService {
     };
     if (this.settings.pullSecretPath) {
       configuredEnvironment.PULL_SECRET_PATH = this.settings.pullSecretPath;
+    }
+    if (this.settings.cpus) {
+      configuredEnvironment.CRC_CPUS = String(this.settings.cpus);
     }
     if (this.settings.memory) {
       configuredEnvironment.CRC_MEMORY = String(this.settings.memory);

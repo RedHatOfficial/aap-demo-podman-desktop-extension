@@ -68,6 +68,12 @@
           "default": "",
           "description": "Path to the Red Hat pull-secret.txt file."
         },
+        "aap-demo.cpus": {
+          "type": "integer",
+          "minimum": 4,
+          "default": 8,
+          "description": "CPU count allocated to OpenShift Local."
+        },
         "aap-demo.memory": {
           "type": "integer",
           "minimum": 16384,

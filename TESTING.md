@@ -140,6 +140,7 @@ work there.
    last-updated time.
 3. Confirm prerequisites appear inside the Status box:
    - CRC executable and resolved path;
+   - configured CPU count and minimum;
    - pull-secret path and existence;
    - available memory and the minimum.
 4. Click **Refresh status** and confirm the timestamp and command output update.
