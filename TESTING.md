@@ -70,12 +70,13 @@ the host `aap-demo` and CRC executables at runtime.
 The `Publish image` workflow publishes the image to GHCR:
 
 ```text
-ghcr.io/redhatofficial/aap-demo-podman-desktop-extension:main
+ghcr.io/redhatofficial/aap-demo-podman-desktop-extension:latest
 ```
 
 In Podman Desktop, open **Extensions → Install custom...**, enter that image
 name, and install it. The GHCR package must be public, or Podman must be
-authenticated to GHCR before installation.
+authenticated to GHCR before installation. Use the `:main` tag when testing the
+branch-specific image directly.
 
 ## Local development without manually rebuilding
 
