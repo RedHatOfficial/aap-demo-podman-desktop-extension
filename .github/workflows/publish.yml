@@ -1,10 +1,9 @@
 name: Publish image
 
 on:
-  workflow_dispatch:
   push:
-    tags:
-      - podman-desktop-extension-v*
+    branches:
+      - main
 
 permissions:
   contents: read
