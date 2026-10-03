@@ -67,7 +67,7 @@ the host `aap-demo` and CRC executables at runtime.
 
 ## Install the Quay-hosted image
 
-The current OCI image is available from Quay:
+The `Publish image to Quay` workflow publishes the OCI image to Quay:
 
 ```text
 quay.io/cferman/aap-demo-podman-desktop-extension:latest
@@ -76,7 +76,8 @@ quay.io/cferman/aap-demo-podman-desktop-extension:latest
 In Podman Desktop, open **Extensions → Install custom...**, enter that image
 name, and install it. The Quay repository must be public, or Podman must be
 authenticated to Quay before installation. Use the `:main` tag when testing
-the branch-specific image directly.
+the branch-specific image directly. Configure the repository secrets
+`QUAY_USERNAME` and `QUAY_PASSWORD` for GitHub Actions publishing.
 
 ## Local development without manually rebuilding
 

@@ -46,9 +46,10 @@ The current OCI image is published to Quay:
 quay.io/cferman/aap-demo-podman-desktop-extension:latest
 ```
 
-The GitHub publish workflow is temporarily disabled while Quay is being used.
-The branch-specific `:main` tag is also available for testing and
-troubleshooting.
+The active GitHub Actions workflow publishes the image to Quay after commits
+to `main`. Configure the repository secrets `QUAY_USERNAME` and
+`QUAY_PASSWORD` before enabling the workflow. The branch-specific `:main` tag
+is also available for testing and troubleshooting.
 
 See [TESTING.md](TESTING.md) for the Podman Desktop local-extension setup,
 automated checks, smoke tests, and troubleshooting.
