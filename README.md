@@ -3,6 +3,19 @@
 This repository contains the Podman Desktop extension for managing the local
 `aap-demo` environment.
 
+## Quick install
+
+In Podman Desktop, open **Extensions → Install custom...**, select **OCI
+Image**, and enter:
+
+```text
+ghcr.io/redhatofficial/aap-demo-podman-desktop-extension:latest
+```
+
+Select **Install**. The GHCR package must be public, or Podman must be
+authenticated to GHCR. The extension still requires the `aap-demo` CLI and a
+running local AAP Demo environment.
+
 ## Development
 
 ```bash
