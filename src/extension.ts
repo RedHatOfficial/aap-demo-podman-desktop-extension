@@ -59,7 +59,8 @@ async function checkCrc(crcCommand: string): Promise<void> {
 export async function activate(extensionContext: ExtensionContext): Promise<void> {
   const runner = new CommandRunner();
   const configuration = extensionApi.configuration.getConfiguration('aap-demo');
-  const cliPath = resolveConfiguredExecutable(configuration.get('cliPath', 'aap-demo'));
+  const configuredCliPath = configuration.get('cliPath', 'aap-demo').trim() || 'aap-demo';
+  const cliPath = resolveConfiguredExecutable(configuredCliPath);
   const installLocationSetting = configuration.get('installLocation', '~/.aap-demo');
   const crcPath = configuration.get('crcPath', 'crc');
   const settings: AapDemoSettings = {
@@ -233,7 +234,6 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       if (initialized) return;
       initialized = true;
       await new Promise(resolve => setTimeout(resolve, 200));
-      await runAction('status');
       await postDashboardMessage({
         type: 'prerequisites',
         prerequisites: checkPrerequisites({
@@ -243,6 +243,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
           ...settings,
         }),
       });
+      void runAction('status');
     };
     const messageSubscription = panel.webview.onDidReceiveMessage(async message => {
       if (isDashboardMessage(message)) {

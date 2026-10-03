@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { getAddonTogglePresentation, sortAddons } from '../src/webview/addon-ui';
 
 const dashboardHtml = readFileSync(resolve(__dirname, '../src/webview/index.html'), 'utf8');
+const extensionSource = readFileSync(resolve(__dirname, '../src/extension.ts'), 'utf8');
 const packageJson = readFileSync(resolve(__dirname, '../package.json'), 'utf8');
 const containerfile = readFileSync(resolve(__dirname, '../Containerfile'), 'utf8');
 
@@ -56,6 +57,17 @@ describe('getAddonTogglePresentation', () => {
   it('offers the install script when the aap-demo CLI is unavailable', () => {
     expect(dashboardHtml).toContain('id="install-cli"');
     expect(dashboardHtml).toContain('Install aap-demo');
+  });
+
+  it('renders prerequisites before checking CLI status', () => {
+    const initializer = extensionSource.slice(
+      extensionSource.indexOf('const initializeDashboard'),
+      extensionSource.indexOf('const messageSubscription'),
+    );
+
+    expect(initializer.indexOf("type: 'prerequisites'")).toBeLessThan(
+      initializer.indexOf("runAction('status')"),
+    );
   });
 
   it('places start and stop controls beside Deploy AAP', () => {
