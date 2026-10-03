@@ -30,12 +30,12 @@ image name as the first argument when needed.
 The GitHub Actions workflow publishes registry images to:
 
 ```text
-ghcr.io/redhatofficial/aap-demo-podman-desktop-extension:dev
+ghcr.io/redhatofficial/aap-demo-podman-desktop-extension:main
 ```
 
-Run the workflow manually with the `dev` tag, or push a tag matching
-`podman-desktop-extension-v*`. Set the GHCR package visibility to public if the
-image should install without registry authentication.
+The image is published automatically after commits to `main`. Set the GHCR
+package visibility to public if the image should install without registry
+authentication.
 
 See [TESTING.md](TESTING.md) for the Podman Desktop local-extension setup,
 automated checks, smoke tests, and troubleshooting.

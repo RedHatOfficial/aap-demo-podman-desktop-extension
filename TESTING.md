@@ -67,10 +67,10 @@ the host `aap-demo` and CRC executables at runtime.
 
 ## Install the GitHub-hosted image
 
-The `Publish Podman Desktop Extension` workflow publishes the image to GHCR:
+The `Publish image` workflow publishes the image to GHCR:
 
 ```text
-ghcr.io/redhatofficial/aap-demo-podman-desktop-extension:dev
+ghcr.io/redhatofficial/aap-demo-podman-desktop-extension:main
 ```
 
 In Podman Desktop, open **Extensions → Install custom...**, enter that image
