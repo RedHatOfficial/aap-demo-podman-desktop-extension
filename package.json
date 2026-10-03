@@ -25,8 +25,16 @@
         "title": "AAP Demo: Create Cluster"
       },
       {
+        "command": "aap-demo.start",
+        "title": "AAP Demo: Start Cluster"
+      },
+      {
         "command": "aap-demo.deploy",
         "title": "AAP Demo: Deploy AAP"
+      },
+      {
+        "command": "aap-demo.stop",
+        "title": "AAP Demo: Stop Cluster"
       },
       {
         "command": "aap-demo.destroy",

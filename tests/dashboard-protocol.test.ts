@@ -8,6 +8,8 @@ describe('isDashboardMessage', () => {
 
   it('accepts supported lifecycle actions', () => {
     expect(isDashboardMessage({ type: 'run', action: 'status' })).toBe(true);
+    expect(isDashboardMessage({ type: 'run', action: 'start' })).toBe(true);
+    expect(isDashboardMessage({ type: 'run', action: 'stop' })).toBe(true);
   });
 
   it('accepts safe external URL requests', () => {

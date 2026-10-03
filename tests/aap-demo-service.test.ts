@@ -22,7 +22,9 @@ class RecordingExecutor implements CommandExecutor {
 describe('AapDemoService', () => {
   it.each([
     ['create', ['create']],
+    ['start', ['start']],
     ['deploy', ['deploy']],
+    ['stop', ['stop']],
     ['destroy', ['destroy']],
     ['status', ['status']],
     ['diagnose', ['diagnose']],

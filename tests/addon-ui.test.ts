@@ -50,4 +50,15 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardHtml).not.toContain('<h3>Prerequisites</h3>');
     expect(dashboardHtml).not.toContain('<section class="card" id="prerequisites">');
   });
+
+  it('places start and stop controls beside Deploy AAP', () => {
+    const actionsStart = dashboardHtml.indexOf('<div class="actions">');
+    const actionsEnd = dashboardHtml.indexOf('</div>', actionsStart);
+    const actionRow = dashboardHtml.slice(actionsStart, actionsEnd);
+
+    expect(actionRow).toContain('data-action="start"');
+    expect(actionRow).toContain('>Start</button>');
+    expect(actionRow).toContain('data-action="stop"');
+    expect(actionRow).toContain('>Stop</button>');
+  });
 });

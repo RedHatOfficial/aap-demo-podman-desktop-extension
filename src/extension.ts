@@ -213,7 +213,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   });
   extensionContext.subscriptions.push(openDashboard);
 
-  for (const action of ['create', 'deploy', 'destroy', 'status', 'diagnose'] as const) {
+  for (const action of ['create', 'start', 'deploy', 'stop', 'destroy', 'status', 'diagnose'] as const) {
     extensionContext.subscriptions.push(
       extensionApi.commands.registerCommand(`aap-demo.${action}`, () => runAction(action)),
     );

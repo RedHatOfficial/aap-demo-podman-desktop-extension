@@ -2,7 +2,9 @@ import type { AddonAction, AapDemoAction } from './aap-demo-service';
 
 const supportedActions = new Set<AapDemoAction>([
   'create',
+  'start',
   'deploy',
+  'stop',
   'destroy',
   'status',
   'idle',
