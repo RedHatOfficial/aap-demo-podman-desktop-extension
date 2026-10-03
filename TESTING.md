@@ -65,18 +65,18 @@ The script prints the image name. In Podman Desktop, open
 The container contains the compiled extension assets; the extension still calls
 the host `aap-demo` and CRC executables at runtime.
 
-## Install the GitHub-hosted image
+## Install the Quay-hosted image
 
-The `Publish image` workflow publishes the image to GHCR:
+The current OCI image is available from Quay:
 
 ```text
-ghcr.io/redhatofficial/aap-demo-podman-desktop-extension:latest
+quay.io/cferman/aap-demo-podman-desktop-extension:latest
 ```
 
 In Podman Desktop, open **Extensions → Install custom...**, enter that image
-name, and install it. The GHCR package must be public, or Podman must be
-authenticated to GHCR before installation. Use the `:main` tag when testing the
-branch-specific image directly.
+name, and install it. The Quay repository must be public, or Podman must be
+authenticated to Quay before installation. Use the `:main` tag when testing
+the branch-specific image directly.
 
 ## Local development without manually rebuilding
 

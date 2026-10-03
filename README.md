@@ -9,11 +9,11 @@ In Podman Desktop, open **Extensions → Install custom...**, select **OCI
 Image**, and enter:
 
 ```text
-ghcr.io/redhatofficial/aap-demo-podman-desktop-extension:latest
+quay.io/cferman/aap-demo-podman-desktop-extension:latest
 ```
 
-Select **Install**. The GHCR package must be public, or Podman must be
-authenticated to GHCR. The extension still requires the `aap-demo` CLI and a
+Select **Install**. The Quay repository must be public, or Podman must be
+authenticated to Quay. The extension still requires the `aap-demo` CLI and a
 running local AAP Demo environment.
 
 ## Development
@@ -40,16 +40,15 @@ To build an OCI image without using host npm, run
 installing it through **Extensions → Install custom...**. Pass a different
 image name as the first argument when needed.
 
-The GitHub Actions workflow publishes registry images to:
+The current OCI image is published to Quay:
 
 ```text
-ghcr.io/redhatofficial/aap-demo-podman-desktop-extension:latest
+quay.io/cferman/aap-demo-podman-desktop-extension:latest
 ```
 
-The image is published automatically after commits to `main`. Set the GHCR
-package visibility to public if the image should install without registry
-authentication. The branch-specific `:main` tag is also published for testing
-and troubleshooting.
+The GitHub publish workflow is temporarily disabled while Quay is being used.
+The branch-specific `:main` tag is also available for testing and
+troubleshooting.
 
 See [TESTING.md](TESTING.md) for the Podman Desktop local-extension setup,
 automated checks, smoke tests, and troubleshooting.
