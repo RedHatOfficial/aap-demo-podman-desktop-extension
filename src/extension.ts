@@ -1,5 +1,6 @@
 import * as fs from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, lstatSync } from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import type { ExtensionContext, WebviewPanel } from '@podman-desktop/api';
 import * as extensionApi from '@podman-desktop/api';
@@ -12,7 +13,7 @@ import {
 import { formatCommandError } from './command-error';
 import { CommandRunner } from './command-runner';
 import { detectCliVersion } from './cli-version';
-import { isDashboardMessage } from './dashboard-protocol';
+import { isDashboardMessage, type AoLlmProvider } from './dashboard-protocol';
 import { augmentPath, resolveConfiguredExecutable, resolveExecutablePath } from './executable-path';
 import { isLocalExtensionCheckout } from './extension-updater';
 import { checkPrerequisites } from './prerequisites';
@@ -49,7 +50,7 @@ async function checkCrc(crcCommand: string): Promise<void> {
   const crcPath = resolveExecutablePath(crcCommand);
   if (!crcPath) {
     await extensionApi.window.showWarningMessage(
-      'AAP Demo requires OpenShift Local (CRC). Install it or set aap-demo.crcPath to the CRC executable.',
+      'AAP Demo requires OpenShift Local (CRC). In Podman Desktop, open Extensions → Catalog and install the OpenShift Local extension. Then open its dashboard and click Install to install the OpenShift Local binaries. If already installed, set aap-demo.crcPath to the crc executable.',
     );
     return;
   }
@@ -65,6 +66,20 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   const configuredCliPath = configuration.get('cliPath', 'aap-demo').trim() || 'aap-demo';
   const cliPath = resolveConfiguredExecutable(configuredCliPath);
   const installLocationSetting = configuration.get('installLocation', '~/.aap-demo');
+  const aoLlmModel = configuration.get('aoLlmModel', 'gpt-5.6-luna').trim() || 'gpt-5.6-luna';
+  const aoLlmBaseUrl = configuration.get('aoLlmBaseUrl', 'https://api.openai.com/v1').trim() || 'https://api.openai.com/v1';
+  const configuredAoLlmApiKeyFile = configuration.get('aoLlmApiKeyFile', '').trim();
+  const defaultAoLlmApiKeyFile = process.env.AO_LLM_API_KEY_FILE || path.join(
+    process.env.AAP_DEMO_DIR || path.join(os.homedir(), '.aap-demo'),
+    'ao',
+    'llm-api-key',
+  );
+  const aoLlmApiKeyFileSetting = configuredAoLlmApiKeyFile || defaultAoLlmApiKeyFile;
+  const aoLlmApiKeyFile = aoLlmApiKeyFileSetting === '~'
+    ? os.homedir()
+    : aoLlmApiKeyFileSetting.startsWith('~/') || aoLlmApiKeyFileSetting.startsWith('~\\')
+      ? path.join(os.homedir(), aoLlmApiKeyFileSetting.slice(2))
+      : aoLlmApiKeyFileSetting;
   const crcPath = configuration.get('crcPath', 'crc');
   const settings: AapDemoSettings = {
     cpus: configuration.get('cpus', 8),
@@ -106,6 +121,18 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   extensionContext.subscriptions.push(statusBar);
 
   const runAction = async (action: AapDemoAction, idleState?: boolean): Promise<void> => {
+    if (!resolveExecutablePath(configuredCliPath, settings.pathValue)) {
+      statusBar.text = 'AAP Demo: CLI missing';
+      statusBar.tooltip = 'Install the aap-demo CLI from the dashboard';
+      await postDashboardMessage({ type: 'cli-missing' });
+      if (!panel && action !== 'status') {
+        await extensionApi.window.showWarningMessage(
+          'The aap-demo CLI is not installed. Open the AAP Demo dashboard and select Install aap-demo.',
+        );
+      }
+      return;
+    }
+
     try {
       const result = await service.run(action, idleState, {
         onStdout: chunk => {
@@ -240,9 +267,57 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     }
   };
 
-  const runAddon = async (action: AddonAction, addon: string): Promise<void> => {
+  const hasSavedAoOpenAiKey = (): boolean => {
     try {
+      const keyStats = lstatSync(aoLlmApiKeyFile);
+      return keyStats.isFile() && !keyStats.isSymbolicLink() && keyStats.size > 0;
+    } catch {
+      return false;
+    }
+  };
+
+  const runAddon = async (
+    action: AddonAction,
+    addon: string,
+    llmProvider?: AoLlmProvider,
+  ): Promise<void> => {
+    try {
+      let openAiApiKey = process.env.OPENAI_API_KEY;
+      if (
+        action === 'enable' && addon === 'ao' && llmProvider === 'external' &&
+        !openAiApiKey && !hasSavedAoOpenAiKey()
+      ) {
+        const enteredKey = await extensionApi.window.showInputBox({
+          title: 'AO with OpenAI',
+          prompt: 'Enter the OpenAI API key. aap-demo saves it locally with restricted file permissions.',
+          password: true,
+          ignoreFocusOut: true,
+          placeHolder: 'OpenAI API key',
+          validateInput: value => value.trim() ? undefined : 'An API key is required.',
+        });
+        if (enteredKey === undefined) {
+          await runAction('status');
+          return;
+        }
+        openAiApiKey = enteredKey.trim();
+      }
+
+      const addonEnvironment: NodeJS.ProcessEnv = {
+        ...process.env,
+        PATH: settings.pathValue,
+      };
+      if (action === 'enable' && addon === 'ao' && llmProvider) {
+        addonEnvironment.AO_LLM_PROVIDER = llmProvider;
+        if (llmProvider === 'external') {
+          addonEnvironment.AO_LLM_MODEL = aoLlmModel;
+          addonEnvironment.AO_LLM_BASE_URL = aoLlmBaseUrl;
+          addonEnvironment.AO_LLM_API_KEY_FILE = aoLlmApiKeyFile;
+          if (openAiApiKey) addonEnvironment.OPENAI_API_KEY = openAiApiKey;
+        }
+      }
+
       const result = await service.runAddon(action, addon, {
+        env: addonEnvironment,
         onStdout: chunk => {
           console.log(`[aap-demo] ${chunk.trimEnd()}`);
           void postDashboardMessage({ type: 'command-output', stream: 'stdout', text: chunk });
@@ -259,12 +334,22 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         stdout: result.stdout,
         stderr: result.stderr,
       });
-      await extensionApi.window.showInformationMessage(`AAP Demo add-on ${addon} ${action}d.`);
+      const providerLabel = llmProvider === 'external'
+        ? ' with OpenAI'
+        : llmProvider === 'ollama'
+          ? ' with Ollama'
+          : llmProvider === 'none'
+            ? ' with no AI'
+            : '';
+      await extensionApi.window.showInformationMessage(
+        `AAP Demo add-on ${addon}${action === 'enable' ? providerLabel : ''} ${action}d.`,
+      );
       await runAction('status');
     } catch (error) {
       const message = formatCommandError(error);
       await postDashboardMessage({ type: 'command-error', action, addon, message });
       await extensionApi.window.showWarningMessage(`AAP Demo add-on ${addon} failed: ${message}`);
+      await runAction('status');
     }
   };
 
@@ -309,7 +394,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         } else if (message.type === 'update-extension') {
           await runExtensionUpdate();
         } else if (message.type === 'addon') {
-          await runAddon(message.action, message.addon);
+          await runAddon(message.action, message.addon, message.llmProvider);
         } else if (message.type === 'open-url') {
           const opened = await extensionApi.env.openExternal(extensionApi.Uri.parse(message.url, true));
           if (!opened) {

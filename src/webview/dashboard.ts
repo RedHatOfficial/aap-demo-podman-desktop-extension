@@ -32,6 +32,10 @@ interface DashboardCommandMessage {
   message?: string;
 }
 
+interface DashboardCliMessage {
+  type: 'cli-missing';
+}
+
 declare function acquirePodmanDesktopApi(): DesktopApi;
 
 const desktopApi = acquireDesktopApi(
@@ -165,6 +169,35 @@ function renderAddons(status: AapDemoStatus): void {
     return;
   }
   for (const addon of sortAddons(status.addons)) {
+    if (addon.name.toLowerCase() === 'ao' && addon.state === 'disabled') {
+      const control = document.createElement('div');
+      control.className = 'addon-control ao-provider-actions';
+      const choices = [
+        { label: 'AO with OpenAI', provider: 'external' },
+        { label: 'AO with Ollama', provider: 'ollama' },
+        { label: 'AO no AI', provider: 'none' },
+      ] as const;
+      for (const choice of choices) {
+        const button = document.createElement('button');
+        button.className = 'small primary';
+        button.textContent = choice.label;
+        button.addEventListener('click', () => {
+          control.querySelectorAll('button').forEach(item => { item.disabled = true; });
+          button.textContent = `Enabling ${choice.label}...`;
+          if (statusSummary) statusSummary.textContent = `Enabling ${choice.label}...`;
+          postToHost({
+            type: 'addon',
+            action: 'enable',
+            addon: 'ao',
+            llmProvider: choice.provider,
+          });
+        });
+        control.append(button);
+      }
+      addonActions.append(control);
+      continue;
+    }
+
     const presentation = getAddonTogglePresentation(addon.name, addon.state);
     if (presentation) {
       const control = document.createElement('div');
@@ -210,26 +243,40 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
       label: 'aap-demo CLI',
       valid: prerequisites.cli.available,
       detail: prerequisites.cli.path ?? 'Not installed',
+      helpText: undefined,
+      helpUrl: undefined,
     },
     {
       label: 'CPUs',
       valid: prerequisites.cpus.valid,
       detail: `${prerequisites.cpus.value} (minimum ${prerequisites.cpus.minimum})`,
+      helpText: undefined,
+      helpUrl: undefined,
     },
     {
       label: 'OpenShift Local (CRC)',
       valid: prerequisites.crc.available,
-      detail: prerequisites.crc.path ?? 'Set aap-demo.crcPath in settings',
+      detail: prerequisites.crc.path ?? 'Not detected. If already installed, set aap-demo.crcPath.',
+      helpText: prerequisites.crc.available
+        ? undefined
+        : 'In Podman Desktop, open Extensions → Catalog and install the OpenShift Local extension. Then open its dashboard and click Install to install the OpenShift Local binaries. Return here and refresh prerequisites.',
+      helpUrl: prerequisites.crc.available
+        ? undefined
+        : 'https://podman-desktop.io/docs/openshift/openshift-local',
     },
     {
       label: 'Pull secret',
       valid: prerequisites.pullSecret.exists,
       detail: prerequisites.pullSecret.path ?? 'Set aap-demo.pullSecretPath in settings',
+      helpText: undefined,
+      helpUrl: undefined,
     },
     {
       label: 'Memory',
       valid: prerequisites.memory.valid,
       detail: `${prerequisites.memory.value} MiB (minimum ${prerequisites.memory.minimum} MiB)`,
+      helpText: undefined,
+      helpUrl: undefined,
     },
   ];
   for (const check of checks) {
@@ -241,10 +288,22 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
     detail.className = 'muted';
     detail.textContent = check.detail;
     row.append(label, detail);
+    if (check.helpText) {
+      const help = document.createElement('span');
+      help.className = 'muted prerequisite-help';
+      help.textContent = check.helpText;
+      if (check.helpUrl) {
+        const guide = document.createElement('a');
+        addExternalLink(guide, check.helpUrl);
+        guide.textContent = ' Open install guide';
+        help.append(guide);
+      }
+      row.append(help);
+    }
     prerequisiteList.append(row);
   }
   if (installCli) {
-    installCli.hidden = prerequisites.cli.available || !prerequisites.installScript.available;
+    installCli.hidden = prerequisites.cli.available;
     installCli.disabled = false;
     installCli.title = 'Clone the aap-demo repository and run install.sh';
   }
@@ -286,8 +345,16 @@ updateExtension?.addEventListener('click', () => {
 });
 
 window.addEventListener('message', event => {
-  const message = unwrapDashboardMessage(event.data) as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardExtensionMessage | DashboardCommandMessage;
+  const message = unwrapDashboardMessage(event.data) as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardExtensionMessage | DashboardCommandMessage | DashboardCliMessage;
   if (!message || typeof message !== 'object' || typeof message.type !== 'string') return;
+  if (message.type === 'cli-missing') {
+    if (statusState) statusState.textContent = 'CLI not installed';
+    if (statusDot) statusDot.className = 'status-dot unknown';
+    if (statusSummary) statusSummary.textContent = 'Install aap-demo in the Status box to get started.';
+    if (toolVersion) toolVersion.textContent = 'CLI: not installed';
+    writeOutput('The aap-demo CLI is missing. Use Install aap-demo in the Status box to clone the repository and run its installer.');
+    return;
+  }
   if (message.type === 'prerequisites') {
     renderPrerequisites(message.prerequisites);
     return;
@@ -313,6 +380,9 @@ window.addEventListener('message', event => {
     writeOutput(message.message ?? 'Command failed.');
     if (message.action === 'update-cli' && updateCli) updateCli.disabled = false;
     if (message.action === 'update-extension' && updateExtension) updateExtension.disabled = false;
+    if (message.addon === 'ao') {
+      addonActions?.querySelectorAll('button').forEach(button => { button.disabled = false; });
+    }
     if (statusDot) statusDot.className = 'status-dot error';
     if (statusSummary) statusSummary.textContent = message.message ?? 'Command failed.';
   }

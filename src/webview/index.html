@@ -27,6 +27,7 @@
       .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 20px; }
       .addon-actions { margin: 0; }
       .addon-control { display: flex; align-items: center; gap: 8px; }
+      .ao-provider-actions { flex-wrap: wrap; }
       button { border: 1px solid #596675; border-radius: 5px; padding: 8px 12px; color: inherit; background: #2b333d; cursor: pointer; }
       button:hover { background: #394552; }
       button.primary { border-color: #2f81f7; background: #1f6feb; }
@@ -44,7 +45,8 @@
       .badge.enabled { color: #7ee787; background: #1c3927; }
       .badge.disabled { color: #a9b1bb; }
       .empty { color: #a9b1bb; font-style: italic; }
-      .prerequisite { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; }
+      .prerequisite { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 6px 0; }
+      .prerequisite-help { flex-basis: 100%; margin-left: 22px; line-height: 1.5; }
       .prerequisite.ready { color: #7ee787; }
       .prerequisite.failed { color: #ff7b72; }
       .prerequisite-action { margin-top: 8px; }

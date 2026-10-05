@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { getAddonTogglePresentation, sortAddons } from '../src/webview/addon-ui';
 
 const dashboardHtml = readFileSync(resolve(__dirname, '../src/webview/index.html'), 'utf8');
+const dashboardSource = readFileSync(resolve(__dirname, '../src/webview/dashboard.ts'), 'utf8');
 const extensionSource = readFileSync(resolve(__dirname, '../src/extension.ts'), 'utf8');
 const packageJson = readFileSync(resolve(__dirname, '../package.json'), 'utf8');
 const containerfile = readFileSync(resolve(__dirname, '../Containerfile'), 'utf8');
@@ -61,6 +62,13 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardHtml).toContain('Update aap-demo');
     expect(dashboardHtml).toContain('id="update-extension"');
     expect(dashboardHtml).toContain('Update extension');
+  });
+
+  it('explains how to install OpenShift Local from the Podman Desktop catalog', () => {
+    expect(dashboardSource).toContain('Extensions → Catalog');
+    expect(dashboardSource).toContain('install the OpenShift Local binaries');
+    expect(dashboardSource).toContain('https://podman-desktop.io/docs/openshift/openshift-local');
+    expect(extensionSource).toContain('Extensions → Catalog');
   });
 
   it('handles update requests through the extension host', () => {
