@@ -9,6 +9,7 @@ const supportedActions = new Set<AapDemoAction>([
   'status',
   'idle',
   'diagnose',
+  'repair',
 ]);
 
 export type DashboardMessage =

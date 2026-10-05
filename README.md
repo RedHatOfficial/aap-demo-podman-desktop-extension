@@ -146,7 +146,7 @@ actions:
 
 - Open the AAP Demo dashboard
 - Open the dashboard from the Podman Desktop status bar and see the latest cluster state
-- Create, deploy, destroy, diagnose, show status, and toggle the AAP idle state
+- Create, deploy, destroy, diagnose, repair, show status, and toggle the AAP idle state
 - View routes, masked credentials, add-on state, and prerequisite readiness
 - Enable or disable reported add-ons from the dashboard
 

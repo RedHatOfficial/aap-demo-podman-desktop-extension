@@ -65,6 +65,10 @@
       {
         "command": "aap-demo.diagnose",
         "title": "AAP Demo: Diagnose Environment"
+      },
+      {
+        "command": "aap-demo.repair",
+        "title": "AAP Demo: Repair Cluster"
       }
     ],
     "configuration": {
