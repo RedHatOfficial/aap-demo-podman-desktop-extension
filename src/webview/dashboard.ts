@@ -1,6 +1,6 @@
 import type { AapDemoStatus } from '../status-parser';
 import type { PrerequisiteStatus } from '../prerequisites';
-import { unwrapDashboardMessage } from '../dashboard-protocol';
+import { safeExternalUrl, unwrapDashboardMessage } from '../dashboard-protocol';
 import { acquireDesktopApi, type DesktopApi } from './desktop-api';
 import { getAddonTogglePresentation, sortAddons } from './addon-ui';
 
@@ -131,12 +131,13 @@ function postAction(action: string, idleStateValue?: boolean): void {
 }
 
 function addExternalLink(link: HTMLAnchorElement, url: string): void {
-  link.href = url;
-  link.target = '_blank';
-  link.rel = 'noreferrer';
+  const safeUrl = safeExternalUrl(url);
+  // Keep untrusted route data out of the DOM URL sink; navigation is delegated
+  // to the extension host after protocol validation.
+  link.href = '#';
   link.addEventListener('click', event => {
     event.preventDefault();
-    postToHost({ type: 'open-url', url });
+    if (safeUrl) postToHost({ type: 'open-url', url: safeUrl });
   });
 }
 

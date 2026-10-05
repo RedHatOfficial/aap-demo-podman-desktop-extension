@@ -26,13 +26,15 @@ export type DashboardMessage =
   | { type: 'addon'; action: AddonAction; addon: string; llmProvider?: AoLlmProvider }
   | { type: 'open-url'; url: string };
 
-function isSafeExternalUrl(url: unknown): url is string {
-  if (typeof url !== 'string') return false;
+export function safeExternalUrl(url: unknown): string | undefined {
+  if (typeof url !== 'string') return undefined;
   try {
     const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+      ? parsed.href
+      : undefined;
   } catch {
-    return false;
+    return undefined;
   }
 }
 
@@ -81,7 +83,7 @@ export function isDashboardMessage(message: unknown): message is DashboardMessag
     return supportedActions.has(candidate.action as AapDemoAction);
   }
   if (candidate.type === 'open-url') {
-    return isSafeExternalUrl(candidate.url);
+    return safeExternalUrl(candidate.url) !== undefined;
   }
   if (candidate.type !== 'addon') return false;
   const addonMessage = candidate as {

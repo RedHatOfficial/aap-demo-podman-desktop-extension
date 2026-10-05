@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { isDashboardMessage, unwrapDashboardMessage } from '../src/dashboard-protocol';
+import { isDashboardMessage, safeExternalUrl, unwrapDashboardMessage } from '../src/dashboard-protocol';
+
+describe('safeExternalUrl', () => {
+  it('returns only normalized HTTP(S) URLs for external navigation', () => {
+    expect(safeExternalUrl('https://example.test/path')).toBe('https://example.test/path');
+    expect(safeExternalUrl('http://example.test/')).toBe('http://example.test/');
+    expect(safeExternalUrl('javascript:alert(1)')).toBeUndefined();
+    expect(safeExternalUrl('data:text/html,hello')).toBeUndefined();
+    expect(safeExternalUrl('not a URL')).toBeUndefined();
+  });
+});
 
 describe('isDashboardMessage', () => {
   it('accepts the webview ready handshake', () => {
