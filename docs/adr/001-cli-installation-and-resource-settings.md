@@ -52,6 +52,16 @@ The extension passes the following settings to the CLI for every command:
 | `aap-demo.cliPath` | executable path | `aap-demo` | resolved through configured and user-local paths |
 | `aap-demo.crcPath` | CRC executable path | `crc` | resolved through configured and user-local paths |
 
+AO provider setup is selected with three explicit dashboard actions: **AO with
+OpenAI**, **AO with Ollama**, and **AO no AI**. The OpenAI action reads
+`aap-demo.aoLlmModel`, `aap-demo.aoLlmBaseUrl`, and
+`aap-demo.aoLlmApiKeyFile`, whose defaults are `gpt-5.6-luna`,
+`https://api.openai.com/v1`, and a blank key-file override (which uses
+`$AAP_DEMO_DIR/ao/llm-api-key` or `~/.aap-demo/ao/llm-api-key`). If the key is
+not already present, the extension collects it in a masked input. It passes
+the key only to the CLI process; the CLI stores it in the configured key file
+with restricted permissions. The key itself is not a Podman Desktop setting.
+
 CPU and memory changes affect CRC when the cluster is created or recreated;
 they do not resize an already-running VM automatically.
 
@@ -65,14 +75,48 @@ navigation entry is present and selected after Podman Desktop starts. This
 defaults to enabled and can be disabled with
 `aap-demo.openDashboardOnStartup = false`.
 
-When running from a local Git checkout, the dashboard provides **Update
-extension**. It runs `git pull --ff-only`, `npm ci`, and the production build;
+For development with the custom OCI image, the dashboard can prepare the
+extension's local Git checkout and provide **Update extension** for local
+builds. This is a temporary developer workflow, not part of the eventual
+catalog-distributed user experience. When the extension is published through
+the Podman Desktop catalog, retire this OCI-to-local setup/update workflow in
+favor of catalog distribution and updates.
+
+Preparing or updating the local extension requires Git and Node.js 24 or newer
+with npm. When Node.js/npm are missing, the dashboard explains the requirement
+and offers a package-manager install for RHEL derivatives (DNF), macOS
+(Homebrew), or Windows (WinGet). The action opens a visible terminal for the
+user to review and run the install command. It never elevates privileges or
+installs packages silently; any administrator prompt is handled interactively
+by the package manager in that terminal. The extension re-checks the runtime
+after the user returns. If the package manager is unavailable or the installed
+version does not meet the requirement (for example, if a RHEL repository only
+offers an older Node.js), it gives manual next steps. If Podman Desktop must be
+restarted before retrying, the user starts setup/update again; the source
+checkout is preserved and the runtime retry is not persisted across restarts.
+
+From the custom OCI extension, **Set up local extension updates** clones the
+extension repository into `aap-demo.extensionInstallLocation`, defaulting to
+`~/.aap-demo-podman-desktop-extension`, and runs `npm ci` plus the production
+build. It refuses to overwrite a non-Git directory and only updates a checkout
+whose origin is the official extension repository. The user then manually
+removes the custom OCI extension and adds the checkout under **Extensions →
+Local Extensions**. The action does not replace the OCI extension. Once
+running locally, **Update extension** updates that same source checkout; the
+CLI repository remains independently managed through `aap-demo.installLocation`.
+
+The local build runs `git pull --ff-only`, `npm ci`, and the production build;
 the user then stops and starts the local extension to load the rebuilt files.
-The action is hidden for OCI-installed extensions. Disabling and re-enabling an
-OCI extension only restarts the installed image. Updating a Quay image
-therefore requires uninstalling the installed extension and reinstalling the
-desired image tag from **Extensions → Install custom...**. Commit-specific or
-version-specific tags are preferred for repeatable testing.
+The local updater is hidden for OCI-installed extensions. Disabling and
+re-enabling an OCI extension only restarts the installed image. During
+development, updating a Quay image therefore requires uninstalling the
+installed extension and reinstalling the desired image tag from
+**Extensions → Install custom...**. Commit-specific or version-specific tags
+are preferred for repeatable testing.
+
+This source setup/update bridge is temporary and developer-only. It should be
+retired when catalog distribution becomes the supported installation path;
+catalog users should not be asked to clone or build the source repository.
 
 ## Consequences
 
@@ -82,7 +126,10 @@ can be updated safely. The non-Git-directory check prevents accidental data
 loss, but users with an existing `~/.aap-demo` data directory must choose a
 different install location or migrate that directory intentionally.
 
-The action still depends on `git`, Bash, network access, and the dependencies
-handled by `install.sh`. Interactive administrator prompts may not work through
-the extension host; those installs should be run from a terminal. The
-extension never installs CRC or supplies the Red Hat pull secret automatically.
+The CLI action still depends on `git`, Bash, network access, and the
+dependencies handled by `install.sh`. Interactive administrator prompts may
+not work through the extension host; those installs should be run from a
+terminal. The extension never installs CRC or supplies the Red Hat pull secret
+automatically. The developer-only Node.js/npm install offer likewise uses a
+visible terminal so package-manager and administrator prompts remain under the
+user's control.

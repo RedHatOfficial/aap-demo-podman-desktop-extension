@@ -102,6 +102,11 @@
           "default": "~/.aap-demo",
           "description": "Directory where the aap-demo repository is cloned and installed."
         },
+        "aap-demo.extensionInstallLocation": {
+          "type": "string",
+          "default": "~/.aap-demo-podman-desktop-extension",
+          "description": "Directory where the local Podman Desktop extension source is cloned and built for development."
+        },
         "aap-demo.aoLlmModel": {
           "type": "string",
           "default": "gpt-5.6-luna",

@@ -64,6 +64,39 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardHtml).toContain('Update extension');
   });
 
+  it('offers local extension setup and runtime recovery actions', () => {
+    expect(dashboardHtml).toContain('id="setup-extension"');
+    expect(dashboardHtml).toContain('id="install-runtime"');
+    expect(dashboardHtml).toContain('id="check-runtime"');
+    expect(dashboardSource).toContain("type: 'setup-extension'");
+    expect(dashboardSource).toContain("type: 'install-runtime'");
+    expect(dashboardSource).toContain("type: 'check-runtime'");
+    expect(extensionSource).toContain("message.type === 'setup-extension'");
+    expect(extensionSource).toContain("message.type === 'install-runtime'");
+    expect(extensionSource).toContain("message.type === 'check-runtime'");
+  });
+
+  it('explains the one-time OCI-to-local extension switch after setup', () => {
+    expect(dashboardSource).toContain("message.type === 'extension-setup-complete'");
+    expect(dashboardSource).toContain('Extensions → Local Extensions');
+    expect(dashboardSource).toContain('does not remove the OCI extension');
+  });
+
+  it('shows Node.js/npm install guidance and a re-check action', () => {
+    expect(dashboardSource).toContain("message.type === 'runtime-required'");
+    expect(dashboardSource).toContain("message.type === 'runtime-install-unavailable'");
+    expect(dashboardSource).toContain("message.reason === 'outdated'");
+    expect(dashboardSource).toContain('runtimeManualGuide.hidden = false');
+    expect(dashboardSource).toContain("addExternalLink(runtimeManualGuide, 'https://nodejs.org/en/download/')");
+    expect(dashboardSource).toContain('Check again');
+    expect(dashboardSource).toContain('Node.js 24 or newer');
+  });
+
+  it('tells users to restart the source action if the extension host restarted', () => {
+    expect(dashboardSource).toContain('start the setup or update action again');
+    expect(dashboardSource).toContain("message.action === 'setup-extension' || message.action === 'update-extension'");
+  });
+
   it('explains how to install OpenShift Local from the Podman Desktop catalog', () => {
     expect(dashboardSource).toContain('Extensions → Catalog');
     expect(dashboardSource).toContain('install the OpenShift Local binaries');
@@ -125,6 +158,11 @@ describe('getAddonTogglePresentation', () => {
   it('declares the configurable aap-demo repository install location', () => {
     expect(packageJson).toContain('"aap-demo.installLocation"');
     expect(packageJson).toContain('"default": "~/.aap-demo"');
+  });
+
+  it('declares a separate local extension source checkout setting', () => {
+    expect(packageJson).toContain('"aap-demo.extensionInstallLocation"');
+    expect(packageJson).toContain('"default": "~/.aap-demo-podman-desktop-extension"');
   });
 
   it('adds space below the Addons section', () => {

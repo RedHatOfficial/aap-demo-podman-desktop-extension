@@ -19,6 +19,31 @@ interface DashboardPrerequisitesMessage {
 interface DashboardExtensionMessage {
   type: 'extension-update-available';
   available: boolean;
+  setupAvailable?: boolean;
+}
+
+interface DashboardRuntimeRequiredMessage {
+  type: 'runtime-required';
+  runtime: 'node' | 'npm';
+  reason: 'missing' | 'outdated' | 'unusable';
+  message: string;
+  installAvailable: boolean;
+  packageManager?: string;
+}
+
+interface DashboardRuntimeInstallUnavailableMessage {
+  type: 'runtime-install-unavailable';
+  message: string;
+}
+
+interface DashboardRuntimeTerminalOpenedMessage {
+  type: 'runtime-terminal-opened';
+  packageManager: string;
+}
+
+interface DashboardExtensionSetupCompleteMessage {
+  type: 'extension-setup-complete';
+  path: string;
 }
 
 interface DashboardCommandMessage {
@@ -55,7 +80,13 @@ const addonActions = document.querySelector<HTMLDivElement>('#addon-actions');
 const prerequisiteList = document.querySelector<HTMLDivElement>('#prerequisite-list');
 const installCli = document.querySelector<HTMLButtonElement>('#install-cli');
 const updateCli = document.querySelector<HTMLButtonElement>('#update-cli');
+const setupExtension = document.querySelector<HTMLButtonElement>('#setup-extension');
 const updateExtension = document.querySelector<HTMLButtonElement>('#update-extension');
+const runtimeHelp = document.querySelector<HTMLDivElement>('#extension-runtime-help');
+const runtimeMessage = document.querySelector<HTMLParagraphElement>('#extension-runtime-message');
+const installRuntime = document.querySelector<HTMLButtonElement>('#install-runtime');
+const checkRuntime = document.querySelector<HTMLButtonElement>('#check-runtime');
+const runtimeManualGuide = document.querySelector<HTMLAnchorElement>('#runtime-manual-guide');
 const idleToggle = document.querySelector<HTMLButtonElement>('#idle-toggle');
 let idleState = true;
 
@@ -107,6 +138,10 @@ function addExternalLink(link: HTMLAnchorElement, url: string): void {
     event.preventDefault();
     postToHost({ type: 'open-url', url });
   });
+}
+
+if (runtimeManualGuide) {
+  addExternalLink(runtimeManualGuide, 'https://nodejs.org/en/download/');
 }
 
 function renderRoutes(status: AapDemoStatus): void {
@@ -338,14 +373,34 @@ updateCli?.addEventListener('click', () => {
   postToHost({ type: 'update-cli' });
 });
 
+setupExtension?.addEventListener('click', () => {
+  if (statusSummary) statusSummary.textContent = 'Setting up local extension updates...';
+  setupExtension.disabled = true;
+  postToHost({ type: 'setup-extension' });
+});
+
 updateExtension?.addEventListener('click', () => {
   if (statusSummary) statusSummary.textContent = 'Updating extension from the local clone...';
   updateExtension.disabled = true;
   postToHost({ type: 'update-extension' });
 });
 
+installRuntime?.addEventListener('click', () => {
+  if (runtimeMessage) {
+    runtimeMessage.textContent = 'Opening a terminal to install Node.js and npm. Complete the install there, then return and choose Check again.';
+  }
+  installRuntime.disabled = true;
+  postToHost({ type: 'install-runtime' });
+});
+
+checkRuntime?.addEventListener('click', () => {
+  if (runtimeMessage) runtimeMessage.textContent = 'Checking Node.js and npm...';
+  checkRuntime.disabled = true;
+  postToHost({ type: 'check-runtime' });
+});
+
 window.addEventListener('message', event => {
-  const message = unwrapDashboardMessage(event.data) as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardExtensionMessage | DashboardCommandMessage | DashboardCliMessage;
+  const message = unwrapDashboardMessage(event.data) as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardExtensionMessage | DashboardRuntimeRequiredMessage | DashboardRuntimeInstallUnavailableMessage | DashboardRuntimeTerminalOpenedMessage | DashboardExtensionSetupCompleteMessage | DashboardCommandMessage | DashboardCliMessage;
   if (!message || typeof message !== 'object' || typeof message.type !== 'string') return;
   if (message.type === 'cli-missing') {
     if (statusState) statusState.textContent = 'CLI not installed';
@@ -365,6 +420,64 @@ window.addEventListener('message', event => {
   }
   if (message.type === 'extension-update-available') {
     if (updateExtension) updateExtension.hidden = !message.available;
+    if (setupExtension) setupExtension.hidden = !message.setupAvailable;
+    return;
+  }
+  if (message.type === 'runtime-required') {
+    if (runtimeHelp) runtimeHelp.hidden = false;
+    if (runtimeMessage) {
+      const managerInstruction = message.installAvailable
+        ? message.reason === 'outdated'
+          ? ` Select Install with ${message.packageManager} to try updating the runtime. If it still provides a Node.js version below 24, use the manual installation instructions and choose Check again. If you restart Podman Desktop first, start the setup or update action again afterward.`
+          : ` This local extension requires Node.js 24 or newer and npm. Select Install with ${message.packageManager} to continue.`
+        : ' This local extension requires Node.js 24 or newer and npm. Install them and choose Check again. If you restart Podman Desktop first, start the setup or update action again afterward.';
+      runtimeMessage.textContent = `${message.message}${managerInstruction}`;
+    }
+    if (installRuntime) {
+      installRuntime.hidden = !message.installAvailable;
+      installRuntime.disabled = false;
+      installRuntime.textContent = message.packageManager
+        ? `Install with ${message.packageManager}`
+        : 'Install runtime';
+    }
+    if (checkRuntime) {
+      checkRuntime.hidden = false;
+      checkRuntime.disabled = false;
+    }
+    if (runtimeManualGuide) runtimeManualGuide.hidden = false;
+    if (statusSummary) statusSummary.textContent = 'The local extension needs Node.js and npm.';
+    return;
+  }
+  if (message.type === 'runtime-install-unavailable') {
+    if (runtimeHelp) runtimeHelp.hidden = false;
+    if (runtimeMessage) runtimeMessage.textContent = message.message;
+    if (installRuntime) installRuntime.hidden = true;
+    if (checkRuntime) {
+      checkRuntime.hidden = false;
+      checkRuntime.disabled = false;
+    }
+    if (runtimeManualGuide) runtimeManualGuide.hidden = false;
+    return;
+  }
+  if (message.type === 'runtime-terminal-opened') {
+    if (runtimeHelp) runtimeHelp.hidden = false;
+    if (runtimeMessage) {
+      runtimeMessage.textContent = `A terminal opened for ${message.packageManager}. Complete the install there, then return and choose Check again. If the runtime is still not detected after restarting Podman Desktop, start the setup or update action again.`;
+    }
+    if (installRuntime) installRuntime.disabled = true;
+    if (checkRuntime) {
+      checkRuntime.hidden = false;
+      checkRuntime.disabled = false;
+    }
+    return;
+  }
+  if (message.type === 'extension-setup-complete') {
+    if (runtimeHelp) runtimeHelp.hidden = true;
+    if (setupExtension) setupExtension.disabled = false;
+    writeOutput(
+      `Local extension source is ready at ${message.path}.\n\nTo switch: in Podman Desktop open Extensions → Installed, remove the custom OCI extension, then open Extensions → Local Extensions and add this checkout. This does not remove the OCI extension automatically.`,
+    );
+    if (statusSummary) statusSummary.textContent = 'Local extension source is ready; finish the one-time switch in Podman Desktop.';
     return;
   }
   if (message.type === 'command-output') {
@@ -374,12 +487,21 @@ window.addEventListener('message', event => {
   if (message.type === 'command-result' || message.type === 'addon-result') {
     writeOutput([message.stdout, message.stderr].filter(Boolean).join('\n'));
     if (statusSummary) statusSummary.textContent = `${formatState(message.action ?? 'command')} completed`;
+    if (message.action === 'update-cli' && updateCli) updateCli.disabled = false;
+    if (message.action === 'update-extension' && updateExtension) {
+      updateExtension.disabled = false;
+      if (runtimeHelp) runtimeHelp.hidden = true;
+    }
     return;
   }
   if (message.type === 'command-error') {
     writeOutput(message.message ?? 'Command failed.');
     if (message.action === 'update-cli' && updateCli) updateCli.disabled = false;
-    if (message.action === 'update-extension' && updateExtension) updateExtension.disabled = false;
+    if (message.action === 'setup-extension' || message.action === 'update-extension') {
+      if (setupExtension) setupExtension.disabled = false;
+      if (updateExtension) updateExtension.disabled = false;
+      if (runtimeHelp) runtimeHelp.hidden = true;
+    }
     if (message.addon === 'ao') {
       addonActions?.querySelectorAll('button').forEach(button => { button.disabled = false; });
     }

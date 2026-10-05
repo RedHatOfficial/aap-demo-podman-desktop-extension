@@ -104,10 +104,11 @@ The current OCI image is published to Quay:
 quay.io/cferman/aap-demo-podman-desktop-extension:latest
 ```
 
-The active GitHub Actions workflow publishes the image to Quay after commits
-to `main`. Configure the repository secrets `QUAY_USERNAME` and
-`QUAY_PASSWORD` before enabling the workflow. The branch-specific `:main` tag
-is also available for testing and troubleshooting.
+The GitHub Actions workflow publishes the image to Quay after commits to
+`main` and `feature/podman-desktop-addon`. The feature branch receives the
+`:feature-podman-desktop-addon` tag; `:latest` is published only from the
+default branch (`main`). Configure the repository secrets `QUAY_USERNAME` and
+`QUAY_PASSWORD` for publishing.
 
 ## Updating the extension image
 
@@ -115,6 +116,26 @@ When this extension is running from a local Git checkout, the Status card
 shows **Update extension**. It pulls the checkout with `git pull --ff-only`,
 runs `npm ci`, and runs the production build. Stop and start the local
 extension afterward so Podman Desktop loads the rebuilt backend and webview.
+
+When using the custom Quay OCI image for development, **Set up local extension
+updates** clones and builds this repository once. The checkout defaults to
+`~/.aap-demo-podman-desktop-extension`; change
+`aap-demo.extensionInstallLocation` in Podman Desktop settings to use another
+location. Setup requires Git, Node.js 24 or newer, and npm. If Node.js/npm are
+missing or Node.js is too old, the dashboard offers an explicit install in a
+visible terminal using DNF on RHEL derivatives, Homebrew on macOS, or WinGet on
+Windows. You remain in control of package-manager and administrator prompts;
+return to the dashboard and choose **Check again** after installation. If the
+runtime is still unavailable—or a RHEL package only provides Node.js older
+than 24—use the manual Node.js instructions, restart Podman Desktop, and click
+**Set up local extension updates** again.
+
+After setup succeeds, switch manually in Podman Desktop: remove the custom OCI
+extension from **Extensions → Installed**, then add the checkout under
+**Extensions → Local Extensions**. Setup never removes or replaces the OCI
+extension automatically. This one-time switch and the local setup/update
+actions are developer-only; retire them when catalog distribution becomes the
+supported installation path.
 
 For the Quay OCI extension, disable/re-enable only restarts the currently
 installed image; it does not guarantee a fresh pull of a changed `:latest` or

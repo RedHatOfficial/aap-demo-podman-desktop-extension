@@ -47,6 +47,9 @@
       .empty { color: #a9b1bb; font-style: italic; }
       .prerequisite { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 6px 0; }
       .prerequisite-help { flex-basis: 100%; margin-left: 22px; line-height: 1.5; }
+      .extension-runtime-help { margin-top: 10px; padding: 10px; border: 1px solid #596675; border-radius: 6px; }
+      .extension-runtime-help p { margin-bottom: 8px; }
+      .extension-runtime-actions { display: flex; flex-wrap: wrap; gap: 8px; }
       .prerequisite.ready { color: #7ee787; }
       .prerequisite.failed { color: #ff7b72; }
       .prerequisite-action { margin-top: 8px; }
@@ -78,7 +81,16 @@
           <div id="prerequisite-list"><p class="empty">Checking prerequisites...</p></div>
           <button class="small primary prerequisite-action" id="install-cli" hidden>Install aap-demo</button>
           <button class="small prerequisite-action" id="update-cli" hidden>Update aap-demo</button>
+          <button class="small primary prerequisite-action" id="setup-extension" hidden>Set up local extension updates</button>
           <button class="small prerequisite-action" id="update-extension" hidden>Update extension</button>
+          <div class="extension-runtime-help" id="extension-runtime-help" hidden>
+            <p id="extension-runtime-message"></p>
+            <div class="extension-runtime-actions">
+              <button class="small primary" id="install-runtime" hidden>Install runtime</button>
+              <button class="small" id="check-runtime" hidden>Check again</button>
+              <a id="runtime-manual-guide" href="https://nodejs.org/en/download/" target="_blank" rel="noreferrer" hidden>Node.js installation instructions</a>
+            </div>
+          </div>
         </div>
       </div>
       <div class="actions">

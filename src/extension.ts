@@ -16,6 +16,9 @@ import { detectCliVersion } from './cli-version';
 import { isDashboardMessage, type AoLlmProvider } from './dashboard-protocol';
 import { augmentPath, resolveConfiguredExecutable, resolveExecutablePath } from './executable-path';
 import { isLocalExtensionCheckout } from './extension-updater';
+import { ExtensionSourceService, MissingRuntimeError } from './extension-source-service';
+import { resolveExtensionInstallLocation } from './extension-source';
+import { getRuntimeInstallPlan, launchRuntimeInstall } from './runtime-installer';
 import { checkPrerequisites } from './prerequisites';
 import {
   AAP_DEMO_REPOSITORY_URL,
@@ -66,6 +69,11 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   const configuredCliPath = configuration.get('cliPath', 'aap-demo').trim() || 'aap-demo';
   const cliPath = resolveConfiguredExecutable(configuredCliPath);
   const installLocationSetting = configuration.get('installLocation', '~/.aap-demo');
+  const extensionInstallLocationSetting = configuration.get(
+    'extensionInstallLocation',
+    '~/.aap-demo-podman-desktop-extension',
+  );
+  const extensionInstallLocation = resolveExtensionInstallLocation(extensionInstallLocationSetting);
   const aoLlmModel = configuration.get('aoLlmModel', 'gpt-5.6-luna').trim() || 'gpt-5.6-luna';
   const aoLlmBaseUrl = configuration.get('aoLlmBaseUrl', 'https://api.openai.com/v1').trim() || 'https://api.openai.com/v1';
   const configuredAoLlmApiKeyFile = configuration.get('aoLlmApiKeyFile', '').trim();
@@ -231,40 +239,111 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   const runInstall = async (): Promise<void> => runCliMaintenance('install');
   const runUpdate = async (): Promise<void> => runCliMaintenance('update');
 
-  const runExtensionUpdate = async (): Promise<void> => {
-    const action = 'update-extension';
-    const streamOptions = {
-      env: { ...process.env, PATH: settings.pathValue },
-      onStdout: (chunk: string) => {
-        console.log(`[aap-demo extension update] ${chunk.trimEnd()}`);
-        void postDashboardMessage({ type: 'command-output', stream: 'stdout', text: chunk });
-      },
-      onStderr: (chunk: string) => {
-        console.warn(`[aap-demo extension update] ${chunk.trimEnd()}`);
-        void postDashboardMessage({ type: 'command-output', stream: 'stderr', text: chunk });
-      },
-    };
+  type ExtensionSourceOperation = 'setup-extension' | 'update-extension';
+  let pendingExtensionSourceOperation: ExtensionSourceOperation | undefined;
+  const sourceStreamOptions = (action: ExtensionSourceOperation) => ({
+    onStdout: (chunk: string) => {
+      console.log(`[aap-demo ${action}] ${chunk.trimEnd()}`);
+      void postDashboardMessage({ type: 'command-output', stream: 'stdout', text: chunk });
+    },
+    onStderr: (chunk: string) => {
+      console.warn(`[aap-demo ${action}] ${chunk.trimEnd()}`);
+      void postDashboardMessage({ type: 'command-output', stream: 'stderr', text: chunk });
+    },
+  });
+
+  const runExtensionSourceOperation = async (
+    action: ExtensionSourceOperation,
+  ): Promise<void> => {
     try {
-      if (!localExtensionCheckout) {
+      if (action === 'update-extension' && !localExtensionCheckout) {
         throw new Error(
           'This extension is not running from a local Git checkout. Add the cloned repository under Extensions → Local Extensions first.',
         );
       }
-      await runner.run('git', ['-C', extensionPath, 'pull', '--ff-only'], streamOptions);
-      await runner.run('npm', ['ci'], { cwd: extensionPath, ...streamOptions });
-      const result = await runner.run('npm', ['run', 'build'], {
-        cwd: extensionPath,
-        ...streamOptions,
+      const checkoutPath = action === 'update-extension' ? extensionPath : extensionInstallLocation;
+      const sourceService = new ExtensionSourceService(runner, {
+        checkoutPath,
+        pathValue: settings.pathValue ?? '',
+        pathExists: candidate => existsSync(candidate),
+        gitMetadataExists: candidate => existsSync(path.join(candidate, '.git')),
       });
-      await postDashboardMessage({ type: 'command-result', action, stdout: result.stdout, stderr: result.stderr });
-      await extensionApi.window.showInformationMessage(
-        'Extension updated from the local clone. Stop and start the local extension, then reopen the dashboard.',
-      );
+      const result = await sourceService.prepare(sourceStreamOptions(action));
+      if (action === 'setup-extension') {
+        pendingExtensionSourceOperation = undefined;
+        await postDashboardMessage({ type: 'command-result', action, stdout: result.stdout, stderr: result.stderr });
+        await postDashboardMessage({ type: 'extension-setup-complete', path: checkoutPath });
+        await extensionApi.window.showInformationMessage(
+          'Local extension source is ready. Add it from Extensions → Local Extensions when you are ready to switch.',
+        );
+      } else {
+        pendingExtensionSourceOperation = undefined;
+        await postDashboardMessage({ type: 'command-result', action, stdout: result.stdout, stderr: result.stderr });
+        await extensionApi.window.showInformationMessage(
+          'Extension updated from the local clone. Stop and start the local extension, then reopen the dashboard.',
+        );
+      }
     } catch (error) {
+      if (error instanceof MissingRuntimeError) {
+        pendingExtensionSourceOperation = action;
+        const installPlan = getRuntimeInstallPlan(settings.pathValue);
+        const installAvailable = installPlan.status === 'ready';
+        await postDashboardMessage({
+          type: 'runtime-required',
+          runtime: error.runtime,
+          reason: error.reason,
+          message: error.message,
+          installAvailable,
+          ...(installPlan.status === 'ready' ? { packageManager: installPlan.packageManager } : {}),
+        });
+        return;
+      }
+      pendingExtensionSourceOperation = undefined;
       const message = formatCommandError(error);
       await postDashboardMessage({ type: 'command-error', action, message });
-      await extensionApi.window.showWarningMessage(`Extension update failed: ${message}`);
+      await extensionApi.window.showWarningMessage(`Extension ${action === 'setup-extension' ? 'setup' : 'update'} failed: ${message}`);
     }
+  };
+
+  const runExtensionUpdate = async (): Promise<void> => {
+    await runExtensionSourceOperation('update-extension');
+  };
+
+  const runExtensionSetup = async (): Promise<void> => {
+    await runExtensionSourceOperation('setup-extension');
+  };
+
+  const installExtensionRuntime = async (): Promise<void> => {
+    const plan = getRuntimeInstallPlan(settings.pathValue);
+    if (plan.status !== 'ready') {
+      await postDashboardMessage({
+        type: 'runtime-install-unavailable',
+        message: plan.status === 'package-manager-missing'
+          ? `Could not find ${plan.packageManager}. Install Node.js 24 or newer and npm manually. If you restart Podman Desktop, start the setup or update action again.`
+          : 'Automatic runtime installation is only offered for RHEL derivatives, macOS with Homebrew, and Windows with WinGet. Install Node.js 24 or newer and npm manually. If you restart Podman Desktop, start the setup or update action again.',
+      });
+      return;
+    }
+    try {
+      await launchRuntimeInstall(plan, undefined, settings.pathValue);
+      await postDashboardMessage({ type: 'runtime-terminal-opened', packageManager: plan.packageManager });
+    } catch (error) {
+      await postDashboardMessage({
+        type: 'runtime-install-unavailable',
+        message: `${formatCommandError(error)} Install Node.js 24 or newer and npm manually. If you restart Podman Desktop, start the setup or update action again.`,
+      });
+    }
+  };
+
+  const checkExtensionRuntime = async (): Promise<void> => {
+    if (!pendingExtensionSourceOperation) {
+      await postDashboardMessage({
+        type: 'runtime-install-unavailable',
+        message: 'There is no pending local extension setup or update. Start that action again after installing Node.js and npm.',
+      });
+      return;
+    }
+    await runExtensionSourceOperation(pendingExtensionSourceOperation);
   };
 
   const hasSavedAoOpenAiKey = (): boolean => {
@@ -371,6 +450,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       await postDashboardMessage({
         type: 'extension-update-available',
         available: localExtensionCheckout,
+        setupAvailable: !localExtensionCheckout,
       });
       await postDashboardMessage({
         type: 'prerequisites',
@@ -393,6 +473,12 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
           await runUpdate();
         } else if (message.type === 'update-extension') {
           await runExtensionUpdate();
+        } else if (message.type === 'setup-extension') {
+          await runExtensionSetup();
+        } else if (message.type === 'install-runtime') {
+          await installExtensionRuntime();
+        } else if (message.type === 'check-runtime') {
+          await checkExtensionRuntime();
         } else if (message.type === 'addon') {
           await runAddon(message.action, message.addon, message.llmProvider);
         } else if (message.type === 'open-url') {

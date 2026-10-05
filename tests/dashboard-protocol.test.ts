@@ -24,6 +24,12 @@ describe('isDashboardMessage', () => {
     expect(isDashboardMessage({ type: 'update-extension' })).toBe(true);
   });
 
+  it('accepts local extension setup and runtime recovery requests', () => {
+    expect(isDashboardMessage({ type: 'setup-extension' })).toBe(true);
+    expect(isDashboardMessage({ type: 'install-runtime' })).toBe(true);
+    expect(isDashboardMessage({ type: 'check-runtime' })).toBe(true);
+  });
+
   it('accepts safe external URL requests', () => {
     expect(isDashboardMessage({ type: 'open-url', url: 'https://example.test/path' })).toBe(true);
   });

@@ -19,6 +19,9 @@ export type DashboardMessage =
   | { type: 'install-cli' }
   | { type: 'update-cli' }
   | { type: 'update-extension' }
+  | { type: 'setup-extension' }
+  | { type: 'install-runtime' }
+  | { type: 'check-runtime' }
   | { type: 'run'; action: AapDemoAction; idleState?: boolean }
   | { type: 'addon'; action: AddonAction; addon: string; llmProvider?: AoLlmProvider }
   | { type: 'open-url'; url: string };
@@ -71,6 +74,9 @@ export function isDashboardMessage(message: unknown): message is DashboardMessag
   if (candidate.type === 'install-cli') return true;
   if (candidate.type === 'update-cli') return true;
   if (candidate.type === 'update-extension') return true;
+  if (candidate.type === 'setup-extension') return true;
+  if (candidate.type === 'install-runtime') return true;
+  if (candidate.type === 'check-runtime') return true;
   if (candidate.type === 'run') {
     return supportedActions.has(candidate.action as AapDemoAction);
   }

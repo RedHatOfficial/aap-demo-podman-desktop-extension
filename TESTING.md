@@ -104,9 +104,10 @@ quay.io/cferman/aap-demo-podman-desktop-extension:latest
 
 In Podman Desktop, open **Extensions → Install custom...**, enter that image
 name, and install it. The Quay repository must be public, or Podman must be
-authenticated to Quay before installation. Use the `:main` tag when testing
-the branch-specific image directly. Configure the repository secrets
-`QUAY_USERNAME` and `QUAY_PASSWORD` for GitHub Actions publishing.
+authenticated to Quay before installation. Use
+`:feature-podman-desktop-addon` to test this feature branch image; `:latest`
+is reserved for `main`. Configure the repository secrets `QUAY_USERNAME` and
+`QUAY_PASSWORD` for GitHub Actions publishing.
 
 ### Updating an installed image
 
@@ -172,6 +173,26 @@ When running from the cloned local checkout, the Status box also shows
 builds the backend and webview. Stop and start the local extension afterward to
 load the rebuilt files. The button is hidden when the extension is running
 from an OCI image.
+
+For the temporary custom-OCI development bridge, open the dashboard from the
+OCI extension and choose **Set up local extension updates**. This clones and
+builds the extension source at `~/.aap-demo-podman-desktop-extension` by
+default; set `aap-demo.extensionInstallLocation` to override the path. The
+action does not uninstall or replace the OCI extension. Once setup succeeds,
+remove the OCI extension under **Extensions → Installed**, then add the cloned
+folder under **Extensions → Local Extensions**. After that one-time switch,
+use **Update extension** from the local extension and stop/start it to load
+the rebuilt files.
+
+Setup requires Git, Node.js 24+, and npm. If Node.js/npm are missing or Node.js
+is outdated, the dashboard offers a visible terminal install using DNF on RHEL
+derivatives, Homebrew on macOS, or WinGet on Windows. Finish the command in
+that terminal, return to Podman Desktop, and choose **Check again**. If no
+supported package manager or terminal is available—or a RHEL package only
+provides Node.js older than 24—install the runtime manually, restart Podman
+Desktop, and click **Set up local extension updates** or **Update extension**
+again. This is a development-only workflow; catalog-distributed users should
+not need it.
 
 After backend changes, stop and start the local extension if the extension host
 does not reload. After webview changes, close and reopen the dashboard. If the
