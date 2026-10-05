@@ -60,6 +60,11 @@ item or using **F1 → AAP Demo: Open Dashboard**. Opening the source HTML with
 `file://` is not a supported test path because it does not provide the host
 bridge.
 
+The extension opens the dashboard automatically after activation so its
+navigation entry is present and selected after Podman Desktop starts. This
+defaults to enabled and can be disabled with
+`aap-demo.openDashboardOnStartup = false`.
+
 When running from a local Git checkout, the dashboard provides **Update
 extension**. It runs `git pull --ff-only`, `npm ci`, and the production build;
 the user then stops and starts the local extension to load the rebuilt files.

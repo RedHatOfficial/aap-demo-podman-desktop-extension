@@ -98,6 +98,11 @@
           "default": "~/.aap-demo",
           "description": "Directory where the aap-demo repository is cloned and installed."
         },
+        "aap-demo.openDashboardOnStartup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open the AAP Demo dashboard automatically when Podman Desktop starts."
+        },
         "aap-demo.crcPath": {
           "type": "string",
           "default": "crc",

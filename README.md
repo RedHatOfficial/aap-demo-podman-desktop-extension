@@ -19,8 +19,10 @@ resources for the AAP Demo environment.
 
 ## Open the dashboard
 
-After the extension is installed and active, open the dashboard from Podman
-Desktop in either of these ways:
+The dashboard opens automatically when Podman Desktop starts. Set
+`aap-demo.openDashboardOnStartup` to `false` in Podman Desktop settings if you
+prefer to open it yourself. You can also open it at any time using either of
+these methods:
 
 - Click the `AAP Demo: ...` status item at the bottom of the Podman Desktop
   window.

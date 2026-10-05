@@ -144,9 +144,11 @@ In Podman Desktop:
    ```
 
 6. Start the extension and confirm it is **ACTIVE**.
-7. Open the dashboard by clicking the `AAP Demo: ...` status item at the
-   bottom of the Podman Desktop window, or press **F1**, search for
-   **AAP Demo: Open Dashboard**, and press **Enter**.
+7. Confirm the dashboard opens automatically. It should also appear in the
+   navigation sidebar after Podman Desktop restarts.
+8. Set `aap-demo.openDashboardOnStartup` to `false`, restart Podman Desktop,
+   and confirm the dashboard stays closed until opened from the status item or
+   Command Palette.
 
 If the `aap-demo` CLI is missing, the Status box shows **Install aap-demo**.
 Click it to clone or update the repository in `~/.aap-demo` and run its

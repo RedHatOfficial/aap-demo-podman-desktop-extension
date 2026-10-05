@@ -350,6 +350,9 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   );
 
   await checkCrc(crcPath);
+  if (configuration.get('openDashboardOnStartup', true)) {
+    await extensionApi.commands.executeCommand('aap-demo.openDashboard');
+  }
 }
 
 export function deactivate(): void {
