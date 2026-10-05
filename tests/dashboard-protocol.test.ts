@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { isDashboardMessage, unwrapDashboardMessage } from '../src/dashboard-protocol';
+import { isDashboardMessage, safeExternalUrl, unwrapDashboardMessage } from '../src/dashboard-protocol';
+
+describe('safeExternalUrl', () => {
+  it('returns only normalized HTTP(S) URLs for external navigation', () => {
+    expect(safeExternalUrl('https://example.test/path')).toBe('https://example.test/path');
+    expect(safeExternalUrl('http://example.test/')).toBe('http://example.test/');
+    expect(safeExternalUrl('javascript:alert(1)')).toBeUndefined();
+    expect(safeExternalUrl('data:text/html,hello')).toBeUndefined();
+    expect(safeExternalUrl('not a URL')).toBeUndefined();
+  });
+});
 
 describe('isDashboardMessage', () => {
   it('accepts the webview ready handshake', () => {
@@ -10,6 +20,24 @@ describe('isDashboardMessage', () => {
     expect(isDashboardMessage({ type: 'run', action: 'status' })).toBe(true);
     expect(isDashboardMessage({ type: 'run', action: 'start' })).toBe(true);
     expect(isDashboardMessage({ type: 'run', action: 'stop' })).toBe(true);
+  });
+
+  it('accepts an install CLI request from the dashboard', () => {
+    expect(isDashboardMessage({ type: 'install-cli' })).toBe(true);
+  });
+
+  it('accepts an update CLI request from the dashboard', () => {
+    expect(isDashboardMessage({ type: 'update-cli' })).toBe(true);
+  });
+
+  it('accepts a local extension update request from the dashboard', () => {
+    expect(isDashboardMessage({ type: 'update-extension' })).toBe(true);
+  });
+
+  it('accepts local extension setup and runtime recovery requests', () => {
+    expect(isDashboardMessage({ type: 'setup-extension' })).toBe(true);
+    expect(isDashboardMessage({ type: 'install-runtime' })).toBe(true);
+    expect(isDashboardMessage({ type: 'check-runtime' })).toBe(true);
   });
 
   it('accepts safe external URL requests', () => {

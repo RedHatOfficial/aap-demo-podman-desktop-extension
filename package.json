@@ -23,6 +23,18 @@
         "title": "AAP Demo: Open Dashboard"
       },
       {
+        "command": "aap-demo.installCli",
+        "title": "AAP Demo: Install aap-demo CLI"
+      },
+      {
+        "command": "aap-demo.updateCli",
+        "title": "AAP Demo: Update aap-demo CLI"
+      },
+      {
+        "command": "aap-demo.updateExtension",
+        "title": "AAP Demo: Update local extension"
+      },
+      {
         "command": "aap-demo.create",
         "title": "AAP Demo: Create Cluster"
       },
@@ -53,6 +65,10 @@
       {
         "command": "aap-demo.diagnose",
         "title": "AAP Demo: Diagnose Environment"
+      },
+      {
+        "command": "aap-demo.repair",
+        "title": "AAP Demo: Repair Cluster"
       }
     ],
     "configuration": {
@@ -64,6 +80,12 @@
           "default": "",
           "description": "Path to the Red Hat pull-secret.txt file."
         },
+        "aap-demo.cpus": {
+          "type": "integer",
+          "minimum": 4,
+          "default": 8,
+          "description": "CPU count allocated to OpenShift Local."
+        },
         "aap-demo.memory": {
           "type": "integer",
           "minimum": 16384,
@@ -74,6 +96,36 @@
           "type": "string",
           "default": "aap-demo",
           "description": "Path to the aap-demo executable."
+        },
+        "aap-demo.installLocation": {
+          "type": "string",
+          "default": "~/.aap-demo",
+          "description": "Directory where the aap-demo repository is cloned and installed."
+        },
+        "aap-demo.extensionInstallLocation": {
+          "type": "string",
+          "default": "~/.aap-demo-podman-desktop-extension",
+          "description": "Directory where the local Podman Desktop extension source is cloned and built for development."
+        },
+        "aap-demo.aoLlmModel": {
+          "type": "string",
+          "default": "gpt-5.6-luna",
+          "description": "Default model used when enabling the AO add-on with OpenAI."
+        },
+        "aap-demo.aoLlmBaseUrl": {
+          "type": "string",
+          "default": "https://api.openai.com/v1",
+          "description": "OpenAI-compatible API endpoint used when enabling AO with OpenAI."
+        },
+        "aap-demo.aoLlmApiKeyFile": {
+          "type": "string",
+          "default": "",
+          "description": "Optional path where aap-demo securely stores the OpenAI API key entered when enabling AO. Defaults to $AAP_DEMO_DIR/ao/llm-api-key or ~/.aap-demo/ao/llm-api-key. The key itself is never stored in Podman Desktop settings."
+        },
+        "aap-demo.openDashboardOnStartup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open the AAP Demo dashboard automatically when Podman Desktop starts."
         },
         "aap-demo.crcPath": {
           "type": "string",

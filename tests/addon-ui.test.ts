@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { getAddonTogglePresentation, sortAddons } from '../src/webview/addon-ui';
 
 const dashboardHtml = readFileSync(resolve(__dirname, '../src/webview/index.html'), 'utf8');
+const dashboardSource = readFileSync(resolve(__dirname, '../src/webview/dashboard.ts'), 'utf8');
+const extensionSource = readFileSync(resolve(__dirname, '../src/extension.ts'), 'utf8');
 const packageJson = readFileSync(resolve(__dirname, '../package.json'), 'utf8');
 const containerfile = readFileSync(resolve(__dirname, '../Containerfile'), 'utf8');
 
@@ -53,6 +55,73 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardHtml).not.toContain('<section class="card" id="prerequisites">');
   });
 
+  it('offers the install script when the aap-demo CLI is unavailable', () => {
+    expect(dashboardHtml).toContain('id="install-cli"');
+    expect(dashboardHtml).toContain('Install aap-demo');
+    expect(dashboardHtml).toContain('id="update-cli"');
+    expect(dashboardHtml).toContain('Update aap-demo');
+    expect(dashboardHtml).toContain('id="update-extension"');
+    expect(dashboardHtml).toContain('Update extension');
+  });
+
+  it('offers local extension setup and runtime recovery actions', () => {
+    expect(dashboardHtml).toContain('id="setup-extension"');
+    expect(dashboardHtml).toContain('id="install-runtime"');
+    expect(dashboardHtml).toContain('id="check-runtime"');
+    expect(dashboardSource).toContain("type: 'setup-extension'");
+    expect(dashboardSource).toContain("type: 'install-runtime'");
+    expect(dashboardSource).toContain("type: 'check-runtime'");
+    expect(extensionSource).toContain("message.type === 'setup-extension'");
+    expect(extensionSource).toContain("message.type === 'install-runtime'");
+    expect(extensionSource).toContain("message.type === 'check-runtime'");
+  });
+
+  it('explains the one-time OCI-to-local extension switch after setup', () => {
+    expect(dashboardSource).toContain("message.type === 'extension-setup-complete'");
+    expect(dashboardSource).toContain('Extensions → Local Extensions');
+    expect(dashboardSource).toContain('does not remove the OCI extension');
+  });
+
+  it('shows Node.js/npm install guidance and a re-check action', () => {
+    expect(dashboardSource).toContain("message.type === 'runtime-required'");
+    expect(dashboardSource).toContain("message.type === 'runtime-install-unavailable'");
+    expect(dashboardSource).toContain("message.reason === 'outdated'");
+    expect(dashboardSource).toContain('runtimeManualGuide.hidden = false');
+    expect(dashboardSource).toContain("addExternalLink(runtimeManualGuide, 'https://nodejs.org/en/download/')");
+    expect(dashboardSource).toContain('Check again');
+    expect(dashboardSource).toContain('Node.js 24 or newer');
+  });
+
+  it('tells users to restart the source action if the extension host restarted', () => {
+    expect(dashboardSource).toContain('start the setup or update action again');
+    expect(dashboardSource).toContain("message.action === 'setup-extension' || message.action === 'update-extension'");
+  });
+
+  it('explains how to install OpenShift Local from the Podman Desktop catalog', () => {
+    expect(dashboardSource).toContain('Extensions → Catalog');
+    expect(dashboardSource).toContain('install the OpenShift Local binaries');
+    expect(dashboardSource).toContain('https://podman-desktop.io/docs/openshift/openshift-local');
+    expect(extensionSource).toContain('Extensions → Catalog');
+  });
+
+  it('handles update requests through the extension host', () => {
+    expect(extensionSource).toContain("message.type === 'update-cli'");
+    expect(extensionSource).toContain("registerCommand('aap-demo.updateCli'");
+    expect(extensionSource).toContain("message.type === 'update-extension'");
+    expect(extensionSource).toContain("registerCommand('aap-demo.updateExtension'");
+  });
+
+  it('renders prerequisites before checking CLI status', () => {
+    const initializer = extensionSource.slice(
+      extensionSource.indexOf('const initializeDashboard'),
+      extensionSource.indexOf('const messageSubscription'),
+    );
+
+    expect(initializer.indexOf("type: 'prerequisites'")).toBeLessThan(
+      initializer.indexOf("runAction('status')"),
+    );
+  });
+
   it('places start and stop controls beside Deploy AAP', () => {
     const actionsStart = dashboardHtml.indexOf('<div class="actions">');
     const actionsEnd = dashboardHtml.indexOf('</div>', actionsStart);
@@ -84,6 +153,16 @@ describe('getAddonTogglePresentation', () => {
     expect(packageJson).toContain('"icon": "icon.png"');
     expect(packageJson).toContain('"activationEvents": ["onStartupFinished"]');
     expect(containerfile).toContain('COPY icon.png /extension/icon.png');
+  });
+
+  it('declares the configurable aap-demo repository install location', () => {
+    expect(packageJson).toContain('"aap-demo.installLocation"');
+    expect(packageJson).toContain('"default": "~/.aap-demo"');
+  });
+
+  it('declares a separate local extension source checkout setting', () => {
+    expect(packageJson).toContain('"aap-demo.extensionInstallLocation"');
+    expect(packageJson).toContain('"default": "~/.aap-demo-podman-desktop-extension"');
   });
 
   it('adds space below the Addons section', () => {

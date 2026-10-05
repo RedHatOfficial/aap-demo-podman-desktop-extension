@@ -1,5 +1,7 @@
 import type { AddonAction, AapDemoAction } from './aap-demo-service';
 
+export type AoLlmProvider = 'external' | 'ollama' | 'none';
+
 const supportedActions = new Set<AapDemoAction>([
   'create',
   'start',
@@ -9,21 +11,30 @@ const supportedActions = new Set<AapDemoAction>([
   'status',
   'idle',
   'diagnose',
+  'repair',
 ]);
 
 export type DashboardMessage =
   | { type: 'ready' }
+  | { type: 'install-cli' }
+  | { type: 'update-cli' }
+  | { type: 'update-extension' }
+  | { type: 'setup-extension' }
+  | { type: 'install-runtime' }
+  | { type: 'check-runtime' }
   | { type: 'run'; action: AapDemoAction; idleState?: boolean }
-  | { type: 'addon'; action: AddonAction; addon: string }
+  | { type: 'addon'; action: AddonAction; addon: string; llmProvider?: AoLlmProvider }
   | { type: 'open-url'; url: string };
 
-function isSafeExternalUrl(url: unknown): url is string {
-  if (typeof url !== 'string') return false;
+export function safeExternalUrl(url: unknown): string | undefined {
+  if (typeof url !== 'string') return undefined;
   try {
     const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+      ? parsed.href
+      : undefined;
   } catch {
-    return false;
+    return undefined;
   }
 }
 
@@ -62,16 +73,33 @@ export function isDashboardMessage(message: unknown): message is DashboardMessag
   if (typeof message !== 'object' || message === null) return false;
   const candidate = message as Partial<DashboardMessage>;
   if (candidate.type === 'ready') return true;
+  if (candidate.type === 'install-cli') return true;
+  if (candidate.type === 'update-cli') return true;
+  if (candidate.type === 'update-extension') return true;
+  if (candidate.type === 'setup-extension') return true;
+  if (candidate.type === 'install-runtime') return true;
+  if (candidate.type === 'check-runtime') return true;
   if (candidate.type === 'run') {
     return supportedActions.has(candidate.action as AapDemoAction);
   }
   if (candidate.type === 'open-url') {
-    return isSafeExternalUrl(candidate.url);
+    return safeExternalUrl(candidate.url) !== undefined;
   }
-  return (
-    candidate.type === 'addon' &&
-    (candidate.action === 'enable' || candidate.action === 'disable') &&
-    typeof candidate.addon === 'string' &&
-    candidate.addon.length > 0
-  );
+  if (candidate.type !== 'addon') return false;
+  const addonMessage = candidate as {
+    action?: unknown;
+    addon?: unknown;
+    llmProvider?: unknown;
+  };
+  if (
+    (addonMessage.action !== 'enable' && addonMessage.action !== 'disable') ||
+    typeof addonMessage.addon !== 'string' ||
+    addonMessage.addon.length === 0
+  ) {
+    return false;
+  }
+  if (addonMessage.addon === 'ao' && addonMessage.action === 'enable') {
+    return ['external', 'ollama', 'none'].includes(String(addonMessage.llmProvider));
+  }
+  return addonMessage.llmProvider === undefined;
 }

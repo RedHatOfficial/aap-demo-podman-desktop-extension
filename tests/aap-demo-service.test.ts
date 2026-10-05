@@ -48,6 +48,15 @@ describe('AapDemoService', () => {
     expect(executor.calls).toEqual([{ command: 'aap-demo', args: ['idle', 'false'] }]);
   });
 
+  it('falls back to aap-demo when the configured CLI path is empty', async () => {
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor, '');
+
+    await service.run('status');
+
+    expect(executor.calls).toEqual([{ command: 'aap-demo', args: ['status'] }]);
+  });
+
   it('runs add-on enable and disable actions with the selected add-on', async () => {
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor);
@@ -61,10 +70,11 @@ describe('AapDemoService', () => {
     ]);
   });
 
-  it('passes configured pull secret and memory settings to the CLI', async () => {
+  it('passes configured pull secret, CPU, and memory settings to the CLI', async () => {
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor, 'aap-demo', {
       pullSecretPath: '/tmp/pull-secret.txt',
+      cpus: 8,
       memory: 24576,
     });
 
@@ -72,6 +82,7 @@ describe('AapDemoService', () => {
 
     expect(executor.calls[0]?.options?.env).toMatchObject({
       PULL_SECRET_PATH: '/tmp/pull-secret.txt',
+      CRC_CPUS: '8',
       CRC_MEMORY: '24576',
     });
   });

@@ -1,6 +1,6 @@
 import type { AapDemoStatus } from '../status-parser';
 import type { PrerequisiteStatus } from '../prerequisites';
-import { unwrapDashboardMessage } from '../dashboard-protocol';
+import { safeExternalUrl, unwrapDashboardMessage } from '../dashboard-protocol';
 import { acquireDesktopApi, type DesktopApi } from './desktop-api';
 import { getAddonTogglePresentation, sortAddons } from './addon-ui';
 
@@ -16,6 +16,36 @@ interface DashboardPrerequisitesMessage {
   prerequisites: PrerequisiteStatus;
 }
 
+interface DashboardExtensionMessage {
+  type: 'extension-update-available';
+  available: boolean;
+  setupAvailable?: boolean;
+}
+
+interface DashboardRuntimeRequiredMessage {
+  type: 'runtime-required';
+  runtime: 'node' | 'npm';
+  reason: 'missing' | 'outdated' | 'unusable';
+  message: string;
+  installAvailable: boolean;
+  packageManager?: string;
+}
+
+interface DashboardRuntimeInstallUnavailableMessage {
+  type: 'runtime-install-unavailable';
+  message: string;
+}
+
+interface DashboardRuntimeTerminalOpenedMessage {
+  type: 'runtime-terminal-opened';
+  packageManager: string;
+}
+
+interface DashboardExtensionSetupCompleteMessage {
+  type: 'extension-setup-complete';
+  path: string;
+}
+
 interface DashboardCommandMessage {
   type: 'command-result' | 'addon-result' | 'command-output' | 'command-error';
   action?: string;
@@ -25,6 +55,10 @@ interface DashboardCommandMessage {
   stdout?: string;
   stderr?: string;
   message?: string;
+}
+
+interface DashboardCliMessage {
+  type: 'cli-missing';
 }
 
 declare function acquirePodmanDesktopApi(): DesktopApi;
@@ -44,6 +78,15 @@ const routes = document.querySelector<HTMLDivElement>('#routes');
 const credentials = document.querySelector<HTMLDivElement>('#credentials');
 const addonActions = document.querySelector<HTMLDivElement>('#addon-actions');
 const prerequisiteList = document.querySelector<HTMLDivElement>('#prerequisite-list');
+const installCli = document.querySelector<HTMLButtonElement>('#install-cli');
+const updateCli = document.querySelector<HTMLButtonElement>('#update-cli');
+const setupExtension = document.querySelector<HTMLButtonElement>('#setup-extension');
+const updateExtension = document.querySelector<HTMLButtonElement>('#update-extension');
+const runtimeHelp = document.querySelector<HTMLDivElement>('#extension-runtime-help');
+const runtimeMessage = document.querySelector<HTMLParagraphElement>('#extension-runtime-message');
+const installRuntime = document.querySelector<HTMLButtonElement>('#install-runtime');
+const checkRuntime = document.querySelector<HTMLButtonElement>('#check-runtime');
+const runtimeManualGuide = document.querySelector<HTMLAnchorElement>('#runtime-manual-guide');
 const idleToggle = document.querySelector<HTMLButtonElement>('#idle-toggle');
 let idleState = true;
 
@@ -88,13 +131,18 @@ function postAction(action: string, idleStateValue?: boolean): void {
 }
 
 function addExternalLink(link: HTMLAnchorElement, url: string): void {
-  link.href = url;
-  link.target = '_blank';
-  link.rel = 'noreferrer';
+  const safeUrl = safeExternalUrl(url);
+  // Keep untrusted route data out of the DOM URL sink; navigation is delegated
+  // to the extension host after protocol validation.
+  link.href = '#';
   link.addEventListener('click', event => {
     event.preventDefault();
-    postToHost({ type: 'open-url', url });
+    if (safeUrl) postToHost({ type: 'open-url', url: safeUrl });
   });
+}
+
+if (runtimeManualGuide) {
+  addExternalLink(runtimeManualGuide, 'https://nodejs.org/en/download/');
 }
 
 function renderRoutes(status: AapDemoStatus): void {
@@ -157,6 +205,35 @@ function renderAddons(status: AapDemoStatus): void {
     return;
   }
   for (const addon of sortAddons(status.addons)) {
+    if (addon.name.toLowerCase() === 'ao' && addon.state === 'disabled') {
+      const control = document.createElement('div');
+      control.className = 'addon-control ao-provider-actions';
+      const choices = [
+        { label: 'AO with OpenAI', provider: 'external' },
+        { label: 'AO with Ollama', provider: 'ollama' },
+        { label: 'AO no AI', provider: 'none' },
+      ] as const;
+      for (const choice of choices) {
+        const button = document.createElement('button');
+        button.className = 'small primary';
+        button.textContent = choice.label;
+        button.addEventListener('click', () => {
+          control.querySelectorAll('button').forEach(item => { item.disabled = true; });
+          button.textContent = `Enabling ${choice.label}...`;
+          if (statusSummary) statusSummary.textContent = `Enabling ${choice.label}...`;
+          postToHost({
+            type: 'addon',
+            action: 'enable',
+            addon: 'ao',
+            llmProvider: choice.provider,
+          });
+        });
+        control.append(button);
+      }
+      addonActions.append(control);
+      continue;
+    }
+
     const presentation = getAddonTogglePresentation(addon.name, addon.state);
     if (presentation) {
       const control = document.createElement('div');
@@ -199,19 +276,43 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
   if (!prerequisiteList) return;
   const checks = [
     {
+      label: 'aap-demo CLI',
+      valid: prerequisites.cli.available,
+      detail: prerequisites.cli.path ?? 'Not installed',
+      helpText: undefined,
+      helpUrl: undefined,
+    },
+    {
+      label: 'CPUs',
+      valid: prerequisites.cpus.valid,
+      detail: `${prerequisites.cpus.value} (minimum ${prerequisites.cpus.minimum})`,
+      helpText: undefined,
+      helpUrl: undefined,
+    },
+    {
       label: 'OpenShift Local (CRC)',
       valid: prerequisites.crc.available,
-      detail: prerequisites.crc.path ?? 'Set aap-demo.crcPath in settings',
+      detail: prerequisites.crc.path ?? 'Not detected. If already installed, set aap-demo.crcPath.',
+      helpText: prerequisites.crc.available
+        ? undefined
+        : 'In Podman Desktop, open Extensions → Catalog and install the OpenShift Local extension. Then open its dashboard and click Install to install the OpenShift Local binaries. Return here and refresh prerequisites.',
+      helpUrl: prerequisites.crc.available
+        ? undefined
+        : 'https://podman-desktop.io/docs/openshift/openshift-local',
     },
     {
       label: 'Pull secret',
       valid: prerequisites.pullSecret.exists,
       detail: prerequisites.pullSecret.path ?? 'Set aap-demo.pullSecretPath in settings',
+      helpText: undefined,
+      helpUrl: undefined,
     },
     {
       label: 'Memory',
       valid: prerequisites.memory.valid,
       detail: `${prerequisites.memory.value} MiB (minimum ${prerequisites.memory.minimum} MiB)`,
+      helpText: undefined,
+      helpUrl: undefined,
     },
   ];
   for (const check of checks) {
@@ -223,7 +324,29 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
     detail.className = 'muted';
     detail.textContent = check.detail;
     row.append(label, detail);
+    if (check.helpText) {
+      const help = document.createElement('span');
+      help.className = 'muted prerequisite-help';
+      help.textContent = check.helpText;
+      if (check.helpUrl) {
+        const guide = document.createElement('a');
+        addExternalLink(guide, check.helpUrl);
+        guide.textContent = ' Open install guide';
+        help.append(guide);
+      }
+      row.append(help);
+    }
     prerequisiteList.append(row);
+  }
+  if (installCli) {
+    installCli.hidden = prerequisites.cli.available;
+    installCli.disabled = false;
+    installCli.title = 'Clone the aap-demo repository and run install.sh';
+  }
+  if (updateCli) {
+    updateCli.hidden = !prerequisites.cli.available || !prerequisites.installScript.available;
+    updateCli.disabled = false;
+    updateCli.title = 'Pull the latest aap-demo checkout and run install.sh';
   }
 }
 
@@ -240,15 +363,122 @@ idleToggle?.addEventListener('click', () => {
   idleToggle.textContent = idleState ? 'Set idle' : 'Wake AAP';
 });
 
+installCli?.addEventListener('click', () => {
+  if (statusSummary) statusSummary.textContent = 'Running install.sh...';
+  postToHost({ type: 'install-cli' });
+});
+
+updateCli?.addEventListener('click', () => {
+  if (statusSummary) statusSummary.textContent = 'Updating aap-demo...';
+  updateCli.disabled = true;
+  postToHost({ type: 'update-cli' });
+});
+
+setupExtension?.addEventListener('click', () => {
+  if (statusSummary) statusSummary.textContent = 'Setting up local extension updates...';
+  setupExtension.disabled = true;
+  postToHost({ type: 'setup-extension' });
+});
+
+updateExtension?.addEventListener('click', () => {
+  if (statusSummary) statusSummary.textContent = 'Updating extension from the local clone...';
+  updateExtension.disabled = true;
+  postToHost({ type: 'update-extension' });
+});
+
+installRuntime?.addEventListener('click', () => {
+  if (runtimeMessage) {
+    runtimeMessage.textContent = 'Opening a terminal to install Node.js and npm. Complete the install there, then return and choose Check again.';
+  }
+  installRuntime.disabled = true;
+  postToHost({ type: 'install-runtime' });
+});
+
+checkRuntime?.addEventListener('click', () => {
+  if (runtimeMessage) runtimeMessage.textContent = 'Checking Node.js and npm...';
+  checkRuntime.disabled = true;
+  postToHost({ type: 'check-runtime' });
+});
+
 window.addEventListener('message', event => {
-  const message = unwrapDashboardMessage(event.data) as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardCommandMessage;
+  const message = unwrapDashboardMessage(event.data) as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardExtensionMessage | DashboardRuntimeRequiredMessage | DashboardRuntimeInstallUnavailableMessage | DashboardRuntimeTerminalOpenedMessage | DashboardExtensionSetupCompleteMessage | DashboardCommandMessage | DashboardCliMessage;
   if (!message || typeof message !== 'object' || typeof message.type !== 'string') return;
+  if (message.type === 'cli-missing') {
+    if (statusState) statusState.textContent = 'CLI not installed';
+    if (statusDot) statusDot.className = 'status-dot unknown';
+    if (statusSummary) statusSummary.textContent = 'Install aap-demo in the Status box to get started.';
+    if (toolVersion) toolVersion.textContent = 'CLI: not installed';
+    writeOutput('The aap-demo CLI is missing. Use Install aap-demo in the Status box to clone the repository and run its installer.');
+    return;
+  }
   if (message.type === 'prerequisites') {
     renderPrerequisites(message.prerequisites);
     return;
   }
   if (message.type === 'status') {
     renderStatus(message.status);
+    return;
+  }
+  if (message.type === 'extension-update-available') {
+    if (updateExtension) updateExtension.hidden = !message.available;
+    if (setupExtension) setupExtension.hidden = !message.setupAvailable;
+    return;
+  }
+  if (message.type === 'runtime-required') {
+    if (runtimeHelp) runtimeHelp.hidden = false;
+    if (runtimeMessage) {
+      const managerInstruction = message.installAvailable
+        ? message.reason === 'outdated'
+          ? ` Select Install with ${message.packageManager} to try updating the runtime. If it still provides a Node.js version below 24, use the manual installation instructions and choose Check again. If you restart Podman Desktop first, start the setup or update action again afterward.`
+          : ` This local extension requires Node.js 24 or newer and npm. Select Install with ${message.packageManager} to continue.`
+        : ' This local extension requires Node.js 24 or newer and npm. Install them and choose Check again. If you restart Podman Desktop first, start the setup or update action again afterward.';
+      runtimeMessage.textContent = `${message.message}${managerInstruction}`;
+    }
+    if (installRuntime) {
+      installRuntime.hidden = !message.installAvailable;
+      installRuntime.disabled = false;
+      installRuntime.textContent = message.packageManager
+        ? `Install with ${message.packageManager}`
+        : 'Install runtime';
+    }
+    if (checkRuntime) {
+      checkRuntime.hidden = false;
+      checkRuntime.disabled = false;
+    }
+    if (runtimeManualGuide) runtimeManualGuide.hidden = false;
+    if (statusSummary) statusSummary.textContent = 'The local extension needs Node.js and npm.';
+    return;
+  }
+  if (message.type === 'runtime-install-unavailable') {
+    if (runtimeHelp) runtimeHelp.hidden = false;
+    if (runtimeMessage) runtimeMessage.textContent = message.message;
+    if (installRuntime) installRuntime.hidden = true;
+    if (checkRuntime) {
+      checkRuntime.hidden = false;
+      checkRuntime.disabled = false;
+    }
+    if (runtimeManualGuide) runtimeManualGuide.hidden = false;
+    return;
+  }
+  if (message.type === 'runtime-terminal-opened') {
+    if (runtimeHelp) runtimeHelp.hidden = false;
+    if (runtimeMessage) {
+      runtimeMessage.textContent = `A terminal opened for ${message.packageManager}. Complete the install there, then return and choose Check again. If the runtime is still not detected after restarting Podman Desktop, start the setup or update action again.`;
+    }
+    if (installRuntime) installRuntime.disabled = true;
+    if (checkRuntime) {
+      checkRuntime.hidden = false;
+      checkRuntime.disabled = false;
+    }
+    return;
+  }
+  if (message.type === 'extension-setup-complete') {
+    if (runtimeHelp) runtimeHelp.hidden = true;
+    if (setupExtension) setupExtension.disabled = false;
+    writeOutput(
+      `Local extension source is ready at ${message.path}.\n\nTo switch: in Podman Desktop open Extensions → Installed, remove the custom OCI extension, then open Extensions → Local Extensions and add this checkout. This does not remove the OCI extension automatically.`,
+    );
+    if (statusSummary) statusSummary.textContent = 'Local extension source is ready; finish the one-time switch in Podman Desktop.';
     return;
   }
   if (message.type === 'command-output') {
@@ -258,10 +488,24 @@ window.addEventListener('message', event => {
   if (message.type === 'command-result' || message.type === 'addon-result') {
     writeOutput([message.stdout, message.stderr].filter(Boolean).join('\n'));
     if (statusSummary) statusSummary.textContent = `${formatState(message.action ?? 'command')} completed`;
+    if (message.action === 'update-cli' && updateCli) updateCli.disabled = false;
+    if (message.action === 'update-extension' && updateExtension) {
+      updateExtension.disabled = false;
+      if (runtimeHelp) runtimeHelp.hidden = true;
+    }
     return;
   }
   if (message.type === 'command-error') {
     writeOutput(message.message ?? 'Command failed.');
+    if (message.action === 'update-cli' && updateCli) updateCli.disabled = false;
+    if (message.action === 'setup-extension' || message.action === 'update-extension') {
+      if (setupExtension) setupExtension.disabled = false;
+      if (updateExtension) updateExtension.disabled = false;
+      if (runtimeHelp) runtimeHelp.hidden = true;
+    }
+    if (message.addon === 'ao') {
+      addonActions?.querySelectorAll('button').forEach(button => { button.disabled = false; });
+    }
     if (statusDot) statusDot.className = 'status-dot error';
     if (statusSummary) statusSummary.textContent = message.message ?? 'Command failed.';
   }

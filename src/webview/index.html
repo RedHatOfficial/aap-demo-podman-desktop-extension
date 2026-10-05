@@ -27,6 +27,7 @@
       .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 20px; }
       .addon-actions { margin: 0; }
       .addon-control { display: flex; align-items: center; gap: 8px; }
+      .ao-provider-actions { flex-wrap: wrap; }
       button { border: 1px solid #596675; border-radius: 5px; padding: 8px 12px; color: inherit; background: #2b333d; cursor: pointer; }
       button:hover { background: #394552; }
       button.primary { border-color: #2f81f7; background: #1f6feb; }
@@ -44,9 +45,14 @@
       .badge.enabled { color: #7ee787; background: #1c3927; }
       .badge.disabled { color: #a9b1bb; }
       .empty { color: #a9b1bb; font-style: italic; }
-      .prerequisite { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; }
+      .prerequisite { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 6px 0; }
+      .prerequisite-help { flex-basis: 100%; margin-left: 22px; line-height: 1.5; }
+      .extension-runtime-help { margin-top: 10px; padding: 10px; border: 1px solid #596675; border-radius: 6px; }
+      .extension-runtime-help p { margin-bottom: 8px; }
+      .extension-runtime-actions { display: flex; flex-wrap: wrap; gap: 8px; }
       .prerequisite.ready { color: #7ee787; }
       .prerequisite.failed { color: #ff7b72; }
+      .prerequisite-action { margin-top: 8px; }
       details { margin-top: 18px; }
       pre { min-height: 90px; max-height: 240px; padding: 12px; overflow: auto; background: #0d1117; border-radius: 6px; white-space: pre-wrap; }
       @media (max-width: 600px) { body { padding: 16px; } .status-header { align-items: flex-start; flex-direction: column; } header { align-items: flex-start; flex-direction: column; } }
@@ -73,6 +79,18 @@
         </div>
         <div class="status-prerequisites">
           <div id="prerequisite-list"><p class="empty">Checking prerequisites...</p></div>
+          <button class="small primary prerequisite-action" id="install-cli" hidden>Install aap-demo</button>
+          <button class="small prerequisite-action" id="update-cli" hidden>Update aap-demo</button>
+          <button class="small primary prerequisite-action" id="setup-extension" hidden>Set up local extension updates</button>
+          <button class="small prerequisite-action" id="update-extension" hidden>Update extension</button>
+          <div class="extension-runtime-help" id="extension-runtime-help" hidden>
+            <p id="extension-runtime-message"></p>
+            <div class="extension-runtime-actions">
+              <button class="small primary" id="install-runtime" hidden>Install runtime</button>
+              <button class="small" id="check-runtime" hidden>Check again</button>
+              <a id="runtime-manual-guide" href="https://nodejs.org/en/download/" target="_blank" rel="noreferrer" hidden>Node.js installation instructions</a>
+            </div>
+          </div>
         </div>
       </div>
       <div class="actions">
@@ -80,6 +98,7 @@
         <button class="primary" data-action="start">Start</button>
         <button class="danger" data-action="stop">Stop</button>
         <button class="primary" data-action="diagnose">Diagnose</button>
+        <button class="primary" data-action="repair" title="Repair common cluster issues after a crash">Repair</button>
         <button class="primary" id="idle-toggle">Set idle</button>
         <button class="danger" data-action="destroy">Destroy cluster</button>
       </div>
