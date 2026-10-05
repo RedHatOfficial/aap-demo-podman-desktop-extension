@@ -65,6 +65,19 @@ npm run watch
 Run `npm run build` from this repository, then follow the one-time Podman
 Desktop local-extension setup in [TESTING.md](TESTING.md).
 
+For a repeatable local workflow, use the helper script:
+
+```bash
+python3 scripts/podman_extension.py verify --install
+python3 scripts/podman_extension.py build --open
+```
+
+`verify` runs the tests, typecheck, and production build. `--install` runs
+`npm ci` when dependencies are not present. `--open` launches Podman Desktop
+and prints the Local Extensions steps. Podman Desktop still requires selecting
+the repository folder once in its UI; the helper does not remove or reinstall
+an existing OCI extension.
+
 To build an OCI image without using host npm, run
 `./build-image.sh` from the repository root. It builds
 `localhost/aap-demo-podman-extension:dev` with Podman and prints the steps for

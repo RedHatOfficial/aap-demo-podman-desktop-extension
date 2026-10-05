@@ -43,6 +43,27 @@ The first run requires the one-time Podman Desktop setup below because Podman
 Desktop does not provide a supported CLI for registering an arbitrary local
 extension folder.
 
+### Repeat the local workflow with Python
+
+The repository includes a dependency-free Python helper for the repeatable
+parts of local extension development:
+
+```bash
+python3 scripts/podman_extension.py verify --install
+python3 scripts/podman_extension.py build --open
+```
+
+Use `build` when only the compiled extension assets need refreshing. Use
+`verify` before sharing a change; it runs `npm test`, `npm run typecheck`, and
+`npm run build`. The optional `--install` flag runs `npm ci` when
+`node_modules` is missing. Use `python3 scripts/podman_extension.py watch --open`
+for continuous rebuilds while iterating.
+
+The helper validates the required extension manifest fields and opens Podman
+Desktop, but the local folder still must be selected once under
+**Extensions → Local Extensions**. It does not uninstall or replace an
+existing OCI extension image.
+
 ## Build an OCI extension image
 
 To build the extension without installing npm on the host, use the standalone
