@@ -82,11 +82,11 @@ def ensure_dependencies(*, install: bool, dry_run: bool = False) -> None:
     install_dependencies(dry_run=dry_run)
 
 
-def open_podman_desktop() -> None:
+def open_podman_desktop(*, dry_run: bool = False) -> None:
     if platform.system() == "Darwin":
-        run(["open", "-a", "Podman Desktop"])
+        run(["open", "-a", "Podman Desktop"], dry_run=dry_run)
     elif platform.system() == "Linux" and shutil.which("podman-desktop"):
-        run(["podman-desktop"])
+        run(["podman-desktop"], dry_run=dry_run)
     elif platform.system() == "Windows":
         raise RuntimeError(
             "Open Podman Desktop manually on Windows, then use Extensions → Local Extensions."
@@ -112,7 +112,7 @@ def command_build(args: argparse.Namespace) -> None:
     run(npm_script_command("build"), dry_run=args.dry_run)
     print(f"\nBuild output is ready in {ROOT / 'dist'} and {ROOT / 'media'}.")
     if args.open:
-        open_podman_desktop()
+        open_podman_desktop(dry_run=args.dry_run)
         print_local_extension_steps()
 
 
@@ -131,6 +131,18 @@ def command_watch(args: argparse.Namespace) -> None:
         open_podman_desktop()
         print_local_extension_steps()
     run(npm_script_command("watch"))
+
+
+def command_local(args: argparse.Namespace) -> None:
+    """Build the local checkout and open Podman Desktop's local-extension flow."""
+
+    validate_repository()
+    ensure_dependencies(install=args.install, dry_run=args.dry_run)
+    run(npm_script_command("build"), dry_run=args.dry_run)
+    print(f"\nBuild output is ready in {ROOT / 'dist'} and {ROOT / 'media'}.")
+    if args.open:
+        open_podman_desktop(dry_run=args.dry_run)
+        print_local_extension_steps()
 
 
 def command_open(_: argparse.Namespace) -> None:
@@ -169,6 +181,18 @@ def parser() -> argparse.ArgumentParser:
         "--open", action="store_true", help="Open Podman Desktop before starting the watcher."
     )
     watch.set_defaults(handler=command_watch)
+
+    local = subparsers.add_parser(
+        "local", help="Build and open the Podman Desktop local-extension workflow."
+    )
+    local.add_argument(
+        "--install", action="store_true", help="Run npm ci if node_modules is missing."
+    )
+    local.add_argument(
+        "--no-open", dest="open", action="store_false", help="Build without opening Podman Desktop."
+    )
+    local.add_argument("--dry-run", action="store_true", help="Print commands without running them.")
+    local.set_defaults(handler=command_local, open=True)
 
     open_command = subparsers.add_parser("open", help="Open Podman Desktop and print local-extension steps.")
     open_command.set_defaults(handler=command_open)

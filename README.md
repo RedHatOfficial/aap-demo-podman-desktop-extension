@@ -70,6 +70,7 @@ For a repeatable local workflow, use the helper script:
 ```bash
 python3 scripts/podman_extension.py verify --install
 python3 scripts/podman_extension.py build --open
+python3 scripts/podman_extension.py local
 ```
 
 `verify` runs the tests, typecheck, and production build. `--install` runs
@@ -77,6 +78,12 @@ python3 scripts/podman_extension.py build --open
 and prints the Local Extensions steps. Podman Desktop still requires selecting
 the repository folder once in its UI; the helper does not remove or reinstall
 an existing OCI extension.
+
+Use `local` as the shortcut for building this checkout and opening Podman
+Desktop for the local-extension replacement flow. If the old OCI copy is
+installed, remove it from **Extensions → Installed** first, then add this
+checkout under **Extensions → Local Extensions**. Those two UI operations are
+not exposed through a supported Podman Desktop CLI/API.
 
 To build an OCI image without using host npm, run
 `./build-image.sh` from the repository root. It builds

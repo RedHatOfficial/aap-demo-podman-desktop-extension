@@ -49,6 +49,12 @@ class PodmanExtensionScriptTests(unittest.TestCase):
             MODULE.npm_script_command("typecheck"), ["npm", "run", "typecheck"]
         )
 
+    def test_local_command_opens_podman_desktop_by_default(self):
+        args = MODULE.parser().parse_args(["local"])
+
+        self.assertTrue(args.open)
+        self.assertFalse(args.install)
+
 
 if __name__ == "__main__":
     unittest.main()

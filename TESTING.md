@@ -51,6 +51,7 @@ parts of local extension development:
 ```bash
 python3 scripts/podman_extension.py verify --install
 python3 scripts/podman_extension.py build --open
+python3 scripts/podman_extension.py local
 ```
 
 Use `build` when only the compiled extension assets need refreshing. Use
@@ -63,6 +64,13 @@ The helper validates the required extension manifest fields and opens Podman
 Desktop, but the local folder still must be selected once under
 **Extensions → Local Extensions**. It does not uninstall or replace an
 existing OCI extension image.
+
+Use `local` to build the checkout and open Podman Desktop for the replacement
+workflow. If an older OCI AAP Demo extension is installed, remove it from
+**Extensions → Installed**, then choose **Add a local folder extension...** and
+select this repository. Podman Desktop does not expose supported automation
+for those extension-management UI operations, so the helper deliberately
+leaves them as visible, user-confirmed steps.
 
 ## Build an OCI extension image
 
