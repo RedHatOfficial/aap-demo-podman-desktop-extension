@@ -129,7 +129,12 @@ different install location or migrate that directory intentionally.
 The CLI action still depends on `git`, Bash, network access, and the
 dependencies handled by `install.sh`. Interactive administrator prompts may
 not work through the extension host; those installs should be run from a
-terminal. The extension never installs CRC or supplies the Red Hat pull secret
-automatically. The developer-only Node.js/npm install offer likewise uses a
-visible terminal so package-manager and administrator prompts remain under the
-user's control.
+terminal. When CRC is missing, the dashboard offers **Install with Podman
+Desktop**, which opens the OpenShift Local extension page using Podman Desktop's
+extension deep link. The user confirms installing that extension and then uses
+its own dashboard to install CRC binaries. This keeps Podman Desktop's
+confirmation, prerequisite checks, and any required system prompts in control;
+the AAP Demo extension never downloads or installs CRC itself and never supplies
+the Red Hat pull secret automatically. The developer-only Node.js/npm install
+offer likewise uses a visible terminal so package-manager and administrator
+prompts remain under the user's control.

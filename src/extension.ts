@@ -52,9 +52,7 @@ async function renderWebviewHtml(
 async function checkCrc(crcCommand: string): Promise<void> {
   const crcPath = resolveExecutablePath(crcCommand);
   if (!crcPath) {
-    await extensionApi.window.showWarningMessage(
-      'AAP Demo requires OpenShift Local (CRC). In Podman Desktop, open Extensions → Catalog and install the OpenShift Local extension. Then open its dashboard and click Install to install the OpenShift Local binaries. If already installed, set aap-demo.crcPath to the crc executable.',
-    );
+    console.warn('[aap-demo] OpenShift Local (CRC) was not detected; see the Status card for the Podman Desktop install action.');
     return;
   }
 
@@ -121,6 +119,17 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     }
     return delivered;
   };
+  const refreshPrerequisites = async (): Promise<void> => {
+    await postDashboardMessage({
+      type: 'prerequisites',
+      prerequisites: checkPrerequisites({
+        cliPath,
+        crcPath,
+        installLocation: installLocationSetting,
+        ...settings,
+      }),
+    });
+  };
   const statusBar = extensionApi.window.createStatusBarItem(extensionApi.StatusBarAlignLeft, 100);
   statusBar.text = 'AAP Demo: Unknown';
   statusBar.tooltip = 'Open the AAP Demo dashboard';
@@ -163,6 +172,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
           type: 'status',
           status,
         });
+        await refreshPrerequisites();
         return;
       }
 
@@ -220,15 +230,6 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       await postDashboardMessage({ type: 'command-result', action, stdout: result.stdout, stderr: result.stderr });
       await extensionApi.window.showInformationMessage(`aap-demo ${verb}. Refreshing status.`);
       await runAction('status');
-      await postDashboardMessage({
-        type: 'prerequisites',
-        prerequisites: checkPrerequisites({
-          cliPath,
-          crcPath,
-          installLocation: installLocationSetting,
-          ...settings,
-        }),
-      });
     } catch (error) {
       const message = formatCommandError(error);
       await postDashboardMessage({ type: 'command-error', action, message });
@@ -452,15 +453,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         available: localExtensionCheckout,
         setupAvailable: !localExtensionCheckout,
       });
-      await postDashboardMessage({
-        type: 'prerequisites',
-        prerequisites: checkPrerequisites({
-          cliPath,
-          crcPath,
-          installLocation: installLocationSetting,
-          ...settings,
-        }),
-      });
+      await refreshPrerequisites();
       void runAction('status');
     };
     const messageSubscription = panel.webview.onDidReceiveMessage(async message => {
@@ -479,6 +472,24 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
           await installExtensionRuntime();
         } else if (message.type === 'check-runtime') {
           await checkExtensionRuntime();
+        } else if (message.type === 'open-crc-extension') {
+          const crcExtensionUri = extensionApi.Uri.parse(
+            'podman-desktop:extension/redhat.openshift-local',
+            true,
+          );
+          try {
+            const opened = await extensionApi.env.openExternal(crcExtensionUri);
+            if (!opened) {
+              await extensionApi.window.showWarningMessage(
+                'Could not open the OpenShift Local extension page. In Podman Desktop, open Extensions → Catalog and search for OpenShift Local, then use its dashboard to install CRC.',
+              );
+            }
+          } catch (error) {
+            console.error('[aap-demo] Could not open the OpenShift Local extension page:', error);
+            await extensionApi.window.showWarningMessage(
+              'Could not open the OpenShift Local extension page. In Podman Desktop, open Extensions → Catalog and search for OpenShift Local, then use its dashboard to install CRC.',
+            );
+          }
         } else if (message.type === 'addon') {
           await runAddon(message.action, message.addon, message.llmProvider);
         } else if (message.type === 'open-url') {

@@ -281,6 +281,7 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
       detail: prerequisites.cli.path ?? 'Not installed',
       helpText: undefined,
       helpUrl: undefined,
+      actionLabel: undefined,
     },
     {
       label: 'CPUs',
@@ -288,6 +289,7 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
       detail: `${prerequisites.cpus.value} (minimum ${prerequisites.cpus.minimum})`,
       helpText: undefined,
       helpUrl: undefined,
+      actionLabel: undefined,
     },
     {
       label: 'OpenShift Local (CRC)',
@@ -295,10 +297,11 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
       detail: prerequisites.crc.path ?? 'Not detected. If already installed, set aap-demo.crcPath.',
       helpText: prerequisites.crc.available
         ? undefined
-        : 'In Podman Desktop, open Extensions → Catalog and install the OpenShift Local extension. Then open its dashboard and click Install to install the OpenShift Local binaries. Return here and refresh prerequisites.',
+        : 'Open the OpenShift Local extension in Podman Desktop and follow its prompts to install the extension and CRC binaries. Then refresh prerequisites.',
       helpUrl: prerequisites.crc.available
         ? undefined
         : 'https://podman-desktop.io/docs/openshift/openshift-local',
+      actionLabel: prerequisites.crc.available ? undefined : 'Install with Podman Desktop',
     },
     {
       label: 'Pull secret',
@@ -306,6 +309,7 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
       detail: prerequisites.pullSecret.path ?? 'Set aap-demo.pullSecretPath in settings',
       helpText: undefined,
       helpUrl: undefined,
+      actionLabel: undefined,
     },
     {
       label: 'Memory',
@@ -313,6 +317,7 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
       detail: `${prerequisites.memory.value} MiB (minimum ${prerequisites.memory.minimum} MiB)`,
       helpText: undefined,
       helpUrl: undefined,
+      actionLabel: undefined,
     },
   ];
   for (const check of checks) {
@@ -335,6 +340,17 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
         help.append(guide);
       }
       row.append(help);
+    }
+    if (check.actionLabel) {
+      const install = document.createElement('button');
+      install.className = 'small primary prerequisite-action';
+      install.type = 'button';
+      install.textContent = check.actionLabel;
+      install.title = 'Open the OpenShift Local extension page in Podman Desktop. Confirm its installation there, then use its dashboard to install CRC.';
+      install.addEventListener('click', () => {
+        postToHost({ type: 'open-crc-extension' });
+      });
+      row.append(install);
     }
     prerequisiteList.append(row);
   }

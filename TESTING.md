@@ -224,7 +224,11 @@ work there.
    - configured CPU count and minimum;
    - pull-secret path and existence;
    - available memory and the minimum.
-4. Click **Refresh status** and confirm the timestamp and command output update.
+4. When CRC is not detected, click **Install with Podman Desktop**. Confirm
+   Podman Desktop opens the OpenShift Local extension page. The user must
+   confirm installing that extension, then use its dashboard's **Install**
+   flow for CRC binaries; return to AAP Demo and refresh prerequisites.
+5. Click **Refresh status** and confirm the timestamp and command output update.
 
 ### Lifecycle actions
 

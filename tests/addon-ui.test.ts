@@ -98,10 +98,18 @@ describe('getAddonTogglePresentation', () => {
   });
 
   it('explains how to install OpenShift Local from the Podman Desktop catalog', () => {
-    expect(dashboardSource).toContain('Extensions → Catalog');
-    expect(dashboardSource).toContain('install the OpenShift Local binaries');
+    expect(dashboardSource).toContain("type: 'open-crc-extension'");
+    expect(dashboardSource).toContain('Install with Podman Desktop');
+    expect(dashboardSource).toContain('follow its prompts to install the extension and CRC binaries');
     expect(dashboardSource).toContain('https://podman-desktop.io/docs/openshift/openshift-local');
-    expect(extensionSource).toContain('Extensions → Catalog');
+    expect(extensionSource).toContain("message.type === 'open-crc-extension'");
+    expect(extensionSource).toContain('podman-desktop:extension/redhat.openshift-local');
+    expect(extensionSource).toContain('Extensions → Catalog and search for OpenShift Local');
+    const crcCheck = extensionSource.slice(
+      extensionSource.indexOf('async function checkCrc'),
+      extensionSource.indexOf('export async function activate'),
+    );
+    expect(crcCheck).not.toContain('showWarningMessage');
   });
 
   it('handles update requests through the extension host', () => {
@@ -120,6 +128,15 @@ describe('getAddonTogglePresentation', () => {
     expect(initializer.indexOf("type: 'prerequisites'")).toBeLessThan(
       initializer.indexOf("runAction('status')"),
     );
+  });
+
+  it('rechecks prerequisites after a status refresh', () => {
+    const statusAction = extensionSource.slice(
+      extensionSource.indexOf("if (action === 'status')"),
+      extensionSource.indexOf("type: 'command-result'", extensionSource.indexOf("if (action === 'status')")),
+    );
+
+    expect(statusAction).toContain('await refreshPrerequisites()');
   });
 
   it('places start and stop controls beside Deploy AAP', () => {

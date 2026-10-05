@@ -183,9 +183,11 @@ are passed to the CLI as `PULL_SECRET_PATH`, `CRC_CPUS`, and `CRC_MEMORY` when
 commands run. CPU count defaults to 8, with a minimum of 4. CRC is detected
 from the configured `aap-demo.crcPath` or common installation locations.
 If CRC is missing, install the **OpenShift Local** extension from Podman
-Desktop's **Extensions → Catalog** page, then open its dashboard and click
-**Install** to install the OpenShift Local binaries. See the [OpenShift Local
-installation guide](https://podman-desktop.io/docs/openshift/openshift-local).
+Desktop with **Install with Podman Desktop** in the CRC prerequisite row. This
+opens the extension's page in Podman Desktop; confirm its installation there,
+then open its dashboard and click **Install** to install the CRC binaries. The
+extension does not install CRC silently or bypass Podman Desktop's prompts. See
+the [OpenShift Local installation guide](https://podman-desktop.io/docs/openshift/openshift-local).
 
 When enabling the AO add-on, choose **AO with OpenAI**, **AO with Ollama**, or
 **AO no AI**. OpenAI settings are configurable in Podman Desktop settings:
