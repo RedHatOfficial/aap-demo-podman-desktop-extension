@@ -27,6 +27,14 @@
         "title": "AAP Demo: Install aap-demo CLI"
       },
       {
+        "command": "aap-demo.updateCli",
+        "title": "AAP Demo: Update aap-demo CLI"
+      },
+      {
+        "command": "aap-demo.updateExtension",
+        "title": "AAP Demo: Update local extension"
+      },
+      {
         "command": "aap-demo.create",
         "title": "AAP Demo: Create Cluster"
       },

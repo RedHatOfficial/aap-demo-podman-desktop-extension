@@ -16,6 +16,11 @@ interface DashboardPrerequisitesMessage {
   prerequisites: PrerequisiteStatus;
 }
 
+interface DashboardExtensionMessage {
+  type: 'extension-update-available';
+  available: boolean;
+}
+
 interface DashboardCommandMessage {
   type: 'command-result' | 'addon-result' | 'command-output' | 'command-error';
   action?: string;
@@ -45,6 +50,8 @@ const credentials = document.querySelector<HTMLDivElement>('#credentials');
 const addonActions = document.querySelector<HTMLDivElement>('#addon-actions');
 const prerequisiteList = document.querySelector<HTMLDivElement>('#prerequisite-list');
 const installCli = document.querySelector<HTMLButtonElement>('#install-cli');
+const updateCli = document.querySelector<HTMLButtonElement>('#update-cli');
+const updateExtension = document.querySelector<HTMLButtonElement>('#update-extension');
 const idleToggle = document.querySelector<HTMLButtonElement>('#idle-toggle');
 let idleState = true;
 
@@ -237,9 +244,14 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
     prerequisiteList.append(row);
   }
   if (installCli) {
-    installCli.hidden = prerequisites.cli.available;
+    installCli.hidden = prerequisites.cli.available || !prerequisites.installScript.available;
     installCli.disabled = false;
     installCli.title = 'Clone the aap-demo repository and run install.sh';
+  }
+  if (updateCli) {
+    updateCli.hidden = !prerequisites.cli.available || !prerequisites.installScript.available;
+    updateCli.disabled = false;
+    updateCli.title = 'Pull the latest aap-demo checkout and run install.sh';
   }
 }
 
@@ -261,8 +273,20 @@ installCli?.addEventListener('click', () => {
   postToHost({ type: 'install-cli' });
 });
 
+updateCli?.addEventListener('click', () => {
+  if (statusSummary) statusSummary.textContent = 'Updating aap-demo...';
+  updateCli.disabled = true;
+  postToHost({ type: 'update-cli' });
+});
+
+updateExtension?.addEventListener('click', () => {
+  if (statusSummary) statusSummary.textContent = 'Updating extension from the local clone...';
+  updateExtension.disabled = true;
+  postToHost({ type: 'update-extension' });
+});
+
 window.addEventListener('message', event => {
-  const message = unwrapDashboardMessage(event.data) as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardCommandMessage;
+  const message = unwrapDashboardMessage(event.data) as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardExtensionMessage | DashboardCommandMessage;
   if (!message || typeof message !== 'object' || typeof message.type !== 'string') return;
   if (message.type === 'prerequisites') {
     renderPrerequisites(message.prerequisites);
@@ -270,6 +294,10 @@ window.addEventListener('message', event => {
   }
   if (message.type === 'status') {
     renderStatus(message.status);
+    return;
+  }
+  if (message.type === 'extension-update-available') {
+    if (updateExtension) updateExtension.hidden = !message.available;
     return;
   }
   if (message.type === 'command-output') {
@@ -283,6 +311,8 @@ window.addEventListener('message', event => {
   }
   if (message.type === 'command-error') {
     writeOutput(message.message ?? 'Command failed.');
+    if (message.action === 'update-cli' && updateCli) updateCli.disabled = false;
+    if (message.action === 'update-extension' && updateExtension) updateExtension.disabled = false;
     if (statusDot) statusDot.className = 'status-dot error';
     if (statusSummary) statusSummary.textContent = message.message ?? 'Command failed.';
   }

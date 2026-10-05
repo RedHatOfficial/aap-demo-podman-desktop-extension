@@ -47,6 +47,11 @@ existing non-Git directory is never overwritten. The install output is shown
 under **Command output**. If the script needs an interactive administrator
 password or dependency installation, run it from a terminal instead.
 
+When the CLI is already installed, click **Update aap-demo** in the **Status**
+box, or run **AAP Demo: Update aap-demo CLI** from the **F1** Command Palette.
+This pulls the configured checkout with `git pull --ff-only`, reruns
+`install.sh`, streams the output, and refreshes status and prerequisites.
+
 ## Development
 
 ```bash
@@ -104,10 +109,14 @@ is also available for testing and troubleshooting.
 
 ## Updating the extension image
 
-For a local folder extension, rebuild the extension and disable/re-enable it
-in Podman Desktop to reload the changed files. For the Quay OCI extension,
-disable/re-enable only restarts the currently installed image; it does not
-guarantee a fresh pull of a changed `:latest` or `:main` tag.
+When this extension is running from a local Git checkout, the Status card
+shows **Update extension**. It pulls the checkout with `git pull --ff-only`,
+runs `npm ci`, and runs the production build. Stop and start the local
+extension afterward so Podman Desktop loads the rebuilt backend and webview.
+
+For the Quay OCI extension, disable/re-enable only restarts the currently
+installed image; it does not guarantee a fresh pull of a changed `:latest` or
+`:main` tag.
 
 To install a newly published OCI image, uninstall the extension from
 **Extensions → Installed**, then use **Extensions → Install custom...** with:
@@ -118,6 +127,12 @@ quay.io/cferman/aap-demo-podman-desktop-extension:latest
 
 Use a commit-specific or version-specific tag when possible so the image being
 tested is unambiguous.
+
+The dashboard's **Update aap-demo** action updates the aap-demo checkout and
+CLI. **Update extension** is available only when the extension itself is
+running from a local Git checkout; it cannot replace the running OCI image.
+For this custom Quay image, update it from the Extensions page by uninstalling
+the old image and installing the new tag.
 
 See [TESTING.md](TESTING.md) for the Podman Desktop local-extension setup,
 automated checks, smoke tests, and troubleshooting.

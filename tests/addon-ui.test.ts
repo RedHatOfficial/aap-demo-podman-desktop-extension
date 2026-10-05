@@ -57,6 +57,17 @@ describe('getAddonTogglePresentation', () => {
   it('offers the install script when the aap-demo CLI is unavailable', () => {
     expect(dashboardHtml).toContain('id="install-cli"');
     expect(dashboardHtml).toContain('Install aap-demo');
+    expect(dashboardHtml).toContain('id="update-cli"');
+    expect(dashboardHtml).toContain('Update aap-demo');
+    expect(dashboardHtml).toContain('id="update-extension"');
+    expect(dashboardHtml).toContain('Update extension');
+  });
+
+  it('handles update requests through the extension host', () => {
+    expect(extensionSource).toContain("message.type === 'update-cli'");
+    expect(extensionSource).toContain("registerCommand('aap-demo.updateCli'");
+    expect(extensionSource).toContain("message.type === 'update-extension'");
+    expect(extensionSource).toContain("registerCommand('aap-demo.updateExtension'");
   });
 
   it('renders prerequisites before checking CLI status', () => {

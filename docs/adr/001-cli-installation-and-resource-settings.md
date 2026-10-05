@@ -17,7 +17,9 @@ silent downloads, overwrites, or hidden changes to unrelated user directories.
 ## Decision
 
 The extension provides an explicit **Install aap-demo** action in the dashboard
-and an **AAP Demo: Install aap-demo CLI** command in the Command Palette.
+and an **AAP Demo: Install aap-demo CLI** command in the Command Palette. When
+the CLI is already installed, it provides **Update aap-demo** in the dashboard
+and **AAP Demo: Update aap-demo CLI** in the Command Palette.
 
 The action:
 
@@ -29,6 +31,10 @@ The action:
 5. Runs the checked-out `install.sh` with Bash.
 6. Streams clone, update, and install output to the dashboard, then refreshes
    CLI and prerequisite status.
+
+The update action requires an existing Git checkout, runs `git pull --ff-only`,
+then repeats the install and refresh steps. It never overwrites a non-Git
+directory.
 
 The install location can be changed in Podman Desktop settings:
 
@@ -54,12 +60,14 @@ item or using **F1 → AAP Demo: Open Dashboard**. Opening the source HTML with
 `file://` is not a supported test path because it does not provide the host
 bridge.
 
-The extension does not provide a self-update operation for its own OCI image.
-Disabling and re-enabling a local folder extension reloads rebuilt files, but
-disabling and re-enabling an OCI extension only restarts the installed image.
-Updating a Quay image therefore requires uninstalling the installed extension
-and reinstalling the desired image tag from **Extensions → Install custom...**.
-Commit-specific or version-specific tags are preferred for repeatable testing.
+When running from a local Git checkout, the dashboard provides **Update
+extension**. It runs `git pull --ff-only`, `npm ci`, and the production build;
+the user then stops and starts the local extension to load the rebuilt files.
+The action is hidden for OCI-installed extensions. Disabling and re-enabling an
+OCI extension only restarts the installed image. Updating a Quay image
+therefore requires uninstalling the installed extension and reinstalling the
+desired image tag from **Extensions → Install custom...**. Commit-specific or
+version-specific tags are preferred for repeatable testing.
 
 ## Consequences
 

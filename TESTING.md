@@ -155,6 +155,22 @@ another directory. The install output appears under **Command output**. The
 selected location must be empty or an existing aap-demo Git checkout; the
 extension will not overwrite an unrelated directory.
 
+When the CLI is already available, the Status box shows **Update aap-demo**.
+That action pulls the configured Git checkout with `git pull --ff-only`, reruns
+`install.sh`, streams its output, and refreshes the dashboard. The same action
+is available as **AAP Demo: Update aap-demo CLI** in the Command Palette.
+
+This does not update the Podman Desktop extension image itself. For the custom
+Quay image, update the extension from **Extensions → Installed** and
+**Extensions → Install custom...**. Podman Desktop does not expose a supported
+extension self-update API to an installed extension.
+
+When running from the cloned local checkout, the Status box also shows
+**Update extension**. It pulls the extension checkout, runs `npm ci`, and
+builds the backend and webview. Stop and start the local extension afterward to
+load the rebuilt files. The button is hidden when the extension is running
+from an OCI image.
+
 After backend changes, stop and start the local extension if the extension host
 does not reload. After webview changes, close and reopen the dashboard. If the
 dashboard still shows old markup, confirm the watch terminal rebuilt the files

@@ -14,6 +14,7 @@ import { CommandRunner } from './command-runner';
 import { detectCliVersion } from './cli-version';
 import { isDashboardMessage } from './dashboard-protocol';
 import { augmentPath, resolveConfiguredExecutable, resolveExecutablePath } from './executable-path';
+import { isLocalExtensionCheckout } from './extension-updater';
 import { checkPrerequisites } from './prerequisites';
 import {
   AAP_DEMO_REPOSITORY_URL,
@@ -58,6 +59,8 @@ async function checkCrc(crcCommand: string): Promise<void> {
 
 export async function activate(extensionContext: ExtensionContext): Promise<void> {
   const runner = new CommandRunner();
+  const extensionPath = extensionContext.extensionUri.fsPath;
+  const localExtensionCheckout = isLocalExtensionCheckout(extensionPath);
   const configuration = extensionApi.configuration.getConfiguration('aap-demo');
   const configuredCliPath = configuration.get('cliPath', 'aap-demo').trim() || 'aap-demo';
   const cliPath = resolveConfiguredExecutable(configuredCliPath);
@@ -143,7 +146,9 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     }
   };
 
-  const runInstall = async (): Promise<void> => {
+  const runCliMaintenance = async (mode: 'install' | 'update'): Promise<void> => {
+    const action = mode === 'update' ? 'update-cli' : 'install-cli';
+    const verb = mode === 'update' ? 'updated' : 'installed';
     const installLocation = resolveInstallLocation(installLocationSetting);
     const installScriptPath = installScriptPathFor(installLocation);
     const streamOptions = {
@@ -158,6 +163,11 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       },
     };
     try {
+      if (mode === 'update' && !existsSync(installLocation)) {
+        throw new Error(
+          `aap-demo checkout not found at ${installLocation}. Use Install aap-demo first.`,
+        );
+      }
       if (existsSync(installLocation)) {
         if (!existsSync(path.join(installLocation, '.git'))) {
           throw new Error(
@@ -172,8 +182,8 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         cwd: path.dirname(installScriptPath),
         ...streamOptions,
       });
-      await postDashboardMessage({ type: 'command-result', action: 'install-cli', stdout: result.stdout, stderr: result.stderr });
-      await extensionApi.window.showInformationMessage('aap-demo installed. Refreshing status.');
+      await postDashboardMessage({ type: 'command-result', action, stdout: result.stdout, stderr: result.stderr });
+      await extensionApi.window.showInformationMessage(`aap-demo ${verb}. Refreshing status.`);
       await runAction('status');
       await postDashboardMessage({
         type: 'prerequisites',
@@ -186,8 +196,47 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       });
     } catch (error) {
       const message = formatCommandError(error);
-      await postDashboardMessage({ type: 'command-error', action: 'install-cli', message });
-      await extensionApi.window.showWarningMessage(`aap-demo install failed: ${message}`);
+      await postDashboardMessage({ type: 'command-error', action, message });
+      await extensionApi.window.showWarningMessage(`aap-demo ${mode} failed: ${message}`);
+    }
+  };
+
+  const runInstall = async (): Promise<void> => runCliMaintenance('install');
+  const runUpdate = async (): Promise<void> => runCliMaintenance('update');
+
+  const runExtensionUpdate = async (): Promise<void> => {
+    const action = 'update-extension';
+    const streamOptions = {
+      env: { ...process.env, PATH: settings.pathValue },
+      onStdout: (chunk: string) => {
+        console.log(`[aap-demo extension update] ${chunk.trimEnd()}`);
+        void postDashboardMessage({ type: 'command-output', stream: 'stdout', text: chunk });
+      },
+      onStderr: (chunk: string) => {
+        console.warn(`[aap-demo extension update] ${chunk.trimEnd()}`);
+        void postDashboardMessage({ type: 'command-output', stream: 'stderr', text: chunk });
+      },
+    };
+    try {
+      if (!localExtensionCheckout) {
+        throw new Error(
+          'This extension is not running from a local Git checkout. Add the cloned repository under Extensions → Local Extensions first.',
+        );
+      }
+      await runner.run('git', ['-C', extensionPath, 'pull', '--ff-only'], streamOptions);
+      await runner.run('npm', ['ci'], { cwd: extensionPath, ...streamOptions });
+      const result = await runner.run('npm', ['run', 'build'], {
+        cwd: extensionPath,
+        ...streamOptions,
+      });
+      await postDashboardMessage({ type: 'command-result', action, stdout: result.stdout, stderr: result.stderr });
+      await extensionApi.window.showInformationMessage(
+        'Extension updated from the local clone. Stop and start the local extension, then reopen the dashboard.',
+      );
+    } catch (error) {
+      const message = formatCommandError(error);
+      await postDashboardMessage({ type: 'command-error', action, message });
+      await extensionApi.window.showWarningMessage(`Extension update failed: ${message}`);
     }
   };
 
@@ -235,6 +284,10 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       initialized = true;
       await new Promise(resolve => setTimeout(resolve, 200));
       await postDashboardMessage({
+        type: 'extension-update-available',
+        available: localExtensionCheckout,
+      });
+      await postDashboardMessage({
         type: 'prerequisites',
         prerequisites: checkPrerequisites({
           cliPath,
@@ -251,6 +304,10 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
           void initializeDashboard();
         } else if (message.type === 'install-cli') {
           await runInstall();
+        } else if (message.type === 'update-cli') {
+          await runUpdate();
+        } else if (message.type === 'update-extension') {
+          await runExtensionUpdate();
         } else if (message.type === 'addon') {
           await runAddon(message.action, message.addon);
         } else if (message.type === 'open-url') {
@@ -288,6 +345,8 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       (idleState: boolean = true) => runAction('idle', idleState),
     ),
     extensionApi.commands.registerCommand('aap-demo.installCli', () => runInstall()),
+    extensionApi.commands.registerCommand('aap-demo.updateCli', () => runUpdate()),
+    extensionApi.commands.registerCommand('aap-demo.updateExtension', () => runExtensionUpdate()),
   );
 
   await checkCrc(crcPath);

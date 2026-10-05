@@ -16,6 +16,14 @@ describe('isDashboardMessage', () => {
     expect(isDashboardMessage({ type: 'install-cli' })).toBe(true);
   });
 
+  it('accepts an update CLI request from the dashboard', () => {
+    expect(isDashboardMessage({ type: 'update-cli' })).toBe(true);
+  });
+
+  it('accepts a local extension update request from the dashboard', () => {
+    expect(isDashboardMessage({ type: 'update-extension' })).toBe(true);
+  });
+
   it('accepts safe external URL requests', () => {
     expect(isDashboardMessage({ type: 'open-url', url: 'https://example.test/path' })).toBe(true);
   });
