@@ -22,11 +22,15 @@ export interface CommandExecutor {
 }
 
 export class AapDemoService {
+  private readonly cliPath: string;
+
   constructor(
     private readonly executor: CommandExecutor,
-    private readonly cliPath = 'aap-demo',
+    cliPath = 'aap-demo',
     private readonly settings: AapDemoSettings = {},
-  ) {}
+  ) {
+    this.cliPath = cliPath.trim() || 'aap-demo';
+  }
 
   run(
     action: AapDemoAction,

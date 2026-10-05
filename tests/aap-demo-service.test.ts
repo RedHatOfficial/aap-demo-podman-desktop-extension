@@ -48,6 +48,15 @@ describe('AapDemoService', () => {
     expect(executor.calls).toEqual([{ command: 'aap-demo', args: ['idle', 'false'] }]);
   });
 
+  it('falls back to aap-demo when the configured CLI path is empty', async () => {
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor, '');
+
+    await service.run('status');
+
+    expect(executor.calls).toEqual([{ command: 'aap-demo', args: ['status'] }]);
+  });
+
   it('runs add-on enable and disable actions with the selected add-on', async () => {
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor);

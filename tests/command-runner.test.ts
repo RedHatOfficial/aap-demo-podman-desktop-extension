@@ -30,6 +30,12 @@ describe('CommandRunner', () => {
       stderr: 'failed',
     });
   });
+
+  it('rejects an empty command before spawning a process', async () => {
+    const runner = new CommandRunner();
+
+    await expect(runner.run('')).rejects.toThrow('Cannot execute an empty command');
+  });
   it('streams output chunks while the command is running', async () => {
     const runner = new CommandRunner();
     const stdout: string[] = [];

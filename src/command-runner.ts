@@ -39,6 +39,17 @@ export class CommandRunner {
     args: readonly string[] = [],
     options: CommandRunnerOptions = {},
   ): Promise<CommandResult> {
+    if (!command.trim()) {
+      return Promise.reject(
+        new CommandExecutionError('Cannot execute an empty command', {
+          exitCode: null,
+          signal: null,
+          stdout: '',
+          stderr: '',
+        }),
+      );
+    }
+
     return new Promise((resolve, reject) => {
       const { onStdout, onStderr, ...spawnOptions } = options;
       const child = spawn(command, args, spawnOptions);
