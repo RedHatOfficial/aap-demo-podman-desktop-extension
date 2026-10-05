@@ -13,9 +13,30 @@ quay.io/cferman/aap-demo-podman-desktop-extension:latest
 ```
 
 Select **Install**. The Quay repository must be public, or Podman must be
-authenticated to Quay. The extension can install the `aap-demo` CLI, but you
-still need OpenShift Local (CRC), a Red Hat pull secret, and enough host
-resources for the AAP Demo environment.
+authenticated to Quay. The extension can install the `aap-demo` CLI. Before
+creating a cluster, review the [OpenShift Local requirements](#openshift-local-crc-requirements).
+
+## OpenShift Local (CRC) requirements
+
+AAP Demo runs on OpenShift Local (CRC). Install the **OpenShift Local** extension
+in Podman Desktop, then open that extension's dashboard and use its **Install**
+flow to install the CRC binaries. If AAP Demo does not detect CRC, use
+**Install with Podman Desktop** in the dashboard's **Status** box; confirm the
+extension installation in Podman Desktop, finish installing CRC from its
+dashboard, then refresh AAP Demo's prerequisites. AAP Demo does not install CRC
+or accept Podman Desktop prompts on your behalf. See the
+[OpenShift Local installation guide](https://podman-desktop.io/docs/openshift/openshift-local).
+
+You also need a Red Hat pull secret. By default, AAP Demo looks for
+`~/.aap-demo/pull-secret.txt`, `~/.aap-demo/pull-secret.json`, or
+`~/.aap-demo/pull-secret`. To use another file, set
+`aap-demo.pullSecretPath` in Podman Desktop settings.
+
+CRC needs at least **8 CPUs** and **16 GiB of memory**. The extension defaults
+to **8 CPUs** and **24 GiB**. Configure `aap-demo.cpus` and `aap-demo.memory`
+in Podman Desktop settings before creating the cluster; leave additional
+resources available for your host and Podman Desktop. Memory is configured in
+MiB (the default is `24576`, and the minimum is `16384`).
 
 ## Open the dashboard
 
@@ -180,14 +201,8 @@ Install aap-demo CLI**.
 
 The `aap-demo.pullSecretPath`, `aap-demo.cpus`, and `aap-demo.memory` settings
 are passed to the CLI as `PULL_SECRET_PATH`, `CRC_CPUS`, and `CRC_MEMORY` when
-commands run. CPU count defaults to 8, with a minimum of 4. CRC is detected
-from the configured `aap-demo.crcPath` or common installation locations.
-If CRC is missing, install the **OpenShift Local** extension from Podman
-Desktop with **Install with Podman Desktop** in the CRC prerequisite row. This
-opens the extension's page in Podman Desktop; confirm its installation there,
-then open its dashboard and click **Install** to install the CRC binaries. The
-extension does not install CRC silently or bypass Podman Desktop's prompts. See
-the [OpenShift Local installation guide](https://podman-desktop.io/docs/openshift/openshift-local).
+commands run. CRC is detected from the configured `aap-demo.crcPath` or common
+installation locations.
 
 When enabling the AO add-on, choose **AO with OpenAI**, **AO with Ollama**, or
 **AO no AI**. OpenAI settings are configurable in Podman Desktop settings:

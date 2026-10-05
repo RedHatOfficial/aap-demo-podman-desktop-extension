@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { resolveExecutablePath } from './executable-path';
 import { resolveInstallLocation, resolveInstallScriptPath } from './install-script';
 
-const MINIMUM_CPUS = 4;
+const MINIMUM_CPUS = 8;
 const MINIMUM_MEMORY = 16_384;
 
 export interface PrerequisiteSettings {
