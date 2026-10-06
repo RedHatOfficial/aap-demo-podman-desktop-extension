@@ -22,7 +22,6 @@ import { resolveExtensionInstallLocation } from './extension-source';
 import {
   getRuntimeInstallPlan,
   launchRuntimeInstall,
-  resolveGitInstallPlan,
 } from './runtime-installer';
 import { checkPrerequisites } from './prerequisites';
 import {
@@ -30,7 +29,6 @@ import {
   bashScriptInvocation,
   installScriptPathFor,
   installToolHint,
-  MissingInstallToolError,
   resolveAapDemoSourceLocation,
 } from './install-script';
 import { parseStatusOutput } from './status-parser';
@@ -200,8 +198,6 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     }
   };
 
-  let pendingRuntimeInstall: 'node' | 'git-bash' = 'node';
-
   const runCliMaintenance = async (mode: 'install' | 'update'): Promise<void> => {
     const action = mode === 'update' ? 'update-cli' : 'install-cli';
     const verb = mode === 'update' ? 'updated' : 'installed';
@@ -255,23 +251,12 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
           await runner.run(command, ['--version'], { env: streamOptions.env });
         } catch (error) {
           const hint = installToolHint(command);
-          if (hint) throw new MissingInstallToolError(command, hint);
+          if (hint) throw new Error(hint);
           throw error;
         }
       };
+      await verifyTool('git');
       await verifyTool('bash');
-      if (process.platform === 'win32') {
-        try {
-          await runner.run('bash', ['-lc', 'command -v cygpath'], { env: streamOptions.env });
-        } catch (error) {
-          const hint = installToolHint('cygpath');
-          if (hint) throw new MissingInstallToolError('cygpath', hint);
-          throw error;
-        }
-      }
-      if (checkoutAction === 'pull' || checkoutAction === 'clone') {
-        await verifyTool('git');
-      }
       if (checkoutAction === 'pull') {
         await runner.run('git', ['-C', installLocation, 'pull', '--ff-only'], streamOptions);
       } else if (checkoutAction === 'clone') {
@@ -286,21 +271,6 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       await extensionApi.window.showInformationMessage(`aap-demo ${verb}. Refreshing status.`);
       await runAction('status');
     } catch (error) {
-      if (error instanceof MissingInstallToolError && process.platform === 'win32') {
-        pendingRuntimeInstall = 'git-bash';
-        const installPlan = resolveGitInstallPlan(process.platform, name =>
-          resolveExecutablePath(name, settings.pathValue),
-        );
-        await postDashboardMessage({
-          type: 'runtime-required',
-          runtime: 'git-bash',
-          reason: 'missing',
-          message: error.message,
-          installAvailable: installPlan.status === 'ready',
-          ...(installPlan.status === 'ready' ? { packageManager: installPlan.packageManager } : {}),
-        });
-        return;
-      }
       const message = formatCommandError(error);
       await postDashboardMessage({ type: 'command-error', action, message });
       await extensionApi.window.showWarningMessage(`aap-demo ${mode} failed: ${message}`);
@@ -357,7 +327,6 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     } catch (error) {
       if (error instanceof MissingRuntimeError) {
         pendingExtensionSourceOperation = action;
-        pendingRuntimeInstall = 'node';
         const installPlan = getRuntimeInstallPlan(settings.pathValue);
         const installAvailable = installPlan.status === 'ready';
         await postDashboardMessage({
@@ -386,12 +355,8 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   };
 
   const installExtensionRuntime = async (): Promise<void> => {
-    const plan = pendingRuntimeInstall === 'git-bash'
-      ? resolveGitInstallPlan(process.platform, name => resolveExecutablePath(name, settings.pathValue))
-      : getRuntimeInstallPlan(settings.pathValue);
-    const runtimeLabel = pendingRuntimeInstall === 'git-bash'
-      ? 'Git for Windows'
-      : 'Node.js 24 or newer and npm';
+    const plan = getRuntimeInstallPlan(settings.pathValue);
+    const runtimeLabel = 'Node.js 24 or newer and npm';
     if (plan.status !== 'ready') {
       await postDashboardMessage({
         type: 'runtime-install-unavailable',
