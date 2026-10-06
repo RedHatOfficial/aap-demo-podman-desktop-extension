@@ -4,6 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import {
   installScriptPathFor,
+  bashScriptInvocation,
   resolveBashScriptPath,
   resolveAapDemoSourceLocation,
   resolveInstallLocation,
@@ -32,6 +33,16 @@ describe('install locations', () => {
   it('leaves POSIX script paths unchanged for Bash', () => {
     expect(resolveBashScriptPath('/home/adler/.aap-demo/aap-demo/install.sh', 'darwin'))
       .toBe('/home/adler/.aap-demo/aap-demo/install.sh');
+  });
+
+  it('uses Bash path conversion on Windows for WSL and Git Bash compatibility', () => {
+    expect(bashScriptInvocation('C:\\Users\\adler\\.aap-demo\\aap-demo\\install.sh', 'win32'))
+      .toEqual([
+        '-lc',
+        'if command -v wslpath >/dev/null 2>&1; then script=$(wslpath -u "$1"); else script="$1"; fi; exec bash "$script"',
+        '--',
+        'C:/Users/adler/.aap-demo/aap-demo/install.sh',
+      ]);
   });
 
   it('uses an existing aap-demo checkout at the configured location', () => {
