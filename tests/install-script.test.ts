@@ -28,7 +28,7 @@ describe('install locations', () => {
 
   it('converts Windows paths to slash-separated paths for Bash', () => {
     expect(resolveBashScriptPath('C:\\Users\\adler\\.aap-demo\\aap-demo\\install.sh', 'win32'))
-      .toBe('/c/Users/adler/.aap-demo/aap-demo/install.sh');
+      .toBe('C:/Users/adler/.aap-demo/aap-demo/install.sh');
   });
 
   it('leaves POSIX script paths unchanged for Bash', () => {
@@ -38,7 +38,7 @@ describe('install locations', () => {
 
   it('uses Git Bash path conversion on Windows', () => {
     expect(bashScriptInvocation('C:\\Users\\adler\\.aap-demo\\aap-demo\\install.sh', 'win32'))
-      .toEqual(['/c/Users/adler/.aap-demo/aap-demo/install.sh']);
+      .toEqual(['C:/Users/adler/.aap-demo/aap-demo/install.sh']);
   });
 
   it('explains the Windows Bash requirement', () => {
