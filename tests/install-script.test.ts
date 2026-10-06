@@ -35,11 +35,11 @@ describe('install locations', () => {
       .toBe('/home/adler/.aap-demo/aap-demo/install.sh');
   });
 
-  it('uses Bash path conversion on Windows for WSL and Git Bash compatibility', () => {
+  it('uses Git Bash path conversion on Windows', () => {
     expect(bashScriptInvocation('C:\\Users\\adler\\.aap-demo\\aap-demo\\install.sh', 'win32'))
       .toEqual([
         '-lc',
-        'if command -v wslpath >/dev/null 2>&1; then script=$(wslpath -u "$1"); else script="$1"; fi; exec bash "$script"',
+        'if command -v cygpath >/dev/null 2>&1; then script=$(cygpath -u "$1"); else script="$1"; fi; exec bash "$script"',
         '--',
         'C:/Users/adler/.aap-demo/aap-demo/install.sh',
       ]);

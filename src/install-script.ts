@@ -79,7 +79,7 @@ export function bashScriptInvocation(
 
   return [
     '-lc',
-    'if command -v wslpath >/dev/null 2>&1; then script=$(wslpath -u "$1"); else script="$1"; fi; exec bash "$script"',
+    'if command -v cygpath >/dev/null 2>&1; then script=$(cygpath -u "$1"); else script="$1"; fi; exec bash "$script"',
     '--',
     bashPath,
   ];
