@@ -44,16 +44,19 @@ export function resolveAapDemoSourceLocation(configuredPath = ''): string {
   const location = resolveInstallLocation(configuredPath);
   if (!existsSync(location)) return location;
 
-  if (existsSync(path.join(location, '.git')) || isAapDemoSource(location)) {
+  if (isAapDemoSource(location)) {
     return location;
   }
 
   if (!statSync(location).isDirectory()) return location;
 
   const nestedLocation = path.join(location, 'aap-demo');
-  if (existsSync(path.join(nestedLocation, '.git')) || isAapDemoSource(nestedLocation)) {
+  if (isAapDemoSource(nestedLocation)) {
     return nestedLocation;
   }
+
+  if (existsSync(path.join(location, '.git'))) return location;
+  if (existsSync(path.join(nestedLocation, '.git'))) return nestedLocation;
 
   return readdirSync(location).length > 0 ? nestedLocation : location;
 }
