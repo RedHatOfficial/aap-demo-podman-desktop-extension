@@ -8,6 +8,7 @@ const dashboardSource = readFileSync(resolve(__dirname, '../src/webview/dashboar
 const extensionSource = readFileSync(resolve(__dirname, '../src/extension.ts'), 'utf8');
 const packageJson = readFileSync(resolve(__dirname, '../package.json'), 'utf8');
 const containerfile = readFileSync(resolve(__dirname, '../Containerfile'), 'utf8');
+const readme = readFileSync(resolve(__dirname, '../README.md'), 'utf8');
 
 describe('getAddonTogglePresentation', () => {
   it('uses a green enabled toggle that disables the add-on when clicked', () => {
@@ -90,6 +91,13 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardSource).toContain("addExternalLink(runtimeManualGuide, 'https://nodejs.org/en/download/')");
     expect(dashboardSource).toContain('Check again');
     expect(dashboardSource).toContain('Node.js 24 or newer');
+  });
+
+  it('offers Git for Windows through WinGet when Bash is missing', () => {
+    expect(dashboardSource).toContain("runtime === 'git-bash'");
+    expect(dashboardSource).toContain('Install Git with WinGet');
+    expect(extensionSource).toContain("runtime: 'git-bash'");
+    expect(extensionSource).toContain('resolveGitInstallPlan');
   });
 
   it('tells users to restart the source action if the extension host restarted', () => {
@@ -176,6 +184,13 @@ describe('getAddonTogglePresentation', () => {
     expect(containerfile).toContain(
       'COPY --from=build /extension-source/README.md /extension/README.md',
     );
+  });
+
+  it('keeps repository development instructions out of extension details', () => {
+    expect(readme).not.toContain('## Development');
+    expect(readme).not.toContain('npm run typecheck');
+    expect(readme).not.toContain('TESTING.md');
+    expect(readme).toContain('## Troubleshooting');
   });
 
   it('declares the configurable aap-demo repository install location', () => {

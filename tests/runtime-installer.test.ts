@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createTerminalLaunchSpec,
   resolveRuntimeInstallPlan,
+  resolveGitInstallPlan,
 } from '../src/runtime-installer';
 
 const commandExists = (name: string): string | undefined => `/usr/bin/${name}`;
@@ -66,6 +67,19 @@ describe('resolveRuntimeInstallPlan', () => {
   it('does not guess package commands for unsupported Linux distributions', () => {
     expect(resolveRuntimeInstallPlan('linux', 'ID=ubuntu\n', commandExists)).toEqual({
       status: 'unsupported-platform',
+    });
+  });
+});
+
+describe('resolveGitInstallPlan', () => {
+  it('uses WinGet to install Git for Windows', () => {
+    expect(resolveGitInstallPlan('win32', name =>
+      name === 'winget.exe' ? 'C:\\WindowsApps\\winget.exe' : undefined,
+    )).toEqual({
+      status: 'ready',
+      packageManager: 'winget',
+      command: 'C:\\WindowsApps\\winget.exe',
+      args: ['install', '--id', 'Git.Git', '--exact', '--interactive'],
     });
   });
 });

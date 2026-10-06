@@ -69,3 +69,35 @@ export function resolveBashScriptPath(
 ): string {
   return platform === 'win32' ? scriptPath.replaceAll('\\', '/') : scriptPath;
 }
+
+export function bashScriptInvocation(
+  scriptPath: string,
+  platform: NodeJS.Platform = process.platform,
+): string[] {
+  const bashPath = resolveBashScriptPath(scriptPath, platform);
+  if (platform !== 'win32') return [bashPath];
+
+  return [
+    '-lc',
+    'if command -v cygpath >/dev/null 2>&1; then script=$(cygpath -u "$1"); else script="$1"; fi; exec bash "$script"',
+    '--',
+    bashPath,
+  ];
+}
+
+export function installToolHint(
+  command: string,
+  platform: NodeJS.Platform = process.platform,
+): string | undefined {
+  if (platform === 'win32' && (command === 'bash' || command === 'git')) {
+    return 'Git for Windows is required to install aap-demo because it provides Git and Bash. Install it from https://git-scm.com/download/win or run `winget install --id Git.Git -e`, then restart Podman Desktop and try again.';
+  }
+  return undefined;
+}
+
+export class MissingInstallToolError extends Error {
+  constructor(public readonly command: string, message: string) {
+    super(message);
+    this.name = 'MissingInstallToolError';
+  }
+}

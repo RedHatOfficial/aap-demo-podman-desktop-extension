@@ -4,6 +4,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import {
   installScriptPathFor,
+  bashScriptInvocation,
+  installToolHint,
   resolveBashScriptPath,
   resolveAapDemoSourceLocation,
   resolveInstallLocation,
@@ -32,6 +34,21 @@ describe('install locations', () => {
   it('leaves POSIX script paths unchanged for Bash', () => {
     expect(resolveBashScriptPath('/home/adler/.aap-demo/aap-demo/install.sh', 'darwin'))
       .toBe('/home/adler/.aap-demo/aap-demo/install.sh');
+  });
+
+  it('uses Git Bash path conversion on Windows', () => {
+    expect(bashScriptInvocation('C:\\Users\\adler\\.aap-demo\\aap-demo\\install.sh', 'win32'))
+      .toEqual([
+        '-lc',
+        'if command -v cygpath >/dev/null 2>&1; then script=$(cygpath -u "$1"); else script="$1"; fi; exec bash "$script"',
+        '--',
+        'C:/Users/adler/.aap-demo/aap-demo/install.sh',
+      ]);
+  });
+
+  it('explains the Windows Bash requirement', () => {
+    expect(installToolHint('bash', 'win32')).toContain('Git for Windows');
+    expect(installToolHint('git', 'win32')).toContain('Git for Windows');
   });
 
   it('uses an existing aap-demo checkout at the configured location', () => {

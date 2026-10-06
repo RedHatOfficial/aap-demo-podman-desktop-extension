@@ -26,7 +26,7 @@ interface DashboardExtensionMessage {
 
 interface DashboardRuntimeRequiredMessage {
   type: 'runtime-required';
-  runtime: 'node' | 'npm';
+  runtime: 'node' | 'npm' | 'git-bash';
   reason: 'missing' | 'outdated' | 'unusable';
   message: string;
   installAvailable: boolean;
@@ -409,7 +409,7 @@ updateExtension?.addEventListener('click', () => {
 
 installRuntime?.addEventListener('click', () => {
   if (runtimeMessage) {
-    runtimeMessage.textContent = 'Opening a terminal to install Node.js and npm. Complete the install there, then return and choose Check again.';
+    runtimeMessage.textContent = 'Opening a terminal to install the required software. Complete the install there, then return and choose Check again.';
   }
   installRuntime.disabled = true;
   postToHost({ type: 'install-runtime' });
@@ -447,18 +447,24 @@ window.addEventListener('message', event => {
   if (message.type === 'runtime-required') {
     if (runtimeHelp) runtimeHelp.hidden = false;
     if (runtimeMessage) {
-      const managerInstruction = message.installAvailable
-        ? message.reason === 'outdated'
-          ? ` Select Install with ${message.packageManager} to try updating the runtime. If it still provides a Node.js version below 24, use the manual installation instructions and choose Check again. If you restart Podman Desktop first, start the setup or update action again afterward.`
-          : ` This local extension requires Node.js 24 or newer and npm. Select Install with ${message.packageManager} to continue.`
-        : ' This local extension requires Node.js 24 or newer and npm. Install them and choose Check again. If you restart Podman Desktop first, start the setup or update action again afterward.';
+      const managerInstruction = message.runtime === 'git-bash'
+        ? message.installAvailable
+          ? ` Select Install with ${message.packageManager} to install Git for Windows, then choose Check again.`
+          : ' Install Git for Windows manually, then choose Check again.'
+        : message.installAvailable
+          ? message.reason === 'outdated'
+            ? ` Select Install with ${message.packageManager} to try updating the runtime. If it still provides a Node.js version below 24, use the manual installation instructions and choose Check again. If you restart Podman Desktop first, start the setup or update action again afterward.`
+            : ` This local extension requires Node.js 24 or newer and npm. Select Install with ${message.packageManager} to continue.`
+          : ' This local extension requires Node.js 24 or newer and npm. Install them and choose Check again. If you restart Podman Desktop first, start the setup or update action again afterward.';
       runtimeMessage.textContent = `${message.message}${managerInstruction}`;
     }
     if (installRuntime) {
       installRuntime.hidden = !message.installAvailable;
       installRuntime.disabled = false;
       installRuntime.textContent = message.packageManager
-        ? `Install with ${message.packageManager}`
+        ? message.runtime === 'git-bash'
+          ? 'Install Git with WinGet'
+          : `Install with ${message.packageManager}`
         : 'Install runtime';
     }
     if (checkRuntime) {
@@ -466,7 +472,18 @@ window.addEventListener('message', event => {
       checkRuntime.disabled = false;
     }
     if (runtimeManualGuide) runtimeManualGuide.hidden = false;
-    if (statusSummary) statusSummary.textContent = 'The local extension needs Node.js and npm.';
+    if (runtimeManualGuide && message.runtime === 'git-bash') {
+      runtimeManualGuide.href = 'https://git-scm.com/download/win';
+      runtimeManualGuide.textContent = 'Git for Windows installation instructions';
+    } else if (runtimeManualGuide) {
+      runtimeManualGuide.href = 'https://nodejs.org/en/download/';
+      runtimeManualGuide.textContent = 'Node.js installation instructions';
+    }
+    if (statusSummary) {
+      statusSummary.textContent = message.runtime === 'git-bash'
+        ? 'Git for Windows is required to install aap-demo.'
+        : 'The local extension needs Node.js and npm.';
+    }
     return;
   }
   if (message.type === 'runtime-install-unavailable') {

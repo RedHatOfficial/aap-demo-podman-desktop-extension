@@ -19,13 +19,19 @@ import { augmentPath, resolveConfiguredExecutable, resolveExecutablePath } from 
 import { isLocalExtensionCheckout } from './extension-updater';
 import { ExtensionSourceService, MissingRuntimeError } from './extension-source-service';
 import { resolveExtensionInstallLocation } from './extension-source';
-import { getRuntimeInstallPlan, launchRuntimeInstall } from './runtime-installer';
+import {
+  getRuntimeInstallPlan,
+  launchRuntimeInstall,
+  resolveGitInstallPlan,
+} from './runtime-installer';
 import { checkPrerequisites } from './prerequisites';
 import {
   AAP_DEMO_REPOSITORY_URL,
+  bashScriptInvocation,
   installScriptPathFor,
+  installToolHint,
+  MissingInstallToolError,
   resolveAapDemoSourceLocation,
-  resolveBashScriptPath,
 } from './install-script';
 import { parseStatusOutput } from './status-parser';
 import { formatStatusBarText } from './status-bar';
@@ -194,6 +200,8 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     }
   };
 
+  let pendingRuntimeInstall: 'node' | 'git-bash' = 'node';
+
   const runCliMaintenance = async (mode: 'install' | 'update'): Promise<void> => {
     const action = mode === 'update' ? 'update-cli' : 'install-cli';
     const verb = mode === 'update' ? 'updated' : 'installed';
@@ -242,13 +250,26 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
           `Install location already exists and is not a recognizable aap-demo source or Git checkout: ${installLocation}. The folder was left unchanged. Set aap-demo.installLocation to another directory.`,
         );
       }
+      const verifyTool = async (command: string): Promise<void> => {
+        try {
+          await runner.run(command, ['--version'], { env: streamOptions.env });
+        } catch (error) {
+          const hint = installToolHint(command);
+          if (hint) throw new MissingInstallToolError(command, hint);
+          throw error;
+        }
+      };
+      await verifyTool('bash');
+      if (checkoutAction === 'pull' || checkoutAction === 'clone') {
+        await verifyTool('git');
+      }
       if (checkoutAction === 'pull') {
         await runner.run('git', ['-C', installLocation, 'pull', '--ff-only'], streamOptions);
       } else if (checkoutAction === 'clone') {
         mkdirSync(path.dirname(installLocation), { recursive: true });
         await runner.run('git', ['clone', AAP_DEMO_REPOSITORY_URL, installLocation], streamOptions);
       }
-      const result = await runner.run('bash', [resolveBashScriptPath(installScriptPath)], {
+      const result = await runner.run('bash', bashScriptInvocation(installScriptPath), {
         cwd: path.dirname(installScriptPath),
         ...streamOptions,
       });
@@ -256,6 +277,21 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       await extensionApi.window.showInformationMessage(`aap-demo ${verb}. Refreshing status.`);
       await runAction('status');
     } catch (error) {
+      if (error instanceof MissingInstallToolError && process.platform === 'win32') {
+        pendingRuntimeInstall = 'git-bash';
+        const installPlan = resolveGitInstallPlan(process.platform, name =>
+          resolveExecutablePath(name, settings.pathValue),
+        );
+        await postDashboardMessage({
+          type: 'runtime-required',
+          runtime: 'git-bash',
+          reason: 'missing',
+          message: error.message,
+          installAvailable: installPlan.status === 'ready',
+          ...(installPlan.status === 'ready' ? { packageManager: installPlan.packageManager } : {}),
+        });
+        return;
+      }
       const message = formatCommandError(error);
       await postDashboardMessage({ type: 'command-error', action, message });
       await extensionApi.window.showWarningMessage(`aap-demo ${mode} failed: ${message}`);
@@ -312,6 +348,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     } catch (error) {
       if (error instanceof MissingRuntimeError) {
         pendingExtensionSourceOperation = action;
+        pendingRuntimeInstall = 'node';
         const installPlan = getRuntimeInstallPlan(settings.pathValue);
         const installAvailable = installPlan.status === 'ready';
         await postDashboardMessage({
@@ -340,13 +377,18 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   };
 
   const installExtensionRuntime = async (): Promise<void> => {
-    const plan = getRuntimeInstallPlan(settings.pathValue);
+    const plan = pendingRuntimeInstall === 'git-bash'
+      ? resolveGitInstallPlan(process.platform, name => resolveExecutablePath(name, settings.pathValue))
+      : getRuntimeInstallPlan(settings.pathValue);
+    const runtimeLabel = pendingRuntimeInstall === 'git-bash'
+      ? 'Git for Windows'
+      : 'Node.js 24 or newer and npm';
     if (plan.status !== 'ready') {
       await postDashboardMessage({
         type: 'runtime-install-unavailable',
         message: plan.status === 'package-manager-missing'
-          ? `Could not find ${plan.packageManager}. Install Node.js 24 or newer and npm manually. If you restart Podman Desktop, start the setup or update action again.`
-          : 'Automatic runtime installation is only offered for RHEL derivatives, macOS with Homebrew, and Windows with WinGet. Install Node.js 24 or newer and npm manually. If you restart Podman Desktop, start the setup or update action again.',
+          ? `Could not find ${plan.packageManager}. Install ${runtimeLabel} manually, then restart Podman Desktop and try again.`
+          : `Automatic installation of ${runtimeLabel} is only offered through Windows with WinGet. Install it manually, then restart Podman Desktop and try again.`,
       });
       return;
     }
@@ -356,7 +398,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     } catch (error) {
       await postDashboardMessage({
         type: 'runtime-install-unavailable',
-        message: `${formatCommandError(error)} Install Node.js 24 or newer and npm manually. If you restart Podman Desktop, start the setup or update action again.`,
+        message: `${formatCommandError(error)} Install ${runtimeLabel} manually, then restart Podman Desktop and try again.`,
       });
     }
   };
