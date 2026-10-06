@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import {
   installScriptPathFor,
   bashScriptInvocation,
+  installToolHint,
   resolveBashScriptPath,
   resolveAapDemoSourceLocation,
   resolveInstallLocation,
@@ -43,6 +44,11 @@ describe('install locations', () => {
         '--',
         'C:/Users/adler/.aap-demo/aap-demo/install.sh',
       ]);
+  });
+
+  it('explains the Windows Bash requirement', () => {
+    expect(installToolHint('bash', 'win32')).toContain('Git for Windows');
+    expect(installToolHint('git', 'win32')).toContain('Git for Windows');
   });
 
   it('uses an existing aap-demo checkout at the configured location', () => {

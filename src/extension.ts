@@ -25,6 +25,7 @@ import {
   AAP_DEMO_REPOSITORY_URL,
   bashScriptInvocation,
   installScriptPathFor,
+  installToolHint,
   resolveAapDemoSourceLocation,
 } from './install-script';
 import { parseStatusOutput } from './status-parser';
@@ -241,6 +242,17 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         throw new Error(
           `Install location already exists and is not a recognizable aap-demo source or Git checkout: ${installLocation}. The folder was left unchanged. Set aap-demo.installLocation to another directory.`,
         );
+      }
+      const verifyTool = async (command: string): Promise<void> => {
+        try {
+          await runner.run(command, ['--version'], { env: streamOptions.env });
+        } catch (error) {
+          throw new Error(installToolHint(command) ?? formatCommandError(error));
+        }
+      };
+      await verifyTool('bash');
+      if (checkoutAction === 'pull' || checkoutAction === 'clone') {
+        await verifyTool('git');
       }
       if (checkoutAction === 'pull') {
         await runner.run('git', ['-C', installLocation, 'pull', '--ff-only'], streamOptions);

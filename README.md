@@ -87,6 +87,9 @@ tag. To install a newly published image, uninstall the extension from
   certificate or Keychain prompt.
 - If the CLI is not found after installation, restart Podman Desktop or set
   `aap-demo.cliPath` to the installed executable.
+- On Windows, install Git for Windows if AAP Demo reports that Bash or Git is
+  missing. PowerShell can run `winget install --id Git.Git -e`; restart Podman
+  Desktop afterward.
 - If installation needs an administrator prompt or dependency installation,
   run the displayed `install.sh` command from a terminal.
 
