@@ -47,7 +47,7 @@ The extension passes the following settings to the CLI for every command:
 | Podman Desktop setting | Environment variable | Default | Validation |
 | --- | --- | --- | --- |
 | `aap-demo.pullSecretPath` | `PULL_SECRET_PATH` | automatic lookup | file path when configured |
-| `aap-demo.cpus` | `CRC_CPUS` | `8` | integer, minimum `4` |
+| `aap-demo.cpus` | `CRC_CPUS` | `8` | integer, minimum `8` |
 | `aap-demo.memory` | `CRC_MEMORY` | `24576` MiB | integer, minimum `16384` MiB |
 | `aap-demo.cliPath` | executable path | `aap-demo` | resolved through configured and user-local paths |
 | `aap-demo.crcPath` | CRC executable path | `crc` | resolved through configured and user-local paths |

@@ -20,6 +20,7 @@ describe('isDashboardMessage', () => {
     expect(isDashboardMessage({ type: 'run', action: 'status' })).toBe(true);
     expect(isDashboardMessage({ type: 'run', action: 'start' })).toBe(true);
     expect(isDashboardMessage({ type: 'run', action: 'stop' })).toBe(true);
+    expect(isDashboardMessage({ type: 'run', action: 'trust-ca' })).toBe(true);
   });
 
   it('accepts an install CLI request from the dashboard', () => {

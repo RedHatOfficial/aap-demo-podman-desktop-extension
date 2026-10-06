@@ -138,6 +138,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   extensionContext.subscriptions.push(statusBar);
 
   const runAction = async (action: AapDemoAction, idleState?: boolean): Promise<void> => {
+    const actionLabel = action === 'trust-ca' ? 'Fix SSL' : action;
     if (!resolveExecutablePath(configuredCliPath, settings.pathValue)) {
       statusBar.text = 'AAP Demo: CLI missing';
       statusBar.tooltip = 'Install the aap-demo CLI from the dashboard';
@@ -182,12 +183,12 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         stdout: result.stdout,
         stderr: result.stderr,
       });
-      await extensionApi.window.showInformationMessage(`AAP Demo ${action} completed.`);
+      await extensionApi.window.showInformationMessage(`AAP Demo ${actionLabel} completed.`);
       void runAction('status');
     } catch (error) {
       const message = formatCommandError(error);
       await postDashboardMessage({ type: 'command-error', action, message });
-      await extensionApi.window.showWarningMessage(`AAP Demo ${action} failed: ${message}`);
+      await extensionApi.window.showWarningMessage(`AAP Demo ${actionLabel} failed: ${message}`);
     }
   };
 

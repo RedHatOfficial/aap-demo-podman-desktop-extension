@@ -12,6 +12,7 @@ const supportedActions = new Set<AapDemoAction>([
   'idle',
   'diagnose',
   'repair',
+  'trust-ca',
 ]);
 
 export type DashboardMessage =

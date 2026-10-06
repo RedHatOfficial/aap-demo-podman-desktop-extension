@@ -28,6 +28,7 @@ describe('AapDemoService', () => {
     ['destroy', ['destroy']],
     ['status', ['status']],
     ['diagnose', ['diagnose']],
+    ['trust-ca', ['trust-ca']],
   ] as const)('runs the %s action through the configured CLI', async (action, args) => {
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor, '/custom/bin/aap-demo');

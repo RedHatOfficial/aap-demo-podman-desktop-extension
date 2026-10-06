@@ -57,6 +57,18 @@ Addons:
     });
   });
 
+  it('detects an ingress certificate trust problem from the TLS status section', () => {
+    const status = parseStatusOutput([
+      'Cluster: running',
+      'TLS:',
+      '----',
+      'System trust: not trusted',
+      'Browser trust: not trusted (macOS keychain)',
+    ].join('\n'));
+
+    expect(status.ingressCaTrust).toBe('not-trusted');
+  });
+
   it('stops parsing add-ons when a later status section begins', () => {
     const status = parseStatusOutput(`Addons:
 -------

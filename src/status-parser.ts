@@ -1,6 +1,7 @@
 const ANSI_ESCAPE = /\u001B\[[0-?]*[ -/]*[@-~]/g;
 
 export type ClusterState = 'running' | 'stopped' | 'not-running' | 'unknown';
+export type IngressCaTrustState = 'trusted' | 'not-trusted' | 'unknown';
 
 export interface AapDemoStatus {
   toolVersion?: string;
@@ -11,6 +12,7 @@ export interface AapDemoStatus {
     name?: string;
   };
   kubeconfig?: string;
+  ingressCaTrust?: IngressCaTrustState;
   routes: string[];
   credentials: Array<{
     namespace: string;
@@ -41,7 +43,9 @@ export function parseStatusOutput(output: string): AapDemoStatus {
     credentials: [],
     addons: [],
   };
-  let section: 'routes' | 'credentials' | 'addons' | undefined;
+  let section: 'routes' | 'credentials' | 'addons' | 'tls' | undefined;
+  let systemTrust: IngressCaTrustState | undefined;
+  let browserTrust: IngressCaTrustState | undefined;
 
   for (const rawLine of output.split(/\r?\n/)) {
     const line = rawLine.replace(ANSI_ESCAPE, '');
@@ -60,8 +64,27 @@ export function parseStatusOutput(output: string): AapDemoStatus {
       section = 'addons';
       continue;
     }
+    if (trimmed === 'TLS:') {
+      section = 'tls';
+      continue;
+    }
     if (/^[A-Za-z][A-Za-z0-9 -]*:$/.test(trimmed)) {
       section = undefined;
+    }
+
+    if (section === 'tls') {
+      const trust = trimmed.match(/^(System|Browser) trust:\s*(.+)$/i);
+      if (trust) {
+        const value = trust[2].trim().toLowerCase();
+        const state: IngressCaTrustState = value.startsWith('not trusted')
+          ? 'not-trusted'
+          : value.startsWith('trusted')
+            ? 'trusted'
+            : 'unknown';
+        if (trust[1].toLowerCase() === 'browser') browserTrust = state;
+        else systemTrust = state;
+      }
+      continue;
     }
 
     const tool = trimmed.match(/^Tool:\s*(.+)$/);
@@ -106,5 +129,6 @@ export function parseStatusOutput(output: string): AapDemoStatus {
     }
   }
 
+  status.ingressCaTrust = browserTrust ?? systemTrust;
   return status;
 }

@@ -82,7 +82,7 @@
         },
         "aap-demo.cpus": {
           "type": "integer",
-          "minimum": 4,
+          "minimum": 8,
           "default": 8,
           "description": "CPU count allocated to OpenShift Local."
         },

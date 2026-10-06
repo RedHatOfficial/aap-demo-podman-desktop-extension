@@ -172,9 +172,20 @@ describe('getAddonTogglePresentation', () => {
     expect(containerfile).toContain('COPY icon.png /extension/icon.png');
   });
 
+  it('packages the README shown in extension details', () => {
+    expect(containerfile).toContain(
+      'COPY --from=build /extension-source/README.md /extension/README.md',
+    );
+  });
+
   it('declares the configurable aap-demo repository install location', () => {
     expect(packageJson).toContain('"aap-demo.installLocation"');
     expect(packageJson).toContain('"default": "~/.aap-demo"');
+  });
+
+  it('sets the OpenShift Local CPU minimum to eight in Podman Desktop settings', () => {
+    const manifest = JSON.parse(packageJson);
+    expect(manifest.contributes.configuration.properties['aap-demo.cpus'].minimum).toBe(8);
   });
 
   it('declares a separate local extension source checkout setting', () => {
