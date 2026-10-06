@@ -70,6 +70,12 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardSource).toContain('installCli.disabled = false');
   });
 
+  it('keeps Install aap-demo visible when the source is missing', () => {
+    expect(dashboardSource).toContain(
+      'installCli.hidden = prerequisites.cli.available && prerequisites.installScript.available',
+    );
+  });
+
   it('offers local extension setup and runtime recovery actions', () => {
     expect(dashboardHtml).toContain('id="setup-extension"');
     expect(dashboardHtml).toContain('id="install-runtime"');
