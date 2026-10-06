@@ -104,11 +104,9 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardSource).toContain('Node.js 24 or newer');
   });
 
-  it('offers Git for Windows through WinGet when Bash is missing', () => {
-    expect(dashboardSource).toContain("runtime === 'git-bash'");
-    expect(dashboardSource).toContain('Install Git with WinGet');
-    expect(extensionSource).toContain("runtime: 'git-bash'");
-    expect(extensionSource).toContain('resolveGitInstallPlan');
+  it('documents Git as a prerequisite for local setup', () => {
+    expect(readme).toContain('winget install --id Git.Git -e');
+    expect(extensionSource).toContain("verifyTool('git')");
   });
 
   it('tells users to restart the source action if the extension host restarted', () => {

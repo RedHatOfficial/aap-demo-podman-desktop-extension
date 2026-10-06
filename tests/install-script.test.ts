@@ -44,7 +44,6 @@ describe('install locations', () => {
   it('explains the Windows Bash requirement', () => {
     expect(installToolHint('bash', 'win32')).toContain('Git for Windows');
     expect(installToolHint('git', 'win32')).toContain('Git for Windows');
-    expect(installToolHint('cygpath', 'win32')).toContain('Git for Windows');
   });
 
   it('uses an existing aap-demo checkout at the configured location', () => {

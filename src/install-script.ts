@@ -84,15 +84,8 @@ export function installToolHint(
   command: string,
   platform: NodeJS.Platform = process.platform,
 ): string | undefined {
-  if (platform === 'win32' && (command === 'bash' || command === 'git' || command === 'cygpath')) {
+  if (platform === 'win32' && (command === 'bash' || command === 'git')) {
     return 'Git for Windows is required to install aap-demo because it provides Git and Bash. Install it from https://git-scm.com/download/win or run `winget install --id Git.Git -e`, then restart Podman Desktop and try again.';
   }
   return undefined;
-}
-
-export class MissingInstallToolError extends Error {
-  constructor(public readonly command: string, message: string) {
-    super(message);
-    this.name = 'MissingInstallToolError';
-  }
 }

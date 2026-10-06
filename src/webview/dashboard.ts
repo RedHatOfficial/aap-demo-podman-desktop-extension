@@ -26,7 +26,7 @@ interface DashboardExtensionMessage {
 
 interface DashboardRuntimeRequiredMessage {
   type: 'runtime-required';
-  runtime: 'node' | 'npm' | 'git-bash';
+  runtime: 'node' | 'npm';
   reason: 'missing' | 'outdated' | 'unusable';
   message: string;
   installAvailable: boolean;
@@ -447,11 +447,7 @@ window.addEventListener('message', event => {
   if (message.type === 'runtime-required') {
     if (runtimeHelp) runtimeHelp.hidden = false;
     if (runtimeMessage) {
-      const managerInstruction = message.runtime === 'git-bash'
-        ? message.installAvailable
-          ? ` Select Install with ${message.packageManager} to install Git for Windows, then choose Check again.`
-          : ' Install Git for Windows manually, then choose Check again.'
-        : message.installAvailable
+      const managerInstruction = message.installAvailable
           ? message.reason === 'outdated'
             ? ` Select Install with ${message.packageManager} to try updating the runtime. If it still provides a Node.js version below 24, use the manual installation instructions and choose Check again. If you restart Podman Desktop first, start the setup or update action again afterward.`
             : ` This local extension requires Node.js 24 or newer and npm. Select Install with ${message.packageManager} to continue.`
@@ -462,9 +458,7 @@ window.addEventListener('message', event => {
       installRuntime.hidden = !message.installAvailable;
       installRuntime.disabled = false;
       installRuntime.textContent = message.packageManager
-        ? message.runtime === 'git-bash'
-          ? 'Install Git with WinGet'
-          : `Install with ${message.packageManager}`
+        ? `Install with ${message.packageManager}`
         : 'Install runtime';
     }
     if (checkRuntime) {
@@ -472,17 +466,12 @@ window.addEventListener('message', event => {
       checkRuntime.disabled = false;
     }
     if (runtimeManualGuide) runtimeManualGuide.hidden = false;
-    if (runtimeManualGuide && message.runtime === 'git-bash') {
-      runtimeManualGuide.href = 'https://git-scm.com/download/win';
-      runtimeManualGuide.textContent = 'Git for Windows installation instructions';
-    } else if (runtimeManualGuide) {
+    if (runtimeManualGuide) {
       runtimeManualGuide.href = 'https://nodejs.org/en/download/';
       runtimeManualGuide.textContent = 'Node.js installation instructions';
     }
     if (statusSummary) {
-      statusSummary.textContent = message.runtime === 'git-bash'
-        ? 'Git for Windows is required to install aap-demo.'
-        : 'The local extension needs Node.js and npm.';
+      statusSummary.textContent = 'The local extension needs Node.js and npm.';
     }
     return;
   }
