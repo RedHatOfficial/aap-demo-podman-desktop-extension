@@ -94,3 +94,10 @@ export function installToolHint(
   }
   return undefined;
 }
+
+export class MissingInstallToolError extends Error {
+  constructor(public readonly command: string, message: string) {
+    super(message);
+    this.name = 'MissingInstallToolError';
+  }
+}

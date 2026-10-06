@@ -93,6 +93,13 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardSource).toContain('Node.js 24 or newer');
   });
 
+  it('offers Git for Windows through WinGet when Bash is missing', () => {
+    expect(dashboardSource).toContain("runtime === 'git-bash'");
+    expect(dashboardSource).toContain('Install Git with WinGet');
+    expect(extensionSource).toContain("runtime: 'git-bash'");
+    expect(extensionSource).toContain('resolveGitInstallPlan');
+  });
+
   it('tells users to restart the source action if the extension host restarted', () => {
     expect(dashboardSource).toContain('start the setup or update action again');
     expect(dashboardSource).toContain("message.action === 'setup-extension' || message.action === 'update-extension'");

@@ -93,6 +93,22 @@ export function resolveRuntimeInstallPlan(
   return { status: 'unsupported-platform' };
 }
 
+export function resolveGitInstallPlan(
+  platform: NodeJS.Platform,
+  executableLookup: ExecutableLookup,
+): RuntimeInstallResolution {
+  if (platform !== 'win32') return { status: 'unsupported-platform' };
+  const command = executableLookup('winget.exe') ?? executableLookup('winget');
+  return command
+    ? {
+        status: 'ready',
+        packageManager: 'winget',
+        command,
+        args: ['install', '--id', 'Git.Git', '--exact', '--interactive'],
+      }
+    : { status: 'package-manager-missing', packageManager: 'winget' };
+}
+
 function shellQuote(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
 }
