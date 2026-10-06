@@ -65,6 +65,17 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardHtml).toContain('Update extension');
   });
 
+  it('restores the CLI install button when installation fails', () => {
+    expect(dashboardSource).toContain("message.action === 'install-cli' && installCli");
+    expect(dashboardSource).toContain('installCli.disabled = false');
+  });
+
+  it('keeps Install aap-demo visible when the source is missing', () => {
+    expect(dashboardSource).toContain(
+      'installCli.hidden = prerequisites.cli.available && prerequisites.installScript.available',
+    );
+  });
+
   it('offers local extension setup and runtime recovery actions', () => {
     expect(dashboardHtml).toContain('id="setup-extension"');
     expect(dashboardHtml).toContain('id="install-runtime"');

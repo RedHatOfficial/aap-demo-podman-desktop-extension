@@ -11,9 +11,7 @@ Image**, and enter:
 quay.io/cferman/aap-demo-podman-desktop-extension:latest
 ```
 
-Select **Install**. The Quay repository must be public, or Podman must be
-authenticated to Quay. The extension can install the `aap-demo` CLI. Before
-creating a cluster, review the [OpenShift Local requirements](#openshift-local-crc-requirements).
+Select **Install**. Before creating a cluster, complete the requirements below.
 
 ## OpenShift Local (CRC) requirements
 
@@ -26,53 +24,32 @@ dashboard, then refresh AAP Demo's prerequisites. AAP Demo does not install CRC
 or accept Podman Desktop prompts on your behalf. See the
 [OpenShift Local installation guide](https://podman-desktop.io/docs/openshift/openshift-local).
 
-You also need a Red Hat pull secret. By default, AAP Demo looks for
-`~/.aap-demo/pull-secret.txt`, `~/.aap-demo/pull-secret.json`, or
-`~/.aap-demo/pull-secret`. To use another file, set
-`aap-demo.pullSecretPath` in Podman Desktop settings.
+You also need a Red Hat pull secret. AAP Demo looks for a pull secret under
+`~/.aap-demo` by default. To use another file, set `aap-demo.pullSecretPath`.
 
-CRC needs at least **8 CPUs** and **16 GiB of memory**. The extension defaults
-to **8 CPUs** and **24 GiB**. Configure `aap-demo.cpus` and `aap-demo.memory`
-in Podman Desktop settings before creating the cluster; leave additional
-resources available for your host and Podman Desktop. Memory is configured in
-MiB (the default is `24576`, and the minimum is `16384`).
+CRC needs at least **8 CPUs** and **16 GiB of memory**. AAP Demo defaults to
+**8 CPUs** and **24 GiB**; configure `aap-demo.cpus` and `aap-demo.memory` if
+needed.
 
-## Open the dashboard
+## Use AAP Demo
 
-The dashboard opens automatically when Podman Desktop starts. Set
-`aap-demo.openDashboardOnStartup` to `false` in Podman Desktop settings if you
-prefer to open it yourself. You can also open it at any time using either of
-these methods:
+Open the dashboard by clicking the **AAP Demo** item at the bottom of Podman
+Desktop, or press **F1** and run **AAP Demo: Open Dashboard**.
 
-- Click the `AAP Demo: ...` status item at the bottom of the Podman Desktop
-  window.
-- Press **F1**, search for **AAP Demo: Open Dashboard**, and press **Enter**.
+Use it to create, start, deploy, stop, destroy, diagnose, repair, and inspect
+the cluster. Add-ons are listed alphabetically; green means enabled and gray
+means disabled.
+
+For AO, choose **AO with OpenAI**, **AO with Ollama**, or **AO no AI**.
 
 ## Install the aap-demo CLI
 
-If the CLI is missing, click **Install aap-demo** in the dashboard's **Status**
-box, or run **AAP Demo: Install aap-demo CLI** from the **F1** Command Palette.
-The extension clones or updates the official repository and runs its
-`install.sh`. The default source checkout is kept separate from CLI data:
-
-```text
-~/.aap-demo/aap-demo/install.sh
-```
-
-The `~/.aap-demo` directory remains the CLI's data directory. Set
-`aap-demo.installLocation` in Podman Desktop settings to use a different source
-checkout directory. Existing Git checkouts are updated with `git pull
---ff-only`; a recognizable source tree without Git metadata can be reused for
-installation but cannot be pulled for updates. Existing unrelated files are
-preserved. The install output is shown under **Command output**. If the script
-needs an interactive administrator password or dependency installation, run
-it from a terminal instead.
+If the CLI is missing, click **Install aap-demo** in the **Status** box. You can
+also run **AAP Demo: Install aap-demo CLI** from the F1 Command Palette.
 
 ## Updating
 
-To update the aap-demo CLI, select **Update aap-demo** in the Status box, or
-run **AAP Demo: Update aap-demo CLI** from the F1 Command Palette. This pulls
-the Git checkout, reruns `install.sh`, and refreshes the dashboard.
+Select **Update aap-demo** in the Status box to update the CLI.
 
 For the OCI extension image, disabling and re-enabling the extension only
 restarts the installed image; it does not guarantee a fresh pull of a changed
@@ -85,13 +62,8 @@ tag. To install a newly published image, uninstall the extension from
   Podman Desktop.
 - If the dashboard reports unsafe SSL, use **Fix SSL** and approve the
   certificate or Keychain prompt.
-- If the CLI is not found after installation, restart Podman Desktop or set
-  `aap-demo.cliPath` to the installed executable.
-- On Windows, install Git for Windows if AAP Demo reports that Bash or Git is
-  missing. PowerShell can run `winget install --id Git.Git -e`; restart Podman
-  Desktop afterward.
-- If installation needs an administrator prompt or dependency installation,
-  run the displayed `install.sh` command from a terminal.
+- If the CLI is not found after installation, restart Podman Desktop.
+- On Windows, install Git for Windows if prompted: `winget install --id Git.Git -e`.
 
 The extension does not install CRC or accept Podman Desktop prompts on your
 behalf.

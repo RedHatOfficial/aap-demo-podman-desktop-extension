@@ -360,7 +360,7 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
     prerequisiteList.append(row);
   }
   if (installCli) {
-    installCli.hidden = prerequisites.cli.available;
+    installCli.hidden = prerequisites.cli.available && prerequisites.installScript.available;
     installCli.disabled = false;
     installCli.title = 'Clone or reuse the aap-demo source and run install.sh';
   }
@@ -535,6 +535,7 @@ window.addEventListener('message', event => {
   }
   if (message.type === 'command-error') {
     writeOutput(message.message ?? 'Command failed.');
+    if (message.action === 'install-cli' && installCli) installCli.disabled = false;
     if (message.action === 'update-cli' && updateCli) updateCli.disabled = false;
     if (message.action === 'setup-extension' || message.action === 'update-extension') {
       if (setupExtension) setupExtension.disabled = false;
