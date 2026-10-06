@@ -260,6 +260,15 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         }
       };
       await verifyTool('bash');
+      if (process.platform === 'win32') {
+        try {
+          await runner.run('bash', ['-lc', 'command -v cygpath'], { env: streamOptions.env });
+        } catch (error) {
+          const hint = installToolHint('cygpath');
+          if (hint) throw new MissingInstallToolError('cygpath', hint);
+          throw error;
+        }
+      }
       if (checkoutAction === 'pull' || checkoutAction === 'clone') {
         await verifyTool('git');
       }

@@ -67,7 +67,9 @@ export function resolveBashScriptPath(
   scriptPath: string,
   platform: NodeJS.Platform = process.platform,
 ): string {
-  return platform === 'win32' ? scriptPath.replaceAll('\\', '/') : scriptPath;
+  if (platform !== 'win32') return scriptPath;
+  const normalized = scriptPath.replaceAll('\\', '/');
+  return normalized.replace(/^([A-Za-z]):\//, (_match, drive: string) => `/${drive.toLowerCase()}/`);
 }
 
 export function bashScriptInvocation(
@@ -75,21 +77,14 @@ export function bashScriptInvocation(
   platform: NodeJS.Platform = process.platform,
 ): string[] {
   const bashPath = resolveBashScriptPath(scriptPath, platform);
-  if (platform !== 'win32') return [bashPath];
-
-  return [
-    '-lc',
-    'if command -v cygpath >/dev/null 2>&1; then script=$(cygpath -u "$1"); else script="$1"; fi; exec bash "$script"',
-    '--',
-    bashPath,
-  ];
+  return [bashPath];
 }
 
 export function installToolHint(
   command: string,
   platform: NodeJS.Platform = process.platform,
 ): string | undefined {
-  if (platform === 'win32' && (command === 'bash' || command === 'git')) {
+  if (platform === 'win32' && (command === 'bash' || command === 'git' || command === 'cygpath')) {
     return 'Git for Windows is required to install aap-demo because it provides Git and Bash. Install it from https://git-scm.com/download/win or run `winget install --id Git.Git -e`, then restart Podman Desktop and try again.';
   }
   return undefined;
