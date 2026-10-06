@@ -3,7 +3,7 @@ import type {
   CommandRunnerOptions,
 } from './command-runner';
 
-export type AapDemoAction = 'create' | 'start' | 'deploy' | 'stop' | 'destroy' | 'status' | 'idle' | 'diagnose' | 'repair';
+export type AapDemoAction = 'create' | 'start' | 'deploy' | 'stop' | 'destroy' | 'status' | 'idle' | 'diagnose' | 'repair' | 'trust-ca';
 export type AddonAction = 'enable' | 'disable';
 
 export interface AapDemoSettings {

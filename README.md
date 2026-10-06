@@ -203,6 +203,13 @@ The dashboard provides lifecycle controls, prerequisite checks, streamed command
 output, parsed routes and credentials, add-on controls, and periodic status
 refresh. A leading `~` is expanded to the current user's home directory.
 
+When a running cluster reports missing or unverified ingress TLS trust, the
+dashboard shows **Fix SSL**. It runs the targeted **aap-demo trust-ca** action
+to import and verify the active ingress CA without running the broader cluster
+**Repair** workflow. On macOS, approve the Keychain authorization prompt; fully
+quit and reopen the browser afterward if it still shows the previous
+certificate warning.
+
 The installation and resource-setting decisions are recorded in
 [ADR-001](docs/adr/001-cli-installation-and-resource-settings.md).
 

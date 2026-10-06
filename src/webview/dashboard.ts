@@ -3,6 +3,7 @@ import type { PrerequisiteStatus } from '../prerequisites';
 import { safeExternalUrl, unwrapDashboardMessage } from '../dashboard-protocol';
 import { acquireDesktopApi, type DesktopApi } from './desktop-api';
 import { getAddonTogglePresentation, sortAddons } from './addon-ui';
+import { shouldShowFixSsl } from './ssl-ui';
 
 export {};
 
@@ -88,6 +89,7 @@ const installRuntime = document.querySelector<HTMLButtonElement>('#install-runti
 const checkRuntime = document.querySelector<HTMLButtonElement>('#check-runtime');
 const runtimeManualGuide = document.querySelector<HTMLAnchorElement>('#runtime-manual-guide');
 const idleToggle = document.querySelector<HTMLButtonElement>('#idle-toggle');
+const fixSslButton = document.querySelector<HTMLButtonElement>('#fix-ssl');
 let idleState = true;
 
 function clear(element: Element | null): void {
@@ -126,7 +128,8 @@ function postToHost(message: unknown): void {
 }
 
 function postAction(action: string, idleStateValue?: boolean): void {
-  if (statusSummary) statusSummary.textContent = `Running ${action}...`;
+  const label = action === 'trust-ca' ? 'Fix SSL' : action;
+  if (statusSummary) statusSummary.textContent = `Running ${label}...`;
   postToHost({ type: 'run', action, idleState: idleStateValue });
 }
 
@@ -268,6 +271,7 @@ function renderStatus(status: AapDemoStatus): void {
   if (toolVersion) toolVersion.textContent = `CLI: ${status.toolVersion ?? 'unknown'}`;
   renderRoutes(status);
   renderCredentials(status);
+  if (fixSslButton) fixSslButton.hidden = !shouldShowFixSsl(status);
   renderAddons(status);
 }
 
@@ -503,7 +507,8 @@ window.addEventListener('message', event => {
   }
   if (message.type === 'command-result' || message.type === 'addon-result') {
     writeOutput([message.stdout, message.stderr].filter(Boolean).join('\n'));
-    if (statusSummary) statusSummary.textContent = `${formatState(message.action ?? 'command')} completed`;
+    const actionLabel = message.action === 'trust-ca' ? 'Fix SSL' : formatState(message.action ?? 'command');
+    if (statusSummary) statusSummary.textContent = `${actionLabel} completed`;
     if (message.action === 'update-cli' && updateCli) updateCli.disabled = false;
     if (message.action === 'update-extension' && updateExtension) {
       updateExtension.disabled = false;
