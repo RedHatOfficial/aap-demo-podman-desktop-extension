@@ -3,6 +3,7 @@ import type { PrerequisiteStatus } from '../prerequisites';
 import { safeExternalUrl, unwrapDashboardMessage } from '../dashboard-protocol';
 import { acquireDesktopApi, type DesktopApi } from './desktop-api';
 import { getAddonTogglePresentation, sortAddons } from './addon-ui';
+import { handleCliMissing } from './cli-ui';
 import { shouldShowFixSsl } from './ssl-ui';
 
 export {};
@@ -424,11 +425,10 @@ window.addEventListener('message', event => {
   const message = unwrapDashboardMessage(event.data) as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardExtensionMessage | DashboardRuntimeRequiredMessage | DashboardRuntimeInstallUnavailableMessage | DashboardRuntimeTerminalOpenedMessage | DashboardExtensionSetupCompleteMessage | DashboardCommandMessage | DashboardCliMessage;
   if (!message || typeof message !== 'object' || typeof message.type !== 'string') return;
   if (message.type === 'cli-missing') {
-    if (statusState) statusState.textContent = 'CLI not installed';
-    if (statusDot) statusDot.className = 'status-dot unknown';
-    if (statusSummary) statusSummary.textContent = 'Install aap-demo in the Status box to get started.';
-    if (toolVersion) toolVersion.textContent = 'CLI: not installed';
-    writeOutput('The aap-demo CLI is missing. Use Install aap-demo in the Status box to clone the repository and run its installer.');
+    handleCliMissing(
+      { statusState, statusDot, statusSummary, toolVersion, installCli, updateCli },
+      writeOutput,
+    );
     return;
   }
   if (message.type === 'prerequisites') {
