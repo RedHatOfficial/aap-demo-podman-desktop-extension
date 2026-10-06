@@ -4,6 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import {
   installScriptPathFor,
+  resolveBashScriptPath,
   resolveAapDemoSourceLocation,
   resolveInstallLocation,
   resolveInstallScriptPath,
@@ -21,6 +22,16 @@ describe('install locations', () => {
   it('resolves install.sh inside the selected repository location', () => {
     expect(installScriptPathFor('/tmp/aap-demo')).toBe('/tmp/aap-demo/install.sh');
     expect(resolveInstallScriptPath('/tmp/aap-demo')).toBeUndefined();
+  });
+
+  it('converts Windows paths to slash-separated paths for Bash', () => {
+    expect(resolveBashScriptPath('C:\\Users\\adler\\.aap-demo\\aap-demo\\install.sh', 'win32'))
+      .toBe('C:/Users/adler/.aap-demo/aap-demo/install.sh');
+  });
+
+  it('leaves POSIX script paths unchanged for Bash', () => {
+    expect(resolveBashScriptPath('/home/adler/.aap-demo/aap-demo/install.sh', 'darwin'))
+      .toBe('/home/adler/.aap-demo/aap-demo/install.sh');
   });
 
   it('uses an existing aap-demo checkout at the configured location', () => {
