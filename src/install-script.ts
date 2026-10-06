@@ -61,3 +61,11 @@ export function resolveAapDemoSourceLocation(configuredPath = ''): string {
 export function installScriptPathFor(installLocation: string): string {
   return path.join(resolveAapDemoSourceLocation(installLocation), 'install.sh');
 }
+
+/** Bash treats Windows backslashes as escapes, so pass Windows paths with `/`. */
+export function resolveBashScriptPath(
+  scriptPath: string,
+  platform: NodeJS.Platform = process.platform,
+): string {
+  return platform === 'win32' ? scriptPath.replaceAll('\\', '/') : scriptPath;
+}

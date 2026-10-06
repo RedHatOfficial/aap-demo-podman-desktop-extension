@@ -25,6 +25,7 @@ import {
   AAP_DEMO_REPOSITORY_URL,
   installScriptPathFor,
   resolveAapDemoSourceLocation,
+  resolveBashScriptPath,
 } from './install-script';
 import { parseStatusOutput } from './status-parser';
 import { formatStatusBarText } from './status-bar';
@@ -247,7 +248,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         mkdirSync(path.dirname(installLocation), { recursive: true });
         await runner.run('git', ['clone', AAP_DEMO_REPOSITORY_URL, installLocation], streamOptions);
       }
-      const result = await runner.run('bash', [installScriptPath], {
+      const result = await runner.run('bash', [resolveBashScriptPath(installScriptPath)], {
         cwd: path.dirname(installScriptPath),
         ...streamOptions,
       });
