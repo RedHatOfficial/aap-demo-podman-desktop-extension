@@ -179,8 +179,10 @@ describe('getAddonTogglePresentation', () => {
   });
 
   it('declares the configurable aap-demo repository install location', () => {
-    expect(packageJson).toContain('"aap-demo.installLocation"');
-    expect(packageJson).toContain('"default": "~/.aap-demo"');
+    const manifest = JSON.parse(packageJson);
+    const installLocation = manifest.contributes.configuration.properties['aap-demo.installLocation'];
+    expect(installLocation.default).toBe('~/.aap-demo/aap-demo');
+    expect(installLocation.description).toContain('CLI data under ~/.aap-demo');
   });
 
   it('sets the OpenShift Local CPU minimum to eight in Podman Desktop settings', () => {

@@ -1,5 +1,5 @@
 import * as fs from 'node:fs/promises';
-import { existsSync, lstatSync, readdirSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readdirSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { ExtensionContext, WebviewPanel } from '@podman-desktop/api';
@@ -24,7 +24,7 @@ import { checkPrerequisites } from './prerequisites';
 import {
   AAP_DEMO_REPOSITORY_URL,
   installScriptPathFor,
-  resolveInstallLocation,
+  resolveAapDemoSourceLocation,
 } from './install-script';
 import { parseStatusOutput } from './status-parser';
 import { formatStatusBarText } from './status-bar';
@@ -67,7 +67,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   const configuration = extensionApi.configuration.getConfiguration('aap-demo');
   const configuredCliPath = configuration.get('cliPath', 'aap-demo').trim() || 'aap-demo';
   const cliPath = resolveConfiguredExecutable(configuredCliPath);
-  const installLocationSetting = configuration.get('installLocation', '~/.aap-demo');
+  const installLocationSetting = configuration.get('installLocation', '~/.aap-demo/aap-demo');
   const extensionInstallLocationSetting = configuration.get(
     'extensionInstallLocation',
     '~/.aap-demo-podman-desktop-extension',
@@ -196,7 +196,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   const runCliMaintenance = async (mode: 'install' | 'update'): Promise<void> => {
     const action = mode === 'update' ? 'update-cli' : 'install-cli';
     const verb = mode === 'update' ? 'updated' : 'installed';
-    const installLocation = resolveInstallLocation(installLocationSetting);
+    const installLocation = resolveAapDemoSourceLocation(installLocationSetting);
     const installScriptPath = installScriptPathFor(installLocation);
     const streamOptions = {
       env: { ...process.env, PATH: settings.pathValue },
@@ -244,6 +244,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       if (checkoutAction === 'pull') {
         await runner.run('git', ['-C', installLocation, 'pull', '--ff-only'], streamOptions);
       } else if (checkoutAction === 'clone') {
+        mkdirSync(path.dirname(installLocation), { recursive: true });
         await runner.run('git', ['clone', AAP_DEMO_REPOSITORY_URL, installLocation], streamOptions);
       }
       const result = await runner.run('bash', [installScriptPath], {

@@ -23,23 +23,28 @@ and **AAP Demo: Update aap-demo CLI** in the Command Palette.
 
 The action:
 
-1. Resolves `aap-demo.installLocation`, defaulting to `~/.aap-demo`.
-2. Clones `https://github.com/RedHatOfficial/aap-demo.git` into that location
-   when it does not exist.
-3. Updates an existing Git checkout with `git pull --ff-only`.
-4. Refuses to use an existing non-Git directory rather than overwriting it.
-5. Runs the checked-out `install.sh` with Bash.
+1. Resolves `aap-demo.installLocation`, defaulting to `~/.aap-demo/aap-demo`.
+   The parent `~/.aap-demo` remains the CLI data directory.
+2. Reuses an existing Git checkout or a recognizable source tree containing
+   `install.sh` and `aap-demo.sh`.
+3. Clones `https://github.com/RedHatOfficial/aap-demo.git` into that location
+   when absent or empty, creating parent directories as needed. If a legacy
+   setting points to a populated `~/.aap-demo` data directory, it uses the
+   `aap-demo` child so user data is preserved.
+4. Updates an existing Git checkout with `git pull --ff-only`; a reused
+   non-Git source tree can be installed but cannot be pulled for updates.
+5. Runs the selected checkout's `install.sh` with Bash.
 6. Streams clone, update, and install output to the dashboard, then refreshes
    CLI and prerequisite status.
 
 The update action requires an existing Git checkout, runs `git pull --ff-only`,
-then repeats the install and refresh steps. It never overwrites a non-Git
-directory.
+then repeats the install and refresh steps. Unrecognized existing directories
+are not overwritten.
 
 The install location can be changed in Podman Desktop settings:
 
 ```text
-aap-demo.installLocation = ~/.aap-demo
+aap-demo.installLocation = ~/.aap-demo/aap-demo
 ```
 
 The extension passes the following settings to the CLI for every command:
@@ -121,10 +126,12 @@ catalog users should not be asked to clone or build the source repository.
 ## Consequences
 
 This gives users a discoverable installation path without requiring a separate
-manual CLI setup for the common case. The default checkout is predictable and
-can be updated safely. The non-Git-directory check prevents accidental data
-loss, but users with an existing `~/.aap-demo` data directory must choose a
-different install location or migrate that directory intentionally.
+manual CLI setup for the common case. Source defaults to
+`~/.aap-demo/aap-demo`, separate from the CLI's `~/.aap-demo` data directory.
+Existing checkouts and recognizable source trees are reused, while unrelated
+files remain untouched. The extension also detects the previous
+`~/.aap-demo` install-location setting and selects a child checkout without
+requiring users to change that setting.
 
 The CLI action still depends on `git`, Bash, network access, and the
 dependencies handled by `install.sh`. Interactive administrator prompts may
