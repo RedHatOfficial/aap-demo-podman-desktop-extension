@@ -77,6 +77,22 @@ describe('install locations', () => {
     }
   });
 
+  it('prefers a nested aap-demo checkout when the parent has Git metadata', () => {
+    const parent = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-source-'));
+    const dataDir = path.join(parent, '.aap-demo');
+    const checkout = path.join(dataDir, 'aap-demo');
+    mkdirSync(path.join(dataDir, '.git'), { recursive: true });
+    mkdirSync(checkout);
+    writeFileSync(path.join(checkout, 'install.sh'), '#!/bin/sh\n');
+    writeFileSync(path.join(checkout, 'aap-demo.sh'), '#!/bin/sh\n');
+
+    try {
+      expect(resolveAapDemoSourceLocation(dataDir)).toBe(checkout);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
   it('selects a child checkout target when the configured directory has unrelated files', () => {
     const parent = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-source-'));
     const dataDir = path.join(parent, '.aap-demo');

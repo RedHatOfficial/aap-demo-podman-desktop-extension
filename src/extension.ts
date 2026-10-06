@@ -27,9 +27,9 @@ import { checkPrerequisites } from './prerequisites';
 import {
   AAP_DEMO_REPOSITORY_URL,
   bashScriptInvocation,
-  installScriptPathFor,
   installToolHint,
   resolveAapDemoSourceLocation,
+  resolveInstallScriptPath,
 } from './install-script';
 import { parseStatusOutput } from './status-parser';
 import { formatStatusBarText } from './status-bar';
@@ -202,7 +202,6 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     const action = mode === 'update' ? 'update-cli' : 'install-cli';
     const verb = mode === 'update' ? 'updated' : 'installed';
     const installLocation = resolveAapDemoSourceLocation(installLocationSetting);
-    const installScriptPath = installScriptPathFor(installLocation);
     const streamOptions = {
       env: { ...process.env, PATH: settings.pathValue },
       onStdout: (chunk: string) => {
@@ -262,6 +261,12 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       } else if (checkoutAction === 'clone') {
         mkdirSync(path.dirname(installLocation), { recursive: true });
         await runner.run('git', ['clone', AAP_DEMO_REPOSITORY_URL, installLocation], streamOptions);
+      }
+      const installScriptPath = resolveInstallScriptPath(installLocation);
+      if (!installScriptPath) {
+        throw new Error(
+          `The aap-demo source at ${installLocation} does not contain install.sh after ${checkoutAction}. Check that aap-demo.installLocation points to the aap-demo repository checkout, then try again.`,
+        );
       }
       const result = await runner.run('bash', bashScriptInvocation(installScriptPath), {
         cwd: path.dirname(installScriptPath),
