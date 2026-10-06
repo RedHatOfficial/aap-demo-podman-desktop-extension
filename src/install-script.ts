@@ -65,14 +65,13 @@ export function installScriptPathFor(installLocation: string): string {
   return path.join(resolveAapDemoSourceLocation(installLocation), 'install.sh');
 }
 
-/** Bash treats Windows backslashes as escapes, so pass Windows paths with `/`. */
+/** Git for Windows Bash accepts native Windows paths; keep the drive visible. */
 export function resolveBashScriptPath(
   scriptPath: string,
   platform: NodeJS.Platform = process.platform,
 ): string {
   if (platform !== 'win32') return scriptPath;
-  const normalized = scriptPath.replaceAll('\\', '/');
-  return normalized.replace(/^([A-Za-z]):\//, (_match, drive: string) => `/${drive.toLowerCase()}/`);
+  return scriptPath.replaceAll('\\', '/');
 }
 
 export function bashScriptInvocation(
