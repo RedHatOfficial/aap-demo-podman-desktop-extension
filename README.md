@@ -58,17 +58,20 @@ work.
 If the CLI is missing, click **Install aap-demo** in the dashboard's **Status**
 box, or run **AAP Demo: Install aap-demo CLI** from the **F1** Command Palette.
 The extension clones or updates the official repository and runs its
-`install.sh`:
+`install.sh`. The default source checkout is kept separate from CLI data:
 
 ```text
-~/.aap-demo/install.sh
+~/.aap-demo/aap-demo/install.sh
 ```
 
-Set `aap-demo.installLocation` in Podman Desktop settings to use a different
-directory. An existing Git checkout is updated with `git pull --ff-only`; an
-existing non-Git directory is never overwritten. The install output is shown
-under **Command output**. If the script needs an interactive administrator
-password or dependency installation, run it from a terminal instead.
+The `~/.aap-demo` directory remains the CLI's data directory. Set
+`aap-demo.installLocation` in Podman Desktop settings to use a different source
+checkout directory. Existing Git checkouts are updated with `git pull
+--ff-only`; a recognizable source tree without Git metadata can be reused for
+installation but cannot be pulled for updates. Existing unrelated files are
+preserved. The install output is shown under **Command output**. If the script
+needs an interactive administrator password or dependency installation, run
+it from a terminal instead.
 
 When the CLI is already installed, click **Update aap-demo** in the **Status**
 box, or run **AAP Demo: Update aap-demo CLI** from the **F1** Command Palette.
@@ -194,9 +197,10 @@ actions:
 
 If `aap-demo` is not installed, the dashboard shows **Install aap-demo** in the
 Status box. That action clones or updates the official repository in
-`~/.aap-demo`, runs its `install.sh`, streams its output, and refreshes the
-checks when it finishes. Set `aap-demo.installLocation` to use another
-directory. The same action is available from the command palette as **AAP Demo:
+`~/.aap-demo/aap-demo`, runs its `install.sh`, streams its output, and refreshes
+the checks when it finishes. This leaves `~/.aap-demo` available for CLI data.
+Set `aap-demo.installLocation` to use another checkout directory. The same
+action is available from the command palette as **AAP Demo:
 Install aap-demo CLI**.
 
 The `aap-demo.pullSecretPath`, `aap-demo.cpus`, and `aap-demo.memory` settings

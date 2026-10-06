@@ -17,12 +17,13 @@ describe('handleCliMissing', () => {
 
     expect(ui.installCli.hidden).toBe(false);
     expect(ui.installCli.disabled).toBe(false);
+    expect(ui.installCli.title).toBe('Clone or reuse the aap-demo source and run install.sh');
     expect(ui.updateCli.hidden).toBe(true);
     expect(ui.statusState.textContent).toBe('CLI not installed');
     expect(ui.statusSummary.textContent).toBe('Install aap-demo in the Status box to get started.');
     expect(ui.toolVersion.textContent).toBe('CLI: not installed');
     expect(output).toEqual([
-      'The aap-demo CLI is missing. Use Install aap-demo in the Status box to clone the repository and run its installer.',
+      'The aap-demo CLI is missing. Use Install aap-demo in the Status box to clone or reuse the repository source and run its installer.',
     ]);
   });
 });

@@ -362,7 +362,7 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
   if (installCli) {
     installCli.hidden = prerequisites.cli.available;
     installCli.disabled = false;
-    installCli.title = 'Clone the aap-demo repository and run install.sh';
+    installCli.title = 'Clone or reuse the aap-demo source and run install.sh';
   }
   if (updateCli) {
     updateCli.hidden = !prerequisites.cli.available || !prerequisites.installScript.available;

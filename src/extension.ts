@@ -1,5 +1,5 @@
 import * as fs from 'node:fs/promises';
-import { existsSync, lstatSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readdirSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { ExtensionContext, WebviewPanel } from '@podman-desktop/api';
@@ -11,6 +11,7 @@ import {
   type AapDemoSettings,
 } from './aap-demo-service';
 import { formatCommandError } from './command-error';
+import { getCliCheckoutAction } from './cli-checkout';
 import { CommandRunner } from './command-runner';
 import { detectCliVersion } from './cli-version';
 import { isDashboardMessage, type AoLlmProvider } from './dashboard-protocol';
@@ -23,7 +24,7 @@ import { checkPrerequisites } from './prerequisites';
 import {
   AAP_DEMO_REPOSITORY_URL,
   installScriptPathFor,
-  resolveInstallLocation,
+  resolveAapDemoSourceLocation,
 } from './install-script';
 import { parseStatusOutput } from './status-parser';
 import { formatStatusBarText } from './status-bar';
@@ -66,7 +67,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   const configuration = extensionApi.configuration.getConfiguration('aap-demo');
   const configuredCliPath = configuration.get('cliPath', 'aap-demo').trim() || 'aap-demo';
   const cliPath = resolveConfiguredExecutable(configuredCliPath);
-  const installLocationSetting = configuration.get('installLocation', '~/.aap-demo');
+  const installLocationSetting = configuration.get('installLocation', '~/.aap-demo/aap-demo');
   const extensionInstallLocationSetting = configuration.get(
     'extensionInstallLocation',
     '~/.aap-demo-podman-desktop-extension',
@@ -195,7 +196,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   const runCliMaintenance = async (mode: 'install' | 'update'): Promise<void> => {
     const action = mode === 'update' ? 'update-cli' : 'install-cli';
     const verb = mode === 'update' ? 'updated' : 'installed';
-    const installLocation = resolveInstallLocation(installLocationSetting);
+    const installLocation = resolveAapDemoSourceLocation(installLocationSetting);
     const installScriptPath = installScriptPathFor(installLocation);
     const streamOptions = {
       env: { ...process.env, PATH: settings.pathValue },
@@ -209,19 +210,41 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       },
     };
     try {
-      if (mode === 'update' && !existsSync(installLocation)) {
+      const locationExists = existsSync(installLocation);
+      const gitMetadataExists = locationExists && existsSync(path.join(installLocation, '.git'));
+      const hasAapDemoSource = locationExists
+        && existsSync(path.join(installLocation, 'install.sh'))
+        && existsSync(path.join(installLocation, 'aap-demo.sh'));
+      const locationIsEmpty = locationExists
+        && lstatSync(installLocation).isDirectory()
+        && readdirSync(installLocation).length === 0;
+      const checkoutAction = getCliCheckoutAction(
+        mode,
+        locationExists,
+        gitMetadataExists,
+        hasAapDemoSource,
+        locationIsEmpty,
+      );
+
+      if (checkoutAction === 'missing') {
         throw new Error(
           `aap-demo checkout not found at ${installLocation}. Use Install aap-demo first.`,
         );
       }
-      if (existsSync(installLocation)) {
-        if (!existsSync(path.join(installLocation, '.git'))) {
-          throw new Error(
-            `Install location already exists and is not an aap-demo Git checkout: ${installLocation}. Set aap-demo.installLocation to another directory.`,
-          );
-        }
+      if (checkoutAction === 'not-updatable') {
+        throw new Error(
+          `The aap-demo source at ${installLocation} can be reused to install, but it is not a Git checkout, so it cannot pull updates. Set aap-demo.installLocation to a Git checkout to use Update.`,
+        );
+      }
+      if (checkoutAction === 'refuse') {
+        throw new Error(
+          `Install location already exists and is not a recognizable aap-demo source or Git checkout: ${installLocation}. The folder was left unchanged. Set aap-demo.installLocation to another directory.`,
+        );
+      }
+      if (checkoutAction === 'pull') {
         await runner.run('git', ['-C', installLocation, 'pull', '--ff-only'], streamOptions);
-      } else {
+      } else if (checkoutAction === 'clone') {
+        mkdirSync(path.dirname(installLocation), { recursive: true });
         await runner.run('git', ['clone', AAP_DEMO_REPOSITORY_URL, installLocation], streamOptions);
       }
       const result = await runner.run('bash', [installScriptPath], {

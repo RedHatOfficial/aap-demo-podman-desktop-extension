@@ -99,8 +99,8 @@
         },
         "aap-demo.installLocation": {
           "type": "string",
-          "default": "~/.aap-demo",
-          "description": "Directory where the aap-demo repository is cloned and installed."
+          "default": "~/.aap-demo/aap-demo",
+          "description": "Directory where the aap-demo repository is cloned and installed. The default keeps source under ~/.aap-demo/aap-demo and CLI data under ~/.aap-demo."
         },
         "aap-demo.extensionInstallLocation": {
           "type": "string",

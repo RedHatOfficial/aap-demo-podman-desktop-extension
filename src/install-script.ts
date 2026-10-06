@@ -1,4 +1,4 @@
-import { accessSync, constants, statSync } from 'node:fs';
+import { accessSync, constants, existsSync, readdirSync, statSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
@@ -28,9 +28,36 @@ export function resolveInstallScriptPath(configuredPath = ''): string | undefine
 
 export function resolveInstallLocation(configuredPath = ''): string {
   const configured = configuredPath.trim();
-  return expandHome(configured || '~/.aap-demo');
+  return expandHome(configured || '~/.aap-demo/aap-demo');
+}
+
+function isAapDemoSource(location: string): boolean {
+  return isReadableFile(path.join(location, 'install.sh'))
+    && isReadableFile(path.join(location, 'aap-demo.sh'));
+}
+
+/**
+ * Resolve the repository directory, keeping an already-populated data directory intact.
+ * When the configured directory is occupied by non-repository files, use its aap-demo child.
+ */
+export function resolveAapDemoSourceLocation(configuredPath = ''): string {
+  const location = resolveInstallLocation(configuredPath);
+  if (!existsSync(location)) return location;
+
+  if (existsSync(path.join(location, '.git')) || isAapDemoSource(location)) {
+    return location;
+  }
+
+  if (!statSync(location).isDirectory()) return location;
+
+  const nestedLocation = path.join(location, 'aap-demo');
+  if (existsSync(path.join(nestedLocation, '.git')) || isAapDemoSource(nestedLocation)) {
+    return nestedLocation;
+  }
+
+  return readdirSync(location).length > 0 ? nestedLocation : location;
 }
 
 export function installScriptPathFor(installLocation: string): string {
-  return path.join(resolveInstallLocation(installLocation), 'install.sh');
+  return path.join(resolveAapDemoSourceLocation(installLocation), 'install.sh');
 }

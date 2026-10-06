@@ -21,13 +21,13 @@ export function handleCliMissing(ui: CliMissingUi, writeOutput: (text: string) =
   if (ui.installCli) {
     ui.installCli.hidden = false;
     ui.installCli.disabled = false;
-    ui.installCli.title = 'Clone the aap-demo repository and run install.sh';
+    ui.installCli.title = 'Clone or reuse the aap-demo source and run install.sh';
   }
   if (ui.updateCli) {
     ui.updateCli.hidden = true;
     ui.updateCli.disabled = false;
   }
   writeOutput(
-    'The aap-demo CLI is missing. Use Install aap-demo in the Status box to clone the repository and run its installer.',
+    'The aap-demo CLI is missing. Use Install aap-demo in the Status box to clone or reuse the repository source and run its installer.',
   );
 }
