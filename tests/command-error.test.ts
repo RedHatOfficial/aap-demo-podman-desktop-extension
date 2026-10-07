@@ -95,7 +95,8 @@ describe('formatCommandError', () => {
     expect(message).toContain('Product Demos cannot start until AAP has a registered subscription.');
     expect(message).toContain('1. Open AAP: https://aap-aap-operator.apps.127.0.0.1.nip.io');
     expect(message).toContain('2. In AAP, go to Settings → Subscription');
-    expect(message).toContain('3. Return to Podman Desktop and enable Product Demos again');
+    expect(message).toContain('3. If you do not have a subscription, get one at https://developers.redhat.com/');
+    expect(message).toContain('4. Return to Podman Desktop and enable Product Demos again');
     expect(message).toContain('aap-demo enable product-demos');
     expect(message).not.toContain('Command exited unsuccessfully: flatpak-spawn');
     expect(message).not.toContain('Retrieving AAP connection details');
