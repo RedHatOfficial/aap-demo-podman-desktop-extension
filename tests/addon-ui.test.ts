@@ -328,11 +328,12 @@ describe('getAddonTogglePresentation', () => {
     expect(extensionSource).toContain('addonEnvironment.OPENAI_API_KEY = openAiApiKey');
   });
 
-  it('prompts for the PAH offline token before enabling setup-pah', () => {
+  it('prompts for and saves the PAH offline token before enabling setup-pah', () => {
     expect(extensionSource).toContain("addon === 'setup-pah'");
     expect(extensionSource).toContain('hasHostFile(runner, galaxyTokenFile, settings.pathValue, process.env)');
-    expect(extensionSource).toContain('Opening browser to Red Hat Automation Hub');
+    expect(extensionSource).toContain('https://console.redhat.com/ansible/automation-hub/token');
     expect(extensionSource).toContain('Click \'Load token\' button');
-    expect(extensionSource).toContain('echo "YOUR_OFFLINE_TOKEN" > ~/.aap-demo/galaxy-token');
+    expect(extensionSource).toContain('saveHostFile(runner, galaxyTokenFile, settings.pathValue, process.env, enteredToken.trim())');
+    expect(extensionSource).toContain('password: true');
   });
 });

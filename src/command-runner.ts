@@ -8,6 +8,7 @@ export interface CommandResult {
 }
 
 export interface CommandRunnerOptions extends SpawnOptionsWithoutStdio {
+  input?: string;
   onStdout?: (chunk: string) => void;
   onStderr?: (chunk: string) => void;
 }
@@ -56,7 +57,7 @@ export class CommandRunner {
     }
 
     return new Promise((resolve, reject) => {
-      const { onStdout, onStderr, ...spawnOptions } = options;
+      const { input, onStdout, onStderr, ...spawnOptions } = options;
       let commandToSpawn = command;
       let argsToSpawn = args;
       if (
@@ -69,6 +70,7 @@ export class CommandRunner {
         argsToSpawn = [];
       }
       const child = spawn(commandToSpawn, argsToSpawn, spawnOptions);
+      if (input !== undefined) child.stdin?.end(input);
       let stdout = '';
       let stderr = '';
 

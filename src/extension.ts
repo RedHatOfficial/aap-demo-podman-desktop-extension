@@ -18,7 +18,7 @@ import { detectCliVersion } from './cli-version';
 import { isDashboardMessage, type AoLlmProvider } from './dashboard-protocol';
 import { augmentPath, resolveConfiguredExecutable, resolveExecutablePath } from './executable-path';
 import { resolveHostCommand } from './host-command';
-import { hasHostFile } from './host-file';
+import { hasHostFile, saveHostFile } from './host-file';
 import { isLocalExtensionCheckout } from './extension-updater';
 import { ExtensionSourceService, MissingRuntimeError } from './extension-source-service';
 import { resolveExtensionInstallLocation } from './extension-source';
@@ -455,26 +455,32 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         await extensionApi.env.openExternal(
           extensionApi.Uri.parse('https://console.redhat.com/ansible/automation-hub/token', true),
         );
-        await extensionApi.window.showInformationMessage(
-          [
-            'Setting up Private Automation Hub...',
-            '',
-            'Opening browser to Red Hat Automation Hub...',
-            '',
-            'Steps:',
-            '  1. Log in with your Red Hat account',
-            "  2. Click 'Load token' button",
-            "  3. Copy the 'Offline Token' (long base64 string, ~1500 characters)",
-            '  4. Run this command to save it:',
-            '',
-            '     echo "YOUR_OFFLINE_TOKEN" > ~/.aap-demo/galaxy-token',
-            '     chmod 600 ~/.aap-demo/galaxy-token',
-            '',
-            '  5. Re-run: aap-demo enable setup-pah',
-          ].join('\n'),
-        );
-        await runAction('status');
-        return;
+        const enteredToken = await extensionApi.window.showInputBox({
+          title: 'Private Automation Hub',
+          prompt: [
+            '1. Log in with your Red Hat account.',
+            "2. Click 'Load token' button.",
+            "3. Copy the 'Offline Token' and paste it below.",
+            'It will be saved securely to ~/.aap-demo/galaxy-token.',
+          ].join(' '),
+          password: true,
+          ignoreFocusOut: true,
+          placeHolder: 'Offline Token',
+          validateInput: value => value.trim() ? undefined : 'An Offline Token is required.',
+        });
+        if (enteredToken === undefined) {
+          await runAction('status');
+          return;
+        }
+        try {
+          await saveHostFile(runner, galaxyTokenFile, settings.pathValue, process.env, enteredToken.trim());
+        } catch (error) {
+          const message = formatCommandError(error);
+          await postDashboardMessage({ type: 'command-error', action, addon, message });
+          await extensionApi.window.showWarningMessage(`Could not save the Private Automation Hub token: ${message}`);
+          await runAction('status');
+          return;
+        }
       }
       let openAiApiKey = process.env.OPENAI_API_KEY?.trim() || readSavedAoOpenAiKey();
       const hostHasOpenAiKey = action === 'enable'
