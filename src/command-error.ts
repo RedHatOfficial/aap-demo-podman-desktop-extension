@@ -30,7 +30,7 @@ function productDemosSubscriptionGuidance(output: string): string | undefined {
   return [
     'Product Demos cannot start until AAP has a registered subscription.',
     `1. Open AAP: ${aapUrl}`,
-    '2. In AAP, go to Settings → Subscription and register or attach your subscription.',
+    '2. Enter your Red Hat Developer username and password when AAP prompts you to register the subscription.',
     '3. If you do not have a subscription, get one at https://developers.redhat.com/',
     '4. Return to Podman Desktop and enable Product Demos again, or run: aap-demo enable product-demos',
   ].join('\n');
