@@ -102,6 +102,27 @@ describe('formatCommandError', () => {
     expect(message).not.toContain('Command exited unsuccessfully: flatpak-spawn');
   });
 
+  it('explains that diagnosis requires a cluster', () => {
+    const error = new CommandExecutionError('Command exited unsuccessfully: flatpak-spawn', {
+      exitCode: 1,
+      signal: null,
+      stderr: '',
+      stdout: [
+        'WARNING: No cluster exists',
+        "Run 'aap-demo create' first",
+        'aap-demo diagnose - Checking environment health...',
+        'Cannot proceed without cluster connectivity. Check KUBECONFIG: /home/test/.aap-demo/kubeconfig.microshift',
+      ].join('\n'),
+    });
+
+    const message = formatCommandError(error);
+    expect(message).toContain('AAP Demo diagnosis cannot run because no OpenShift Local cluster exists.');
+    expect(message).toContain('Select Create Cluster first');
+    expect(message).toContain('kubeconfig path is expected to be unavailable');
+    expect(message).not.toContain('kubeconfig.microshift');
+    expect(message).not.toContain('Command exited unsuccessfully: flatpak-spawn');
+  });
+
   it('explains how to register an AAP subscription before Product Demos', () => {
     const error = new CommandExecutionError('Command exited unsuccessfully: flatpak-spawn', {
       exitCode: 1,

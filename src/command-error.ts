@@ -62,6 +62,14 @@ function repairWithoutClusterGuidance(output: string): string | undefined {
     return undefined;
   }
 
+  if (normalized.includes('aap-demo diagnose') || normalized.includes('cannot proceed without cluster connectivity')) {
+    return [
+      'AAP Demo diagnosis cannot run because no OpenShift Local cluster exists.',
+      'Select Create Cluster first and wait for it to finish. Then run Diagnose again to check cluster health.',
+      'The kubeconfig path is expected to be unavailable until the cluster is created.',
+    ].join('\n');
+  }
+
   return [
     'AAP Demo repair cannot run because no OpenShift Local cluster exists.',
     'Select Create Cluster first and wait for it to finish. Then run Deploy and retry Repair if the cluster still needs recovery.',

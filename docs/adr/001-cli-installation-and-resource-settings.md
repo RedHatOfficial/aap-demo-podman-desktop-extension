@@ -60,6 +60,9 @@ Repair guidance also checks for the no-cluster condition first. When
 `aap-demo repair` reports that no cluster exists, the dashboard directs the
 user to create and deploy the cluster before retrying repair instead of
 recommending SCC commands against an unavailable OpenShift API.
+The same prerequisite handling applies to `aap-demo diagnose`: without a
+cluster, the dashboard directs the user to create one and does not expose the
+expected missing kubeconfig path as a separate failure.
 
 The update action requires an existing Git checkout, runs `git pull --ff-only`,
 then repeats the install and refresh steps. Unrecognized existing directories
