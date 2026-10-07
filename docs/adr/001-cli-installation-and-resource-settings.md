@@ -69,6 +69,14 @@ OpenShift Local startup issue and directs the user to stop and start the
 cluster from the OpenShift Local extension. It offers `crc status` and
 `/tmp/crc-start.log` as terminal diagnostics if the restart does not resolve
 the issue.
+When deployment output also reports that the system CA import needs `sudo` and
+that AAP PVCs already exist, the dashboard explains that Flatpak cannot run
+the interactive sudo prompt, preserves the existing PVCs, and directs the user
+to retry deployment. The manual CA import remains available for terminal tools
+if browser trust has already been updated.
+Silent extension actions set `AAP_DEMO_TRUST_CA=false` so they never attempt an
+interactive system trust change. The explicit **Fix SSL** action leaves that
+setting unset and is the user-invoked path for certificate trust setup.
 
 The update action requires an existing Git checkout, runs `git pull --ff-only`,
 then repeats the install and refresh steps. Unrecognized existing directories

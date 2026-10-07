@@ -103,6 +103,29 @@ describe('formatCommandError', () => {
     expect(message).not.toContain('A CRC VM for MicroShift 4.22.13 is already running');
   });
 
+  it('explains existing storage and Flatpak certificate trust during deploy', () => {
+    const error = new CommandExecutionError('Command exited unsuccessfully: flatpak-spawn', {
+      exitCode: 1,
+      signal: null,
+      stderr: '',
+      stdout: [
+        'Could not add CA to system trust store (sudo may be required)',
+        '⚠ Ingress CA saved to /home/cferman/.aap-demo/crc-ingress-ca.crt but automatic trust import failed',
+        'Error from server (AlreadyExists): persistentvolumeclaims "postgres-15-aap-postgres-15-0" already exists',
+        'Error from server (AlreadyExists): persistentvolumeclaims "aap-hub-redis-data" already exists',
+        '✓ Ingress CA trusted (Chrome/Firefox NSS)',
+      ].join('\n'),
+    });
+
+    const message = formatCommandError(error);
+    expect(message).toContain('Deploy found an existing AAP storage setup');
+    expect(message).toContain('Do not delete the existing PostgreSQL or Hub Redis PVCs');
+    expect(message).toContain('Retry Deploy');
+    expect(message).toContain('sudo cp /home/cferman/.aap-demo/crc-ingress-ca.crt');
+    expect(message).not.toContain('postgres-15-aap-postgres-15-0');
+    expect(message).not.toContain('Command exited unsuccessfully: flatpak-spawn');
+  });
+
   it('explains that repair requires a cluster before applying SCC changes', () => {
     const error = new CommandExecutionError('Command exited unsuccessfully: flatpak-spawn', {
       exitCode: 1,
