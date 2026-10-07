@@ -122,23 +122,31 @@ function writeOutput(text: string): void {
   if (!output) return;
   output.replaceChildren();
   const value = text || 'No command output.';
-  const urlPattern = /https?:\/\/[^\s<]+/g;
+  const urlPattern = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|(https?:\/\/[^\s<]+)/g;
   let offset = 0;
   for (const match of value.matchAll(urlPattern)) {
-    const rawUrl = match[0];
-    const url = rawUrl.replace(/[.,;:!?]+$/, '');
+    const rawMatch = match[0];
+    const markdownLabel = match[1];
+    const markdownUrl = match[2];
+    const rawUrl = markdownUrl ?? match[3] ?? rawMatch;
+    const url = rawUrl.replace(/[)\].,;:!?]+$/, '');
     const start = match.index ?? 0;
     output.append(document.createTextNode(value.slice(offset, start)));
     const safeUrl = safeExternalUrl(url);
-    if (!safeUrl) {
-      output.append(document.createTextNode(rawUrl));
+    if (!safeUrl || (markdownUrl && !markdownLabel)) {
+      output.append(document.createTextNode(rawMatch));
+    } else if (markdownUrl) {
+      const link = document.createElement('a');
+      addExternalLink(link, safeUrl);
+      link.textContent = markdownLabel;
+      output.append(link);
     } else {
       const link = document.createElement('a');
       addExternalLink(link, safeUrl);
       link.textContent = url;
-      output.append(link, document.createTextNode(rawUrl.slice(url.length)));
+      output.append(link, document.createTextNode(rawMatch.slice(url.length)));
     }
-    offset = start + rawUrl.length;
+    offset = start + rawMatch.length;
   }
   output.append(document.createTextNode(value.slice(offset)));
 }
