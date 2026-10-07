@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-10-03
+- Updated: 2026-10-07
 
 ## Context
 
@@ -37,6 +38,22 @@ The action:
 6. Streams clone, update, and install output to the dashboard, then refreshes
    CLI and prerequisite status.
 
+When the extension runs inside a Flatpak sandbox and `flatpak-spawn` is
+available, CLI actions and install/update helper commands are delegated through
+`flatpak-spawn --host`. This lets `aap-demo` and its child commands see host
+tools such as `crc`, Git, Bash, `oc`, and `kubectl` instead of failing inside
+the sandbox. If Git or Bash is still unavailable, the dashboard reports the
+missing tool directly instead of surfacing a raw `spawn ... ENOENT` error.
+AO provider selection and its external-provider settings are forwarded through
+the same host bridge, so choosing OpenAI does not fall back to a host-side
+Ollama default.
+
+CRC setup remains a host-level administrator operation. If an action reaches
+`crc start` while the CRC daemon is unavailable, the dashboard gives explicit
+terminal commands to reset the failed user service, restart the CRC socket
+units, verify `crc status`, and retry. The extension does not attempt to
+elevate privileges or manage the CRC daemon itself.
+
 The update action requires an existing Git checkout, runs `git pull --ff-only`,
 then repeats the install and refresh steps. Unrecognized existing directories
 are not overwritten.
@@ -56,6 +73,12 @@ The extension passes the following settings to the CLI for every command:
 | `aap-demo.memory` | `CRC_MEMORY` | `24576` MiB | integer, minimum `16384` MiB |
 | `aap-demo.cliPath` | executable path | `aap-demo` | resolved through configured and user-local paths |
 | `aap-demo.crcPath` | CRC executable path | `crc` | resolved through configured and user-local paths |
+
+The augmented PATH includes common user/package-manager locations and CRC
+locations, including CRC cache directories that contain an executable `oc`
+client. This lets the host-side `aap-demo` CLI use its existing `kubectl` to
+`oc` fallback when CRC provides `oc` but the host does not have a separate
+`kubectl` binary installed.
 
 AO provider setup is selected with three explicit dashboard actions: **AO with
 OpenAI**, **AO with Ollama**, and **AO no AI**. The OpenAI action reads
@@ -134,14 +157,24 @@ files remain untouched. The extension also detects the previous
 requiring users to change that setting.
 
 The CLI action still depends on `git`, Bash, network access, and the
-dependencies handled by `install.sh`. Interactive administrator prompts may
-not work through the extension host; those installs should be run from a
-terminal. When CRC is missing, the dashboard offers **Install with Podman
-Desktop**, which opens the OpenShift Local extension page using Podman Desktop's
-extension deep link. The user confirms installing that extension and then uses
-its own dashboard to install CRC binaries. This keeps Podman Desktop's
-confirmation, prerequisite checks, and any required system prompts in control;
-the AAP Demo extension never downloads or installs CRC itself and never supplies
-the Red Hat pull secret automatically. The developer-only Node.js/npm install
-offer likewise uses a visible terminal so package-manager and administrator
-prompts remain under the user's control.
+dependencies handled by `install.sh`. When Podman Desktop is installed as a
+Flatpak, normal `aap-demo` actions and Git/Bash helper calls are attempted
+through `flatpak-spawn --host` when available; otherwise the user still needs
+those tools visible to the extension host.
+
+When CRC is missing, the dashboard offers **Install with Podman Desktop**,
+which opens the Podman Desktop Extensions catalog with a search for OpenShift
+Local when that navigation API is available. Older Podman Desktop versions
+fall back to the Resources page, and failures show a concise warning. The
+dashboard does not show a separate install-guide link or extra explanatory
+text in the prerequisite row.
+
+If the OpenShift Local extension is installed or enabled in Podman Desktop but
+the `crc` executable is not visible to this extension host, the CRC
+prerequisite is still considered satisfied and is shown as **Managed by Podman
+Desktop**. Extension change events refresh the prerequisite card so installing
+or enabling OpenShift Local updates the dashboard without requiring a full
+restart. The AAP Demo extension never downloads or installs CRC itself and
+never supplies the Red Hat pull secret automatically. The developer-only
+Node.js/npm install offer likewise uses a visible terminal so package-manager
+and administrator prompts remain under the user's control.

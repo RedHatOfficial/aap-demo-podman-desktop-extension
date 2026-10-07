@@ -11,11 +11,13 @@ import {
   type AapDemoSettings,
 } from './aap-demo-service';
 import { formatCommandError } from './command-error';
+import { hasHostOpenAiKey } from './ao-key';
 import { getCliCheckoutAction } from './cli-checkout';
-import { CommandRunner } from './command-runner';
+import { CommandRunner, type CommandRunnerOptions } from './command-runner';
 import { detectCliVersion } from './cli-version';
 import { isDashboardMessage, type AoLlmProvider } from './dashboard-protocol';
 import { augmentPath, resolveConfiguredExecutable, resolveExecutablePath } from './executable-path';
+import { resolveHostCommand } from './host-command';
 import { isLocalExtensionCheckout } from './extension-updater';
 import { ExtensionSourceService, MissingRuntimeError } from './extension-source-service';
 import { resolveExtensionInstallLocation } from './extension-source';
@@ -34,6 +36,18 @@ import {
 } from './install-script';
 import { parseStatusOutput } from './status-parser';
 import { formatStatusBarText } from './status-bar';
+import { cleanTerminalOutput } from './terminal-output';
+
+type NavigationWithExtensionsCatalog = typeof extensionApi.navigation & {
+  navigateToExtensionsCatalog?: (options: { searchTerm?: string }) => Promise<void>;
+};
+
+function isOpenShiftLocalExtensionAvailable(): boolean {
+  return Boolean(
+    extensionApi.extensions.getExtension('redhat.openshift-local') ??
+    extensionApi.extensions.getExtension('crc-org.crc-extension'),
+  );
+}
 
 async function renderWebviewHtml(
   panel: WebviewPanel,
@@ -96,12 +110,13 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   const crcPath = configuration.get('crcPath', 'crc');
   const settings: AapDemoSettings = {
     cpus: configuration.get('cpus', 8),
+    environment: process.env,
     pullSecretPath: configuration.get('pullSecretPath', ''),
     memory: configuration.get('memory', 24_576),
     pathValue: augmentPath(),
   };
   const service = new AapDemoService(runner, cliPath, settings);
-  const cliVersion = await detectCliVersion(runner, cliPath);
+  const cliVersion = await detectCliVersion(runner, cliPath, settings.pathValue, process.env);
   const cliTool = extensionApi.cli.createCliTool({
     name: 'aap-demo',
     displayName: 'AAP Demo CLI',
@@ -131,10 +146,11 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       type: 'prerequisites',
       prerequisites: checkPrerequisites({
         cliPath,
+        crcExtensionAvailable: isOpenShiftLocalExtensionAvailable(),
         crcPath,
         installLocation: installLocationSetting,
         ...settings,
-      }),
+      }, settings.pathValue),
     });
   };
   const statusBar = extensionApi.window.createStatusBarItem(extensionApi.StatusBarAlignLeft, 100);
@@ -143,10 +159,13 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   statusBar.command = 'aap-demo.openDashboard';
   statusBar.show();
   extensionContext.subscriptions.push(statusBar);
+  extensionContext.subscriptions.push(extensionApi.extensions.onDidChange(() => {
+    void refreshPrerequisites();
+  }));
 
   const runAction = async (action: AapDemoAction, idleState?: boolean): Promise<void> => {
     const actionLabel = action === 'trust-ca' ? 'Fix SSL' : action;
-    if (!resolveExecutablePath(configuredCliPath, settings.pathValue)) {
+    if (!process.env.FLATPAK_ID && !resolveExecutablePath(configuredCliPath, settings.pathValue)) {
       statusBar.text = 'AAP Demo: CLI missing';
       statusBar.tooltip = 'Install the aap-demo CLI from the dashboard';
       await postDashboardMessage({ type: 'cli-missing' });
@@ -163,12 +182,12 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         onStdout: chunk => {
           console.log(`[aap-demo] ${chunk.trimEnd()}`);
           if (action !== 'status') {
-            void postDashboardMessage({ type: 'command-output', stream: 'stdout', text: chunk });
+            void postDashboardMessage({ type: 'command-output', stream: 'stdout', text: cleanTerminalOutput(chunk) });
           }
         },
         onStderr: chunk => {
           console.warn(`[aap-demo] ${chunk.trimEnd()}`);
-          void postDashboardMessage({ type: 'command-output', stream: 'stderr', text: chunk });
+          void postDashboardMessage({ type: 'command-output', stream: 'stderr', text: cleanTerminalOutput(chunk) });
         },
       });
 
@@ -203,15 +222,15 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     const action = mode === 'update' ? 'update-cli' : 'install-cli';
     const verb = mode === 'update' ? 'updated' : 'installed';
     const installLocation = resolveAapDemoSourceLocation(installLocationSetting);
-    const streamOptions = {
+    const streamOptions: CommandRunnerOptions = {
       env: { ...process.env, PATH: settings.pathValue, QUIET: 'true' },
       onStdout: (chunk: string) => {
         console.log(`[aap-demo install] ${chunk.trimEnd()}`);
-        void postDashboardMessage({ type: 'command-output', stream: 'stdout', text: chunk });
+        void postDashboardMessage({ type: 'command-output', stream: 'stdout', text: cleanTerminalOutput(chunk) });
       },
       onStderr: (chunk: string) => {
         console.warn(`[aap-demo install] ${chunk.trimEnd()}`);
-        void postDashboardMessage({ type: 'command-output', stream: 'stderr', text: chunk });
+        void postDashboardMessage({ type: 'command-output', stream: 'stderr', text: cleanTerminalOutput(chunk) });
       },
     };
     try {
@@ -246,9 +265,17 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
           `Install location already exists and is not a recognizable aap-demo source or Git checkout: ${installLocation}. The folder was left unchanged. Set aap-demo.installLocation to another directory.`,
         );
       }
+      const runHostCommand = (
+        command: string,
+        args: readonly string[],
+        options = streamOptions,
+      ) => {
+        const resolvedCommand = resolveHostCommand(command, settings.pathValue, process.env);
+        return runner.run(resolvedCommand.command, [...resolvedCommand.argsPrefix, ...args], options);
+      };
       const verifyTool = async (command: string): Promise<void> => {
         try {
-          await runner.run(command, ['--version'], { env: streamOptions.env });
+          await runHostCommand(command, ['--version'], { env: streamOptions.env });
         } catch (error) {
           const hint = installToolHint(command);
           if (hint) throw new Error(hint);
@@ -261,10 +288,10 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         await verifyTool(bashCommand);
       }
       if (checkoutAction === 'pull') {
-        await runner.run('git', ['-C', installLocation, 'pull', '--ff-only'], streamOptions);
+        await runHostCommand('git', ['-C', installLocation, 'pull', '--ff-only']);
       } else if (checkoutAction === 'clone') {
         mkdirSync(path.dirname(installLocation), { recursive: true });
-        await runner.run('git', ['clone', AAP_DEMO_REPOSITORY_URL, installLocation], streamOptions);
+        await runHostCommand('git', ['clone', AAP_DEMO_REPOSITORY_URL, installLocation]);
       }
       const installScriptPath = resolveInstallCliScriptPath(installLocation);
       if (!installScriptPath) {
@@ -274,7 +301,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         );
       }
       const installCommand = installCliCommand(installScriptPath);
-      const result = await runner.run(installCommand.command, installCommand.args, {
+      const result = await runHostCommand(installCommand.command, installCommand.args, {
         cwd: installLocation,
         ...streamOptions,
       });
@@ -296,11 +323,11 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   const sourceStreamOptions = (action: ExtensionSourceOperation) => ({
     onStdout: (chunk: string) => {
       console.log(`[aap-demo ${action}] ${chunk.trimEnd()}`);
-      void postDashboardMessage({ type: 'command-output', stream: 'stdout', text: chunk });
+      void postDashboardMessage({ type: 'command-output', stream: 'stdout', text: cleanTerminalOutput(chunk) });
     },
     onStderr: (chunk: string) => {
       console.warn(`[aap-demo ${action}] ${chunk.trimEnd()}`);
-      void postDashboardMessage({ type: 'command-output', stream: 'stderr', text: chunk });
+      void postDashboardMessage({ type: 'command-output', stream: 'stderr', text: cleanTerminalOutput(chunk) });
     },
   });
 
@@ -417,9 +444,15 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   ): Promise<void> => {
     try {
       let openAiApiKey = process.env.OPENAI_API_KEY?.trim() || readSavedAoOpenAiKey();
+      const hostHasOpenAiKey = action === 'enable'
+        && addon === 'ao'
+        && llmProvider === 'external'
+        && !openAiApiKey
+        ? await hasHostOpenAiKey(runner, aoLlmApiKeyFile, settings.pathValue, process.env)
+        : false;
       if (
         action === 'enable' && addon === 'ao' && llmProvider === 'external' &&
-        !openAiApiKey
+        !openAiApiKey && !hostHasOpenAiKey
       ) {
         const enteredKey = await extensionApi.window.showInputBox({
           title: 'AO with OpenAI',
@@ -454,11 +487,11 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         env: addonEnvironment,
         onStdout: chunk => {
           console.log(`[aap-demo] ${chunk.trimEnd()}`);
-          void postDashboardMessage({ type: 'command-output', stream: 'stdout', text: chunk });
+          void postDashboardMessage({ type: 'command-output', stream: 'stdout', text: cleanTerminalOutput(chunk) });
         },
         onStderr: chunk => {
           console.warn(`[aap-demo] ${chunk.trimEnd()}`);
-          void postDashboardMessage({ type: 'command-output', stream: 'stderr', text: chunk });
+          void postDashboardMessage({ type: 'command-output', stream: 'stderr', text: cleanTerminalOutput(chunk) });
         },
       });
       await postDashboardMessage({
@@ -527,21 +560,19 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         } else if (message.type === 'check-runtime') {
           await checkExtensionRuntime();
         } else if (message.type === 'open-crc-extension') {
-          const crcExtensionUri = extensionApi.Uri.parse(
-            'podman-desktop:extension/redhat.openshift-local',
-            true,
-          );
+          const navigationWithCatalog = extensionApi.navigation as NavigationWithExtensionsCatalog;
           try {
-            const opened = await extensionApi.env.openExternal(crcExtensionUri);
-            if (!opened) {
-              await extensionApi.window.showWarningMessage(
-                'Could not open the OpenShift Local extension page. In Podman Desktop, open Extensions → Catalog and search for OpenShift Local, then use its dashboard to install CRC.',
-              );
+            if (typeof navigationWithCatalog.navigateToExtensionsCatalog === 'function') {
+              await navigationWithCatalog.navigateToExtensionsCatalog({
+                searchTerm: 'OpenShift Local',
+              });
+              return;
             }
+            await extensionApi.navigation.navigateToResources();
           } catch (error) {
-            console.error('[aap-demo] Could not open the OpenShift Local extension page:', error);
+            console.error('[aap-demo] Could not open the Extensions catalog or Podman Desktop Resources:', error);
             await extensionApi.window.showWarningMessage(
-              'Could not open the OpenShift Local extension page. In Podman Desktop, open Extensions → Catalog and search for OpenShift Local, then use its dashboard to install CRC.',
+              'Could not open the Extensions catalog. Open the Extensions catalog and search for OpenShift Local.',
             );
           }
         } else if (message.type === 'addon') {

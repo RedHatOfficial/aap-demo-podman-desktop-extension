@@ -183,5 +183,11 @@ export function installToolHint(
   if (platform === 'win32' && (command === 'bash' || command === 'git')) {
     return 'Git for Windows is required to install aap-demo because it provides Git and Bash. Install it from https://git-scm.com/download/win or run `winget install --id Git.Git -e`, then restart Podman Desktop and try again.';
   }
+  if (command === 'git') {
+    return 'Git is required to install aap-demo. Install Git, restart Podman Desktop, and try again.';
+  }
+  if (command === 'bash') {
+    return 'Bash is required to install aap-demo. Install Bash, restart Podman Desktop, and try again.';
+  }
   return undefined;
 }

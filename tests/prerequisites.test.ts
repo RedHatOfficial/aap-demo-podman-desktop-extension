@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { checkPrerequisites } from '../src/prerequisites';
@@ -8,6 +8,7 @@ function withTemporaryExecutable<T>(callback: (executable: string, directory: st
   const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-prereq-'));
   const executable = path.join(directory, 'tool');
   writeFileSync(executable, '#!/bin/sh\n');
+  chmodSync(executable, 0o755);
   try {
     return callback(executable, directory);
   } finally {
@@ -50,6 +51,26 @@ describe('checkPrerequisites', () => {
         cpus: { value: 8, valid: true, minimum: 8 },
         pullSecret: { configured: true, exists: true, path: executable },
         memory: { value: 24576, valid: true, minimum: 16384 },
+        ready: true,
+      });
+    });
+  });
+
+  it('accepts the enabled OpenShift Local extension when the CRC command is not visible', () => {
+    withTemporaryExecutable((executable, directory) => {
+      expect(checkPrerequisites(
+        {
+          cliPath: executable,
+          crcExtensionAvailable: true,
+          crcPath: 'missing-crc',
+          cpus: 8,
+          installLocation: path.join(os.tmpdir(), 'aap-demo-install-location-does-not-exist'),
+          pullSecretPath: executable,
+          memory: 24576,
+        },
+        directory,
+      )).toMatchObject({
+        crc: { available: true },
         ready: true,
       });
     });

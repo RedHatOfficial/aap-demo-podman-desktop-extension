@@ -54,4 +54,28 @@ describe('formatCommandError', () => {
     expect(message).toContain('kubectl get csv,subscription,pods -n automation-orchestrator');
     expect(message).toContain('Operator deployment not Available after 5 minutes');
   });
+
+  it('explains how to restart the CRC daemon after setup is complete', () => {
+    const error = new CommandExecutionError('Command exited unsuccessfully: flatpak-spawn', {
+      exitCode: 1,
+      signal: null,
+      stderr: '',
+      stdout: [
+        "To confirm your system is ready, and you have the needed system bundle, please run 'crc setup' before 'crc start'.",
+        'Is \'crc daemon\' running? Cannot reach daemon API',
+        'ERROR: crc start failed',
+      ].join('\n'),
+    });
+
+    const message = formatCommandError(error);
+    expect(message).toContain('CRC setup is complete, but the CRC daemon is not running.');
+    expect(message).toContain(
+      'Open a terminal and run:\n\nsystemctl --user reset-failed crc-daemon.service && systemctl --user restart crc-http.socket crc-vsock.socket && crc status\n',
+    );
+    expect(message).toContain('If `crc status` says “Machine does not exist,” that is expected.');
+    expect(message).not.toContain('`systemctl');
+    expect(message).toContain('Return to Podman Desktop and select Deploy again.');
+    expect(message).not.toContain('Command exited unsuccessfully: flatpak-spawn');
+    expect(message).not.toContain('Is \'crc daemon\' running?');
+  });
 });

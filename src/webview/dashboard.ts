@@ -205,9 +205,15 @@ function renderCredentials(status: AapDemoStatus): void {
         copied = false;
       }
       if (!copied) {
-        password.select();
+        const copyBuffer = document.createElement('textarea');
+        copyBuffer.value = credential.password;
+        copyBuffer.setAttribute('readonly', '');
+        copyBuffer.style.position = 'fixed';
+        copyBuffer.style.opacity = '0';
+        document.body.append(copyBuffer);
+        copyBuffer.select();
         copied = document.execCommand('copy');
-        password.setSelectionRange(0, 0);
+        copyBuffer.remove();
       }
       copy.textContent = copied ? 'Copied' : 'Copy failed';
       window.setTimeout(() => { copy.textContent = 'Copy'; }, 1200);
@@ -316,13 +322,11 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
     {
       label: 'OpenShift Local (CRC)',
       valid: prerequisites.crc.available,
-      detail: prerequisites.crc.path ?? 'Not detected. If already installed, set aap-demo.crcPath.',
-      helpText: prerequisites.crc.available
-        ? undefined
-        : 'Open the OpenShift Local extension in Podman Desktop and follow its prompts to install the extension and CRC binaries. Then refresh prerequisites.',
-      helpUrl: prerequisites.crc.available
-        ? undefined
-        : 'https://podman-desktop.io/docs/openshift/openshift-local',
+      detail: prerequisites.crc.available
+        ? prerequisites.crc.path ?? 'Managed by Podman Desktop'
+        : 'Not detected. If already installed, set aap-demo.crcPath.',
+      helpText: undefined,
+      helpUrl: undefined,
       actionLabel: prerequisites.crc.available ? undefined : 'Install with Podman Desktop',
     },
     {
@@ -368,7 +372,7 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
       install.className = 'small primary prerequisite-action';
       install.type = 'button';
       install.textContent = check.actionLabel;
-      install.title = 'Open the OpenShift Local extension page in Podman Desktop. Confirm its installation there, then use its dashboard to install CRC.';
+      install.title = 'Install with Podman Desktop';
       install.addEventListener('click', () => {
         postToHost({ type: 'open-crc-extension' });
       });
@@ -552,7 +556,10 @@ window.addEventListener('message', event => {
       addonActions?.querySelectorAll('button').forEach(button => { button.disabled = false; });
     }
     if (statusDot) statusDot.className = 'status-dot error';
-    if (statusSummary) statusSummary.textContent = message.message ?? 'Command failed.';
+    if (statusSummary) {
+      const actionLabel = message.action === 'trust-ca' ? 'Fix SSL' : formatState(message.action ?? 'command');
+      statusSummary.textContent = `${actionLabel} failed. See command output for recovery steps.`;
+    }
   }
 });
 

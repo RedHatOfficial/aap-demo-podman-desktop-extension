@@ -125,6 +125,11 @@ describe('install locations', () => {
     expect(installToolHint('git', 'win32')).toContain('Git for Windows');
   });
 
+  it('explains missing POSIX tools for the aap-demo installer', () => {
+    expect(installToolHint('git', 'linux')).toContain('Git is required');
+    expect(installToolHint('bash', 'linux')).toContain('Bash is required');
+  });
+
   it('uses an existing aap-demo checkout at the configured location', () => {
     const parent = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-source-'));
     const checkout = path.join(parent, '.aap-demo');

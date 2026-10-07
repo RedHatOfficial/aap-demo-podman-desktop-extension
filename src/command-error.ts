@@ -1,4 +1,5 @@
 import { CommandExecutionError } from './command-runner';
+import { cleanTerminalOutput } from './terminal-output';
 
 function crcMemoryFailureGuidance(output: string): string | undefined {
   const memoryMatch = output.match(/unable to allocate\s+(\d+)\s+MB of RAM/i);
@@ -21,15 +22,36 @@ function aoOperatorTimeoutGuidance(output: string): string | undefined {
   ].join('\n');
 }
 
+function crcDaemonGuidance(output: string): string | undefined {
+  if (
+    !/crc daemon.*cannot reach daemon api/i.test(output)
+    || !/crc start failed/i.test(output)
+  ) {
+    return undefined;
+  }
+
+  return [
+    'CRC setup is complete, but the CRC daemon is not running.',
+    'Open a terminal and run:',
+    '',
+    'systemctl --user reset-failed crc-daemon.service && systemctl --user restart crc-http.socket crc-vsock.socket && crc status',
+    '',
+    'If `crc status` says “Machine does not exist,” that is expected. It means the daemon is ready and the cluster has not been created yet. Return to Podman Desktop and select Deploy again.',
+  ].join('\n');
+}
+
 export function formatCommandError(error: unknown): string {
   if (error instanceof CommandExecutionError) {
     const output = [error.stderr, error.stdout]
-      .map(value => value.trim())
+      .map(value => cleanTerminalOutput(value).trim())
       .filter(Boolean);
     const commandOutput = output.join('\n');
+    const daemonGuidance = crcDaemonGuidance(commandOutput);
     const guidance = crcMemoryFailureGuidance(commandOutput)
+      ?? daemonGuidance
       ?? aoOperatorTimeoutGuidance(commandOutput);
     if (guidance) {
+      if (daemonGuidance) return daemonGuidance;
       return [guidance, error.message, commandOutput].filter(Boolean).join('\n');
     }
     return [error.message, ...output].join('\n');

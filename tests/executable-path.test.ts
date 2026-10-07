@@ -1,8 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { augmentPath, resolveConfiguredExecutable, resolveExecutablePath } from '../src/executable-path';
+import {
+  augmentPath,
+  crcCacheExecutableDirectories,
+  resolveConfiguredExecutable,
+  resolveExecutablePath,
+} from '../src/executable-path';
 
 const temporaryRoots: string[] = [];
 
@@ -10,6 +15,7 @@ function createExecutable(name: string): { directory: string; executable: string
   const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-path-'));
   const executable = path.join(directory, name);
   writeFileSync(executable, '#!/bin/sh\n');
+  chmodSync(executable, 0o755);
   return { directory, executable };
 }
 
@@ -98,5 +104,19 @@ describe('augmentPath', () => {
       path.join(os.homedir(), '.crc', 'bin'),
       path.join(os.homedir(), '.local', 'bin'),
     ]));
+  });
+});
+
+describe('crcCacheExecutableDirectories', () => {
+  it('finds CRC cache directories containing the OpenShift client', () => {
+    const home = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-crc-cache-home-'));
+    temporaryRoots.push(home);
+    const crcCache = path.join(home, '.crc', 'cache', 'crc_libvirt_4.21.14_amd64');
+    mkdirSync(crcCache, { recursive: true });
+    const oc = path.join(crcCache, 'oc');
+    writeFileSync(oc, '#!/bin/sh\n');
+    chmodSync(oc, 0o755);
+
+    expect(crcCacheExecutableDirectories(home)).toEqual([crcCache]);
   });
 });

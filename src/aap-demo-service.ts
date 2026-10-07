@@ -2,12 +2,14 @@ import type {
   CommandResult,
   CommandRunnerOptions,
 } from './command-runner';
+import { resolveHostCommand } from './host-command';
 
 export type AapDemoAction = 'create' | 'start' | 'deploy' | 'stop' | 'destroy' | 'status' | 'idle' | 'diagnose' | 'repair' | 'trust-ca';
 export type AddonAction = 'enable' | 'disable';
 
 export interface AapDemoSettings {
   cpus?: number;
+  environment?: NodeJS.ProcessEnv;
   pullSecretPath?: string;
   memory?: number;
   pathValue?: string;
@@ -40,8 +42,14 @@ export class AapDemoService {
     const args = action === 'idle'
       ? ['idle', String(idleState ?? true)]
       : [action];
+    const optionsWithSettings = this.withSettings(options);
+    const command = this.resolveCliCommand(optionsWithSettings?.env);
 
-    return this.executor.run(this.cliPath, args, this.withSettings(options));
+    return this.executor.run(
+      command.command,
+      [...command.argsPrefix, ...args],
+      optionsWithSettings,
+    );
   }
 
   runAddon(
@@ -49,7 +57,58 @@ export class AapDemoService {
     addon: string,
     options?: CommandRunnerOptions,
   ): Promise<CommandResult> {
-    return this.executor.run(this.cliPath, [action, addon], this.withSettings(options));
+    const optionsWithSettings = this.withSettings(options);
+    const command = this.resolveCliCommand(optionsWithSettings?.env);
+    return this.executor.run(
+      command.command,
+      [...command.argsPrefix, action, addon],
+      optionsWithSettings,
+    );
+  }
+
+  private resolveCliCommand(env?: NodeJS.ProcessEnv): ReturnType<typeof resolveHostCommand> {
+    const environment = this.settings.environment ?? process.env;
+    if (!environment.FLATPAK_ID) {
+      return { command: this.cliPath, argsPrefix: [] };
+    }
+
+    const command = resolveHostCommand(
+      this.cliPath,
+      this.settings.pathValue,
+      environment,
+    );
+    return {
+      command: command.command,
+      argsPrefix: this.withFlatpakHostEnvironment(command.argsPrefix, env),
+    };
+  }
+
+  private withFlatpakHostEnvironment(
+    argsPrefix: string[],
+    env: NodeJS.ProcessEnv = {},
+  ): string[] {
+    if (argsPrefix[0] !== '--host') return argsPrefix;
+    const hostEnvironmentKeys = [
+      'QUIET',
+      'PYTHONIOENCODING',
+      'PYTHONUTF8',
+      'PULL_SECRET_PATH',
+      'CRC_CPUS',
+      'CRC_MEMORY',
+      'PATH',
+      'AO_LLM_PROVIDER',
+      'AO_LLM_MODEL',
+      'AO_LLM_BASE_URL',
+      'AO_LLM_API_KEY_FILE',
+      'OPENAI_API_KEY',
+    ];
+    const hostEnvironmentArgs = hostEnvironmentKeys
+      .flatMap(key => {
+        const value = env[key];
+        return value === undefined ? [] : [`--env=${key}=${value}`];
+      });
+
+    return [...hostEnvironmentArgs, '--host', ...argsPrefix.slice(1)];
   }
 
   private withSettings(options?: CommandRunnerOptions): CommandRunnerOptions | undefined {
