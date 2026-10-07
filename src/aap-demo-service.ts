@@ -101,6 +101,7 @@ export class AapDemoService {
       'AO_LLM_BASE_URL',
       'AO_LLM_API_KEY_FILE',
       'OPENAI_API_KEY',
+      'GALAXY_TOKEN_FILE',
     ];
     const hostEnvironmentArgs = hostEnvironmentKeys
       .flatMap(key => {

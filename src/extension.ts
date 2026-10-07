@@ -18,6 +18,7 @@ import { detectCliVersion } from './cli-version';
 import { isDashboardMessage, type AoLlmProvider } from './dashboard-protocol';
 import { augmentPath, resolveConfiguredExecutable, resolveExecutablePath } from './executable-path';
 import { resolveHostCommand } from './host-command';
+import { hasHostFile } from './host-file';
 import { isLocalExtensionCheckout } from './extension-updater';
 import { ExtensionSourceService, MissingRuntimeError } from './extension-source-service';
 import { resolveExtensionInstallLocation } from './extension-source';
@@ -107,6 +108,10 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     : aoLlmApiKeyFileSetting.startsWith('~/') || aoLlmApiKeyFileSetting.startsWith('~\\')
       ? path.join(os.homedir(), aoLlmApiKeyFileSetting.slice(2))
       : aoLlmApiKeyFileSetting;
+  const galaxyTokenFile = process.env.GALAXY_TOKEN_FILE || path.join(
+    process.env.AAP_DEMO_DIR || path.join(os.homedir(), '.aap-demo'),
+    'galaxy-token',
+  );
   const crcPath = configuration.get('crcPath', 'crc');
   const settings: AapDemoSettings = {
     cpus: configuration.get('cpus', 8),
@@ -443,6 +448,34 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     llmProvider?: AoLlmProvider,
   ): Promise<void> => {
     try {
+      const hasGalaxyToken = action === 'enable' && addon === 'setup-pah'
+        ? await hasHostFile(runner, galaxyTokenFile, settings.pathValue, process.env)
+        : true;
+      if (action === 'enable' && addon === 'setup-pah' && !hasGalaxyToken) {
+        await extensionApi.env.openExternal(
+          extensionApi.Uri.parse('https://console.redhat.com/ansible/automation-hub/token', true),
+        );
+        await extensionApi.window.showInformationMessage(
+          [
+            'Setting up Private Automation Hub...',
+            '',
+            'Opening browser to Red Hat Automation Hub...',
+            '',
+            'Steps:',
+            '  1. Log in with your Red Hat account',
+            "  2. Click 'Load token' button",
+            "  3. Copy the 'Offline Token' (long base64 string, ~1500 characters)",
+            '  4. Run this command to save it:',
+            '',
+            '     echo "YOUR_OFFLINE_TOKEN" > ~/.aap-demo/galaxy-token',
+            '     chmod 600 ~/.aap-demo/galaxy-token',
+            '',
+            '  5. Re-run: aap-demo enable setup-pah',
+          ].join('\n'),
+        );
+        await runAction('status');
+        return;
+      }
       let openAiApiKey = process.env.OPENAI_API_KEY?.trim() || readSavedAoOpenAiKey();
       const hostHasOpenAiKey = action === 'enable'
         && addon === 'ao'
@@ -473,6 +506,9 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         ...process.env,
         PATH: settings.pathValue,
       };
+      if (action === 'enable' && addon === 'setup-pah') {
+        addonEnvironment.GALAXY_TOKEN_FILE = galaxyTokenFile;
+      }
       if (action === 'enable' && addon === 'ao' && llmProvider) {
         addonEnvironment.AO_LLM_PROVIDER = llmProvider;
         if (llmProvider === 'external') {
