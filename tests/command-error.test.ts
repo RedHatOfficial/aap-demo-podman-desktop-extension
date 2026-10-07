@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CommandExecutionError } from '../src/command-runner';
-import { formatCommandError } from '../src/command-error';
+import { formatAapDemoActionError, formatCommandError } from '../src/command-error';
 
 describe('formatCommandError', () => {
   it('includes captured stderr and stdout from a failed command', () => {
@@ -191,5 +191,30 @@ describe('formatCommandError', () => {
     expect(message).toContain('aap-demo enable product-demos');
     expect(message).not.toContain('Command exited unsuccessfully: flatpak-spawn');
     expect(message).not.toContain('Retrieving AAP connection details');
+  });
+
+  it('explains when macOS needs trust-ca to run from an interactive Terminal', () => {
+    expect(formatAapDemoActionError(
+      'trust-ca',
+      'SecTrustSettingsSetTrustSettings: no user interaction was possible',
+      'darwin',
+    )).toContain('Run `aap-demo trust-ca` in Terminal');
+  });
+
+  it('uses the configured CLI path in macOS trust guidance', () => {
+    expect(formatAapDemoActionError(
+      'trust-ca',
+      'no user interaction was possible',
+      'darwin',
+      '/custom/bin/aap-demo',
+    )).toContain('Run `/custom/bin/aap-demo trust-ca` in Terminal');
+  });
+
+  it('does not add macOS guidance to unrelated actions', () => {
+    expect(formatAapDemoActionError(
+      'repair',
+      'no user interaction was possible',
+      'darwin',
+    )).toBe('no user interaction was possible');
   });
 });

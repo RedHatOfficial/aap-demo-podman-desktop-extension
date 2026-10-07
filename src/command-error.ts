@@ -148,3 +148,19 @@ export function formatCommandError(error: unknown): string {
 
   return error instanceof Error ? error.message : String(error);
 }
+
+export function formatAapDemoActionError(
+  action: string,
+  message: string,
+  platform: NodeJS.Platform = process.platform,
+  cliPath = 'aap-demo',
+): string {
+  if (
+    action === 'trust-ca'
+    && platform === 'darwin'
+    && message.toLowerCase().includes('no user interaction was possible')
+  ) {
+    return `macOS could not show the Keychain authorization prompt from Podman Desktop. Run \`${cliPath} trust-ca\` in Terminal, approve the prompt, then refresh status.`;
+  }
+  return message;
+}

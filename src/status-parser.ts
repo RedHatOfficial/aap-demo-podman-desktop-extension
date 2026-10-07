@@ -36,6 +36,12 @@ function parseCluster(value: string): AapDemoStatus['cluster'] {
   return name ? { state, name } : { state };
 }
 
+function combineTrustStates(states: Array<IngressCaTrustState | undefined>): IngressCaTrustState | undefined {
+  if (states.includes('not-trusted')) return 'not-trusted';
+  if (states.includes('unknown')) return 'unknown';
+  return states.find(Boolean);
+}
+
 export function parseStatusOutput(output: string): AapDemoStatus {
   const status: AapDemoStatus = {
     cluster: { state: 'unknown' },
@@ -129,6 +135,7 @@ export function parseStatusOutput(output: string): AapDemoStatus {
     }
   }
 
-  status.ingressCaTrust = browserTrust ?? systemTrust;
+  const ingressCaTrust = combineTrustStates([systemTrust, browserTrust]);
+  if (ingressCaTrust) status.ingressCaTrust = ingressCaTrust;
   return status;
 }
