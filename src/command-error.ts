@@ -61,8 +61,9 @@ function crcSshUnavailableGuidance(output: string): string | undefined {
   if (!normalized.includes('crc ssh not available after 3 minutes')) return undefined;
 
   return [
-    'OpenShift Local found the existing MicroShift VM, but its SSH service did not become available.',
-    'Open a terminal and run:',
+    'This is an OpenShift Local startup issue. The existing MicroShift VM was found, but its SSH service did not become available.',
+    'Open the OpenShift Local extension in Podman Desktop, stop the cluster, then start it again. Return here and retry Deploy.',
+    'If the restart does not resolve the issue, open a terminal and run:',
     '',
     'crc status',
     'cat /tmp/crc-start.log',

@@ -94,7 +94,9 @@ describe('formatCommandError', () => {
     });
 
     const message = formatCommandError(error);
-    expect(message).toContain('OpenShift Local found the existing MicroShift VM');
+    expect(message).toContain('This is an OpenShift Local startup issue.');
+    expect(message).toContain('Open the OpenShift Local extension in Podman Desktop, stop the cluster, then start it again.');
+    expect(message).toContain('existing MicroShift VM was found');
     expect(message).toContain('crc status\ncat /tmp/crc-start.log');
     expect(message).toContain('run `crc stop`');
     expect(message).not.toContain('Command exited unsuccessfully: flatpak-spawn');
