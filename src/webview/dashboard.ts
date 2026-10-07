@@ -43,6 +43,12 @@ interface DashboardRuntimeTerminalOpenedMessage {
   packageManager: string;
 }
 
+interface DashboardTrustCaTerminalOpenedMessage {
+  type: 'trust-ca-terminal-opened';
+  action: 'trust-ca';
+  message: string;
+}
+
 interface DashboardExtensionSetupCompleteMessage {
   type: 'extension-setup-complete';
   path: string;
@@ -515,7 +521,7 @@ checkRuntime?.addEventListener('click', () => {
 });
 
 window.addEventListener('message', event => {
-  const message = unwrapDashboardMessage(event.data) as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardExtensionMessage | DashboardRuntimeRequiredMessage | DashboardRuntimeInstallUnavailableMessage | DashboardRuntimeTerminalOpenedMessage | DashboardExtensionSetupCompleteMessage | DashboardPahTokenRequestMessage | DashboardCommandMessage | DashboardCliMessage;
+  const message = unwrapDashboardMessage(event.data) as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardExtensionMessage | DashboardRuntimeRequiredMessage | DashboardRuntimeInstallUnavailableMessage | DashboardRuntimeTerminalOpenedMessage | DashboardTrustCaTerminalOpenedMessage | DashboardExtensionSetupCompleteMessage | DashboardPahTokenRequestMessage | DashboardCommandMessage | DashboardCliMessage;
   if (!message || typeof message !== 'object' || typeof message.type !== 'string') return;
   if (message.type === 'pah-token-request') {
     showPahTokenDialog();
@@ -593,6 +599,11 @@ window.addEventListener('message', event => {
       checkRuntime.hidden = false;
       checkRuntime.disabled = false;
     }
+    return;
+  }
+  if (message.type === 'trust-ca-terminal-opened') {
+    writeOutput(message.message ?? 'A terminal opened for Fix SSL. Approve the macOS prompt there.');
+    if (statusSummary) statusSummary.textContent = 'Fix SSL is waiting for approval in Terminal.';
     return;
   }
   if (message.type === 'extension-setup-complete') {

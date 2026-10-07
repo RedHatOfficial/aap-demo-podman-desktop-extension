@@ -26,6 +26,7 @@ import {
   getRuntimeInstallPlan,
   launchRuntimeInstall,
 } from './runtime-installer';
+import { launchTrustCaInTerminal } from './trust-ca-terminal';
 import { checkPrerequisites } from './prerequisites';
 import {
   AAP_DEMO_REPOSITORY_URL,
@@ -195,6 +196,25 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         await extensionApi.window.showWarningMessage(
           'The aap-demo CLI is not installed. Open the AAP Demo dashboard and select Install aap-demo.',
         );
+      }
+      return;
+    }
+
+    if (action === 'trust-ca' && process.platform === 'darwin') {
+      try {
+        await launchTrustCaInTerminal(cliPath, settings.pathValue ?? process.env.PATH ?? '');
+        await postDashboardMessage({
+          type: 'trust-ca-terminal-opened',
+          action,
+          message: 'A terminal opened for Fix SSL. Approve the macOS password or Keychain prompt there, then fully quit and reopen your browser.',
+        });
+        await extensionApi.window.showInformationMessage(
+          'A terminal opened for AAP Demo Fix SSL. Approve the macOS prompt there.',
+        );
+      } catch (error) {
+        const message = formatCommandError(error);
+        await postDashboardMessage({ type: 'command-error', action, message });
+        await extensionApi.window.showWarningMessage(`AAP Demo ${actionLabel} failed: ${message}`);
       }
       return;
     }
