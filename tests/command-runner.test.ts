@@ -48,6 +48,13 @@ describe('CommandRunner', () => {
     await expect(runner.run('')).rejects.toThrow('Cannot execute an empty command');
   });
 
+  it('rejects dynamic shell execution', async () => {
+    const runner = new CommandRunner();
+    await expect(runner.run(process.execPath, [], { shell: true })).rejects.toThrow(
+      'Shell execution is not supported for dynamic commands',
+    );
+  });
+
   it.runIf(process.platform === 'win32')('runs Windows command shims through the shell', async () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-cmd-'));
     temporaryRoots.push(directory);

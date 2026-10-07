@@ -99,13 +99,13 @@ export class ExtensionSourceService {
     if (nodeMajor < 24) throw new MissingRuntimeError('node', 'outdated', nodeMajor);
 
     try {
-      await this.run(npmCommand, ['--version'], streams, undefined, windows);
+      await this.run(npmCommand, ['--version'], streams);
     } catch {
       throw new MissingRuntimeError('npm', 'missing');
     }
 
-    await this.run(npmCommand, ['ci'], streams, checkoutPath, windows);
-    return this.run(npmCommand, ['run', 'build'], streams, checkoutPath, windows);
+    await this.run(npmCommand, ['ci'], streams, checkoutPath);
+    return this.run(npmCommand, ['run', 'build'], streams, checkoutPath);
   }
 
   private run(
@@ -113,14 +113,12 @@ export class ExtensionSourceService {
     args: readonly string[],
     streams: ExtensionSourceStreams = {},
     cwd?: string,
-    shell = false,
   ): Promise<CommandResult> {
     const options: CommandRunnerOptions = {
       env: { ...process.env, PATH: this.options.pathValue },
       ...streams,
     };
     if (cwd) options.cwd = cwd;
-    if (shell) options.shell = true;
     return this.executor.run(command, args, options).catch(error => {
       const message = error instanceof Error ? error.message : String(error);
       if (command === 'git' && /\bENOENT\b/.test(message)) {

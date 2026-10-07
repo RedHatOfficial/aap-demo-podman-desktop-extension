@@ -35,8 +35,12 @@ export class CommandExecutionError extends Error {
   }
 }
 
-function windowsShellQuote(value: string): string {
-  return `"${value.replaceAll('"', '\\"')}"`;
+function windowsCommandQuote(value: string): string {
+  if (/[\u0000-\u001f%!]/.test(value)) {
+    throw new Error('Windows command arguments cannot contain control characters, % or !.');
+  }
+  const escaped = value.replace(/[&|<>()^]/g, '^$&').replaceAll('"', '\\"');
+  return `"${escaped}"`;
 }
 
 export class CommandRunner {
@@ -62,12 +66,24 @@ export class CommandRunner {
       let argsToSpawn = args;
       if (
         process.platform === 'win32'
-        && spawnOptions.shell === undefined
         && ['.bat', '.cmd'].includes(path.extname(command).toLowerCase())
       ) {
-        spawnOptions.shell = true;
-        commandToSpawn = [command, ...args].map(windowsShellQuote).join(' ');
-        argsToSpawn = [];
+        commandToSpawn = process.env.ComSpec ?? 'cmd.exe';
+        argsToSpawn = [
+          '/d',
+          '/s',
+          '/c',
+          [command, ...args].map(windowsCommandQuote).join(' '),
+        ];
+      } else if (spawnOptions.shell) {
+        return reject(
+          new CommandExecutionError('Shell execution is not supported for dynamic commands', {
+            exitCode: null,
+            signal: null,
+            stdout: '',
+            stderr: '',
+          }),
+        );
       }
       const child = spawn(commandToSpawn, argsToSpawn, spawnOptions);
       if (input !== undefined) child.stdin?.end(input);

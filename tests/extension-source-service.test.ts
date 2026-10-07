@@ -171,7 +171,7 @@ describe('ExtensionSourceService', () => {
     expect(executor.calls.map(call => call.command)).toEqual(['git', 'node', 'npm']);
   });
 
-  it('runs the Windows npm command file through the shell', async () => {
+  it('runs the Windows npm command file without requesting shell execution', async () => {
     const executor = new RecordingExecutor({
       'node --version': 'v24.0.0',
       'npm.cmd --version': '11.0.0',
@@ -181,6 +181,6 @@ describe('ExtensionSourceService', () => {
 
     const npmCalls = executor.calls.filter(call => call.command === 'npm.cmd');
     expect(npmCalls.map(call => call.args)).toEqual([['--version'], ['ci'], ['run', 'build']]);
-    expect(npmCalls.every(call => call.options?.shell === true)).toBe(true);
+    expect(npmCalls.every(call => call.options?.shell === undefined)).toBe(true);
   });
 });

@@ -50,9 +50,16 @@ The implementation uses a small shell wrapper for the secret handoff and
 requires `/bin/sh` on the host. The non-Flatpak path continues to use local
 filesystem APIs and rejects symlink targets before writing.
 
+The command runner does not enable dynamic shell execution. Windows `.cmd`
+and `.bat` shims are invoked through `cmd.exe` with validated and quoted
+arguments; other commands use direct process spawning with argument arrays.
+This keeps configured checkout paths and command arguments from becoming shell
+source while preserving the Windows npm workflow.
+
 ## Validation
 
 Unit tests cover selected environment forwarding, Flatpak host-bridge absence,
-symlink-safe host-file command construction, and the guarantee that an OpenAI
-API key is absent from Flatpak arguments and the child environment. Full
-validation uses `npm test`, `npm run typecheck`, and `npm run build`.
+symlink-safe host-file command construction, the guarantee that an OpenAI API
+key is absent from Flatpak arguments and the child environment, and rejection
+of dynamic shell execution. Full validation uses `npm test`,
+`npm run typecheck`, and `npm run build`.
