@@ -97,6 +97,19 @@ describe('AapDemoService', () => {
     expect(executor.calls[0]?.options?.env?.QUIET).toBe('true');
   });
 
+  it('skips interactive CA trust setup for silent actions but not Repair or Fix SSL', async () => {
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor);
+
+    await service.run('deploy');
+    await service.run('repair');
+    await service.run('trust-ca');
+
+    expect(executor.calls[0]?.options?.env?.AAP_DEMO_TRUST_CA).toBe('false');
+    expect(executor.calls[1]?.options?.env?.AAP_DEMO_TRUST_CA).toBeUndefined();
+    expect(executor.calls[2]?.options?.env?.AAP_DEMO_TRUST_CA).toBeUndefined();
+  });
+
   it('forces Python UTF-8 output for Windows provisioning helpers', async () => {
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor);
@@ -170,6 +183,7 @@ describe('AapDemoService', () => {
       command: executable,
       args: [
         '--env=QUIET=true',
+        '--env=AAP_DEMO_TRUST_CA=false',
         '--env=PYTHONIOENCODING=utf-8',
         '--env=PYTHONUTF8=1',
         '--env=PATH=' + directory,
@@ -227,6 +241,7 @@ describe('AapDemoService', () => {
       command: executable,
       args: [
         '--env=QUIET=true',
+        '--env=AAP_DEMO_TRUST_CA=false',
         '--env=PYTHONIOENCODING=utf-8',
         '--env=PYTHONUTF8=1',
         '--env=PATH=' + directory,

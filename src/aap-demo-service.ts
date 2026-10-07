@@ -42,7 +42,10 @@ export class AapDemoService {
     const args = action === 'idle'
       ? ['idle', String(idleState ?? true)]
       : [action];
-    const optionsWithSettings = this.withSettings(options);
+    const optionsWithSettings = this.withSettings(
+      options,
+      action !== 'trust-ca' && action !== 'repair',
+    );
     const command = this.resolveCliCommand(optionsWithSettings?.env);
 
     return this.executor.run(
@@ -57,7 +60,7 @@ export class AapDemoService {
     addon: string,
     options?: CommandRunnerOptions,
   ): Promise<CommandResult> {
-    const optionsWithSettings = this.withSettings(options);
+    const optionsWithSettings = this.withSettings(options, true);
     const command = this.resolveCliCommand(optionsWithSettings?.env);
     const addonArgs = [action, addon];
     if (command.argsPrefix.includes('--host') && optionsWithSettings?.env?.OPENAI_API_KEY) {
@@ -108,6 +111,7 @@ export class AapDemoService {
   ): string[] {
     const hostEnvironmentKeys = [
       'QUIET',
+      'AAP_DEMO_TRUST_CA',
       'PYTHONIOENCODING',
       'PYTHONUTF8',
       'PULL_SECRET_PATH',
@@ -123,13 +127,19 @@ export class AapDemoService {
     return forwardHostEnvironment(argsPrefix, env, hostEnvironmentKeys);
   }
 
-  private withSettings(options?: CommandRunnerOptions): CommandRunnerOptions | undefined {
+  private withSettings(
+    options?: CommandRunnerOptions,
+    skipInteractiveTrustSetup = true,
+  ): CommandRunnerOptions | undefined {
     const configuredEnvironment: NodeJS.ProcessEnv = {
       ...(options?.env ?? process.env),
       PYTHONIOENCODING: 'utf-8',
       PYTHONUTF8: '1',
       QUIET: 'true',
     };
+    if (skipInteractiveTrustSetup) {
+      configuredEnvironment.AAP_DEMO_TRUST_CA = 'false';
+    }
     if (this.settings.pullSecretPath) {
       configuredEnvironment.PULL_SECRET_PATH = this.settings.pullSecretPath;
     }
