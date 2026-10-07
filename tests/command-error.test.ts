@@ -78,4 +78,25 @@ describe('formatCommandError', () => {
     expect(message).not.toContain('Command exited unsuccessfully: flatpak-spawn');
     expect(message).not.toContain('Is \'crc daemon\' running?');
   });
+
+  it('explains how to register an AAP subscription before Product Demos', () => {
+    const error = new CommandExecutionError('Command exited unsuccessfully: flatpak-spawn', {
+      exitCode: 1,
+      signal: null,
+      stderr: '',
+      stdout: [
+        'AAP URL: https://aap-aap-operator.apps.127.0.0.1.nip.io',
+        'ERROR: AAP does not have a registered subscription.',
+        'Log into AAP and register a subscription (Settings → Subscription), then re-run: aap-demo enable product-demos',
+      ].join('\n'),
+    });
+
+    const message = formatCommandError(error);
+    expect(message).toContain('Product Demos cannot start until AAP has a registered subscription.');
+    expect(message).toContain('https://aap-aap-operator.apps.127.0.0.1.nip.io');
+    expect(message).toContain('Settings → Subscription');
+    expect(message).toContain('aap-demo enable product-demos');
+    expect(message).not.toContain('Command exited unsuccessfully: flatpak-spawn');
+    expect(message).not.toContain('Retrieving AAP connection details');
+  });
 });

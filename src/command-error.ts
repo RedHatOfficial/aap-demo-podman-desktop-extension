@@ -22,6 +22,19 @@ function aoOperatorTimeoutGuidance(output: string): string | undefined {
   ].join('\n');
 }
 
+function productDemosSubscriptionGuidance(output: string): string | undefined {
+  if (!/AAP does not have a registered subscription/i.test(output)) return undefined;
+
+  const aapUrl = output.match(/AAP URL:\s*(?:\[\s*)?(https?:\/\/[^\s\])]+)/i)?.[1]
+    ?? 'https://aap-aap-operator.apps.127.0.0.1.nip.io';
+  return [
+    'Product Demos cannot start until AAP has a registered subscription.',
+    `Open AAP: ${aapUrl}`,
+    'In AAP, go to Settings → Subscription and register or attach your subscription.',
+    'Return to Podman Desktop and enable Product Demos again, or run: aap-demo enable product-demos',
+  ].join('\n');
+}
+
 function crcDaemonGuidance(output: string): string | undefined {
   if (
     !/crc daemon.*cannot reach daemon api/i.test(output)
@@ -47,11 +60,14 @@ export function formatCommandError(error: unknown): string {
       .filter(Boolean);
     const commandOutput = output.join('\n');
     const daemonGuidance = crcDaemonGuidance(commandOutput);
+    const productDemosGuidance = productDemosSubscriptionGuidance(commandOutput);
     const guidance = crcMemoryFailureGuidance(commandOutput)
       ?? daemonGuidance
-      ?? aoOperatorTimeoutGuidance(commandOutput);
+      ?? aoOperatorTimeoutGuidance(commandOutput)
+      ?? productDemosGuidance;
     if (guidance) {
       if (daemonGuidance) return daemonGuidance;
+      if (productDemosGuidance) return productDemosGuidance;
       return [guidance, error.message, commandOutput].filter(Boolean).join('\n');
     }
     return [error.message, ...output].join('\n');
