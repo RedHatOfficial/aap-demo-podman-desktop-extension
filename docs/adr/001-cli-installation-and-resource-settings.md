@@ -44,6 +44,9 @@ available, CLI actions and install/update helper commands are delegated through
 tools such as `crc`, Git, Bash, `oc`, and `kubectl` instead of failing inside
 the sandbox. If Git or Bash is still unavailable, the dashboard reports the
 missing tool directly instead of surfacing a raw `spawn ... ENOENT` error.
+The augmented `PATH` is forwarded to host-side Git, Bash, and install commands
+as well as to `aap-demo`, so user-local binaries and CRC's cached `oc` remain
+visible after crossing the host boundary.
 AO provider selection and its external-provider settings are forwarded through
 the same host bridge, so choosing OpenAI does not fall back to a host-side
 Ollama default.
@@ -89,6 +92,9 @@ OpenAI**, **AO with Ollama**, and **AO no AI**. The OpenAI action reads
 not already present, the extension collects it in a masked input. It passes
 the key only to the CLI process; the CLI stores it in the configured key file
 with restricted permissions. The key itself is not a Podman Desktop setting.
+A previously saved key is reused, so enabling AO again does not prompt for it
+unnecessarily. The Flatpak secret-handling and host-file safety rules are
+recorded in [ADR-004](004-flatpak-host-bridge-and-secret-handling.md).
 
 CPU and memory changes affect CRC when the cluster is created or recreated;
 they do not resize an already-running VM automatically.

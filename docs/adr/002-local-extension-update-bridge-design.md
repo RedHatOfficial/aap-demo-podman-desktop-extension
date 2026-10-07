@@ -120,6 +120,9 @@ promise automatic updates.
 
 ## Safety and failure behavior
 
+Flatpak host-command, environment, secret, and host-file behavior is defined
+in [ADR-004](004-flatpak-host-bridge-and-secret-handling.md).
+
 - Source cloning and npm lifecycle/build commands run only after explicit user
   action.
 - Never automatically uninstall or replace either extension installation.

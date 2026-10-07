@@ -61,6 +61,8 @@
 - CRC cache directories containing an executable `oc` are included in the
   augmented PATH, allowing the existing aap-demo `kubectl` to `oc` fallback to
   work without requiring a separate `kubectl` install.
+- The complete Flatpak host-bridge and secret-handling decision is recorded in
+  [ADR-004](004-flatpak-host-bridge-and-secret-handling.md).
 
 ---
 
