@@ -63,6 +63,10 @@ recommending SCC commands against an unavailable OpenShift API.
 The same prerequisite handling applies to `aap-demo diagnose`: without a
 cluster, the dashboard directs the user to create one and does not expose the
 expected missing kubeconfig path as a separate failure.
+If CRC reports that its existing MicroShift VM is running but SSH is
+unavailable after the startup timeout, the dashboard instead directs the user
+to inspect `crc status` and `/tmp/crc-start.log`, then stop and restart CRC
+before retrying Deploy.
 
 The update action requires an existing Git checkout, runs `git pull --ff-only`,
 then repeats the install and refresh steps. Unrecognized existing directories

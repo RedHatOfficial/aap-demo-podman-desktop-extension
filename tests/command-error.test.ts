@@ -79,6 +79,28 @@ describe('formatCommandError', () => {
     expect(message).not.toContain('Is \'crc daemon\' running?');
   });
 
+  it('explains how to recover when CRC SSH is unavailable', () => {
+    const error = new CommandExecutionError('Command exited unsuccessfully: flatpak-spawn', {
+      exitCode: 1,
+      signal: null,
+      stderr: '',
+      stdout: [
+        'A CRC VM for MicroShift 4.22.13 is already running',
+        'Started the MicroShift cluster.',
+        'CRC SSH not available after 3 minutes',
+        'Check CRC status: crc status',
+        'Check CRC logs: cat /tmp/crc-start.log',
+      ].join('\n'),
+    });
+
+    const message = formatCommandError(error);
+    expect(message).toContain('OpenShift Local found the existing MicroShift VM');
+    expect(message).toContain('crc status\ncat /tmp/crc-start.log');
+    expect(message).toContain('run `crc stop`');
+    expect(message).not.toContain('Command exited unsuccessfully: flatpak-spawn');
+    expect(message).not.toContain('A CRC VM for MicroShift 4.22.13 is already running');
+  });
+
   it('explains that repair requires a cluster before applying SCC changes', () => {
     const error = new CommandExecutionError('Command exited unsuccessfully: flatpak-spawn', {
       exitCode: 1,

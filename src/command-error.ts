@@ -56,6 +56,21 @@ function crcDaemonGuidance(output: string): string | undefined {
   ].join('\n');
 }
 
+function crcSshUnavailableGuidance(output: string): string | undefined {
+  const normalized = output.toLowerCase();
+  if (!normalized.includes('crc ssh not available after 3 minutes')) return undefined;
+
+  return [
+    'OpenShift Local found the existing MicroShift VM, but its SSH service did not become available.',
+    'Open a terminal and run:',
+    '',
+    'crc status',
+    'cat /tmp/crc-start.log',
+    '',
+    'If CRC is still running but SSH is unavailable, run `crc stop`, wait for it to stop, then run `crc start`. Return to Podman Desktop and retry Deploy.',
+  ].join('\n');
+}
+
 function repairWithoutClusterGuidance(output: string): string | undefined {
   const normalized = output.toLowerCase();
   if (!normalized.includes('no cluster exists') || !normalized.includes('aap-demo create')) {
@@ -84,15 +99,18 @@ export function formatCommandError(error: unknown): string {
       .filter(Boolean);
     const commandOutput = output.join('\n');
     const daemonGuidance = crcDaemonGuidance(commandOutput);
+    const crcSshGuidance = crcSshUnavailableGuidance(commandOutput);
     const repairGuidance = repairWithoutClusterGuidance(commandOutput);
     const productDemosGuidance = productDemosSubscriptionGuidance(commandOutput);
     const guidance = crcMemoryFailureGuidance(commandOutput)
       ?? daemonGuidance
+      ?? crcSshGuidance
       ?? repairGuidance
       ?? aoOperatorTimeoutGuidance(commandOutput)
       ?? productDemosGuidance;
     if (guidance) {
       if (daemonGuidance) return daemonGuidance;
+      if (crcSshGuidance) return crcSshGuidance;
       if (repairGuidance) return repairGuidance;
       if (productDemosGuidance) return productDemosGuidance;
       return [guidance, error.message, commandOutput].filter(Boolean).join('\n');
