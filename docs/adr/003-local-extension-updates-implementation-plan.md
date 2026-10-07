@@ -2,6 +2,9 @@
 
 > Implementation is complete and automated checks pass. The manual
 > Podman Desktop OCI-to-local click-through in Task 5 remains to be verified.
+> Follow-up implementation on 2026-10-07 also completed the OpenShift Local
+> prerequisite refinements, Flatpak host-tool delegation, and CRC cache `oc`
+> discovery described below.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` or `superpowers:subagent-driven-development` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -35,6 +38,31 @@
 - No supported package manager is available, or install does not make Node/npm resolvable: preserve the checkout, explain the unmet requirement, and show manual next steps; test in Tasks 2 and 4.
 - User has no `aap-demo` CLI: extension-source setup still works because it must not call the CLI; exercise in Task 4.
 - Clone, pull, `npm ci`, or build fails: preserve the checkout, stream diagnostics, and permit retry; test in Task 2.
+- Podman Desktop is installed as a Flatpak: resolve Git/Bash normally first,
+  then use `flatpak-spawn --host` when host delegation is available.
+- OpenShift Local is managed by Podman Desktop: accept the installed/enabled
+  extension as a CRC prerequisite signal even if `crc` is not visible on PATH.
+- CRC provides `oc` in `~/.crc/cache`: add those cache directories to the
+  augmented PATH so the CLI's `kubectl` fallback can use `oc`.
+
+## Follow-up Implementation Notes: OpenShift Local and Host Tools
+
+- The OpenShift Local install action now uses Podman Desktop's Extensions
+  catalog navigation with `OpenShift Local` as the search term when the API is
+  available. Older APIs fall back to Resources.
+- The prerequisite row no longer shows the extra install-guide text or link.
+  It shows the button only when OpenShift Local is truly missing.
+- If Podman Desktop has the OpenShift Local extension available, the CRC
+  prerequisite is marked available and shown as `Managed by Podman Desktop`.
+- Extension change events trigger prerequisite refreshes so installing or
+  enabling OpenShift Local updates the dashboard.
+- Normal CLI actions and the CLI install/update path resolve host commands and
+  support Flatpak host delegation for `aap-demo`, Git, and Bash.
+- CRC cache directories containing an executable `oc` are included in the
+  augmented PATH, allowing the existing aap-demo `kubectl` to `oc` fallback to
+  work without requiring a separate `kubectl` install.
+- The complete Flatpak host-bridge and secret-handling decision is recorded in
+  [ADR-004](004-flatpak-host-bridge-and-secret-handling.md).
 
 ---
 

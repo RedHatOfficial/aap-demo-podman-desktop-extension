@@ -102,6 +102,15 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardSource).toContain('installCli.disabled = false');
   });
 
+  it('keeps detailed command errors out of the one-line status summary', () => {
+    expect(dashboardSource).toContain("statusSummary.textContent = `${actionLabel} failed. See command output for recovery steps.`;");
+  });
+
+  it('cleans terminal control sequences before streaming command output', () => {
+    expect(extensionSource).toContain("import { cleanTerminalOutput } from './terminal-output'");
+    expect(extensionSource).toContain('cleanTerminalOutput(chunk)');
+  });
+
   it('keeps Install aap-demo visible when the source is missing', () => {
     expect(dashboardSource).toContain(
       'installCli.hidden = prerequisites.cli.available && prerequisites.installScript.available',
@@ -141,6 +150,12 @@ describe('getAddonTogglePresentation', () => {
     expect(extensionSource).toContain("verifyTool('git')");
   });
 
+  it('does not prompt for an AO key that host-side aap-demo can read from Flatpak', () => {
+    expect(extensionSource).toContain('hasHostOpenAiKey');
+    expect(extensionSource).toContain('!openAiApiKey && !hostHasOpenAiKey');
+    expect(extensionSource).toContain('AO_LLM_API_KEY_FILE');
+  });
+
   it('tells users to restart the source action if the extension host restarted', () => {
     expect(dashboardSource).toContain('start the setup or update action again');
     expect(dashboardSource).toContain("message.action === 'setup-extension' || message.action === 'update-extension'");
@@ -149,16 +164,26 @@ describe('getAddonTogglePresentation', () => {
   it('explains how to install OpenShift Local from the Podman Desktop catalog', () => {
     expect(dashboardSource).toContain("type: 'open-crc-extension'");
     expect(dashboardSource).toContain('Install with Podman Desktop');
-    expect(dashboardSource).toContain('follow its prompts to install the extension and CRC binaries');
-    expect(dashboardSource).toContain('https://podman-desktop.io/docs/openshift/openshift-local');
+    expect(dashboardSource).not.toContain('Open the Extensions catalog and search for OpenShift Local.');
+    expect(dashboardSource).not.toContain('Additional provider information is available under Extensions');
+    expect(dashboardSource).not.toContain('https://podman-desktop.io/docs/openshift/openshift-local');
     expect(extensionSource).toContain("message.type === 'open-crc-extension'");
-    expect(extensionSource).toContain('podman-desktop:extension/redhat.openshift-local');
-    expect(extensionSource).toContain('Extensions → Catalog and search for OpenShift Local');
+    expect(extensionSource).toContain('navigateToExtensionsCatalog');
+    expect(extensionSource).toContain("searchTerm: 'OpenShift Local'");
+    expect(extensionSource).toContain('extensionApi.navigation.navigateToResources()');
+    expect(extensionSource).toContain('Open the Extensions catalog and search for OpenShift Local.');
+    expect(extensionSource).not.toContain('Additional provider information is available under Extensions');
+    expect(extensionSource).toContain('isOpenShiftLocalExtensionAvailable()');
+    expect(extensionSource).toContain('extensionApi.extensions.onDidChange');
     const crcCheck = extensionSource.slice(
       extensionSource.indexOf('async function checkCrc'),
       extensionSource.indexOf('export async function activate'),
     );
     expect(crcCheck).not.toContain('showWarningMessage');
+  });
+
+  it('shows Podman Desktop management when CRC is available through the OpenShift Local extension', () => {
+    expect(dashboardSource).toContain("prerequisites.crc.path ?? 'Managed by Podman Desktop'");
   });
 
   it('handles update requests through the extension host', () => {
@@ -186,6 +211,15 @@ describe('getAddonTogglePresentation', () => {
     );
 
     expect(statusAction).toContain('await refreshPrerequisites()');
+  });
+
+  it('checks prerequisites with the same augmented PATH used for commands', () => {
+    const prerequisiteRefresh = extensionSource.slice(
+      extensionSource.indexOf('const refreshPrerequisites'),
+      extensionSource.indexOf('const statusBar'),
+    );
+
+    expect(prerequisiteRefresh).toContain('settings.pathValue');
   });
 
   it('places start and stop controls beside Deploy AAP', () => {
@@ -282,6 +316,8 @@ describe('getAddonTogglePresentation', () => {
 
   it('copies credentials with a browser clipboard fallback', () => {
     expect(dashboardSource).toContain('navigator.clipboard.writeText(credential.password)');
+    expect(dashboardSource).toContain("const copyBuffer = document.createElement('textarea')");
+    expect(dashboardSource).toContain('copyBuffer.value = credential.password');
     expect(dashboardSource).toContain('document.execCommand(\'copy\')');
     expect(dashboardSource).toContain("copied ? 'Copied' : 'Copy failed'");
   });
@@ -290,5 +326,24 @@ describe('getAddonTogglePresentation', () => {
     expect(extensionSource).toContain("readFileSync(aoLlmApiKeyFile, 'utf8')");
     expect(extensionSource).toContain('process.env.OPENAI_API_KEY?.trim() || readSavedAoOpenAiKey()');
     expect(extensionSource).toContain('addonEnvironment.OPENAI_API_KEY = openAiApiKey');
+  });
+
+  it('prompts for and saves the PAH offline token before enabling setup-pah', () => {
+    expect(extensionSource).toContain("addon === 'setup-pah'");
+    expect(extensionSource).toContain('hasHostFile(runner, galaxyTokenFile, settings.pathValue, process.env)');
+    expect(dashboardHtml).toContain('https://console.redhat.com/ansible/automation-hub/token');
+    expect(dashboardHtml).toContain("Click 'Load token' button");
+    expect(dashboardHtml).toContain('Podman Desktop may ask you to confirm opening the Red Hat sign-in page.');
+    expect(dashboardHtml).toContain('Open the Red Hat Automation Hub token page');
+    expect(dashboardSource).toContain('addExternalLink(pahTokenLink');
+    expect(dashboardSource).toContain('safeExternalUrl(url)');
+    expect(dashboardSource).toContain('writeOutput');
+    expect(extensionSource).toContain('saveHostFile(runner, galaxyTokenFile, settings.pathValue, process.env, enteredToken.trim())');
+    expect(extensionSource).toContain('password: true');
+    expect(extensionSource).toContain("type: 'pah-token-request'");
+    expect(dashboardHtml).toContain('id="pah-token-dialog"');
+    expect(dashboardHtml).toContain('id="pah-token-input"');
+    expect(dashboardSource).toContain('pah-token-response');
+    expect(dashboardSource).toContain('pahTokenInput');
   });
 });

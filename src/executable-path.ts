@@ -1,4 +1,4 @@
-import { accessSync, constants, statSync } from 'node:fs';
+import { accessSync, constants, readdirSync, statSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
@@ -24,11 +24,24 @@ function expandHome(command: string): string {
   return command;
 }
 
+export function crcCacheExecutableDirectories(homeDirectory = os.homedir()): string[] {
+  const cacheDirectory = path.join(homeDirectory, '.crc', 'cache');
+  try {
+    return readdirSync(cacheDirectory, { withFileTypes: true })
+      .filter(entry => entry.isDirectory())
+      .map(entry => path.join(cacheDirectory, entry.name))
+      .filter(directory => isExecutable(path.join(directory, 'oc')));
+  } catch {
+    return [];
+  }
+}
+
 function fallbackDirectories(): string[] {
   return [
     '/usr/local/bin',
     '/opt/homebrew/bin',
     path.join(os.homedir(), '.crc', 'bin'),
+    ...crcCacheExecutableDirectories(),
     path.join(os.homedir(), '.local', 'bin'),
   ];
 }

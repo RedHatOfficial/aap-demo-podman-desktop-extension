@@ -1,6 +1,20 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import type { CommandResult, CommandRunnerOptions } from '../src/command-runner';
 import { AapDemoService, type CommandExecutor } from '../src/aap-demo-service';
+
+const temporaryRoots: string[] = [];
+
+function createExecutable(name: string): { directory: string; executable: string } {
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-service-'));
+  const executable = path.join(directory, name);
+  writeFileSync(executable, '#!/bin/sh\n');
+  chmodSync(executable, 0o755);
+  temporaryRoots.push(directory);
+  return { directory, executable };
+}
 
 class RecordingExecutor implements CommandExecutor {
   public readonly calls: Array<{
@@ -18,6 +32,12 @@ class RecordingExecutor implements CommandExecutor {
     return { exitCode: 0, stdout: '', stderr: '' };
   }
 }
+
+afterEach(() => {
+  for (const root of temporaryRoots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 describe('AapDemoService', () => {
   it.each([
@@ -134,5 +154,96 @@ describe('AapDemoService', () => {
     await service.run('status');
 
     expect(executor.calls[0]?.options?.env?.PATH).toBe('/usr/bin:/bin:/usr/local/bin');
+  });
+
+  it('runs the CLI through the host when Podman Desktop is sandboxed as a Flatpak', async () => {
+    const { directory, executable } = createExecutable('flatpak-spawn');
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor, '/home/test/.local/bin/aap-demo', {
+      pathValue: directory,
+      environment: { FLATPAK_ID: 'io.podman_desktop.PodmanDesktop' },
+    });
+
+    await service.run('deploy');
+
+    expect(executor.calls[0]).toMatchObject({
+      command: executable,
+      args: [
+        '--env=QUIET=true',
+        '--env=PYTHONIOENCODING=utf-8',
+        '--env=PYTHONUTF8=1',
+        '--env=PATH=' + directory,
+        '--host',
+        '/home/test/.local/bin/aap-demo',
+        'deploy',
+      ],
+      options: { env: expect.objectContaining({ QUIET: 'true' }) },
+    });
+  });
+
+  it('forwards the selected AO provider through the Flatpak host bridge', async () => {
+    const { directory, executable } = createExecutable('flatpak-spawn');
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor, '/home/test/.local/bin/aap-demo', {
+      pathValue: directory,
+      environment: { FLATPAK_ID: 'io.podman_desktop.PodmanDesktop' },
+    });
+
+    await service.runAddon('enable', 'ao', {
+      env: {
+        AO_LLM_PROVIDER: 'external',
+        AO_LLM_MODEL: 'gpt-5.6-luna',
+        AO_LLM_BASE_URL: 'https://api.openai.com/v1',
+        AO_LLM_API_KEY_FILE: '/home/test/.aap-demo/ao/llm-api-key',
+      },
+    });
+
+    expect(executor.calls[0]).toMatchObject({
+      command: executable,
+      args: expect.arrayContaining([
+        '--env=AO_LLM_PROVIDER=external',
+        '--env=AO_LLM_MODEL=gpt-5.6-luna',
+        '--env=AO_LLM_BASE_URL=https://api.openai.com/v1',
+        '--env=AO_LLM_API_KEY_FILE=/home/test/.aap-demo/ao/llm-api-key',
+      ]),
+    });
+  });
+
+  it('passes the AO API key through standard input instead of process arguments', async () => {
+    const { directory, executable } = createExecutable('flatpak-spawn');
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor, '/home/test/.local/bin/aap-demo', {
+      pathValue: directory,
+      environment: { FLATPAK_ID: 'io.podman_desktop.PodmanDesktop' },
+    });
+
+    await service.runAddon('enable', 'ao', {
+      env: {
+        OPENAI_API_KEY: 'secret-api-key',
+      },
+    });
+
+    expect(executor.calls[0]).toMatchObject({
+      command: executable,
+      args: [
+        '--env=QUIET=true',
+        '--env=PYTHONIOENCODING=utf-8',
+        '--env=PYTHONUTF8=1',
+        '--env=PATH=' + directory,
+        '--host',
+        '/bin/sh',
+        '-c',
+        'IFS= read -r OPENAI_API_KEY; export OPENAI_API_KEY; shift; exec "$@"',
+        'aap-demo-openai-key',
+        '/home/test/.local/bin/aap-demo',
+        'enable',
+        'ao',
+      ],
+      options: {
+        input: 'secret-api-key\n',
+        env: expect.not.objectContaining({ OPENAI_API_KEY: expect.anything() }),
+      },
+    });
+    expect(executor.calls[0]?.args.join(' ')).not.toContain('secret-api-key');
   });
 });

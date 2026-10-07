@@ -1,4 +1,5 @@
 import { CommandExecutionError } from './command-runner';
+import { cleanTerminalOutput } from './terminal-output';
 
 function crcMemoryFailureGuidance(output: string): string | undefined {
   const memoryMatch = output.match(/unable to allocate\s+(\d+)\s+MB of RAM/i);
@@ -21,15 +22,79 @@ function aoOperatorTimeoutGuidance(output: string): string | undefined {
   ].join('\n');
 }
 
+function productDemosSubscriptionGuidance(output: string): string | undefined {
+  if (!/AAP does not have a registered subscription/i.test(output)) return undefined;
+
+  const aapUrl = output.match(/AAP URL:\s*(?:\[\s*)?(https?:\/\/[^\s\])]+)/i)?.[1]
+    ?? 'https://aap-aap-operator.apps.127.0.0.1.nip.io';
+  return [
+    'Product Demos cannot start until AAP has a registered subscription.',
+    `1. Open AAP: ${aapUrl}`,
+    '2. Enter your Red Hat Developer username and password when AAP prompts you to register the subscription.',
+    '3. If you do not have a subscription, get one at https://developers.redhat.com/',
+    '4. Return to Podman Desktop and enable Product Demos again, or run: aap-demo enable product-demos',
+  ].join('\n');
+}
+
+function crcDaemonGuidance(output: string): string | undefined {
+  const normalized = output.toLowerCase();
+  if (
+    !normalized.includes('crc daemon')
+    || !normalized.includes('cannot reach daemon api')
+    || !normalized.includes('crc start failed')
+  ) {
+    return undefined;
+  }
+
+  return [
+    'CRC setup is complete, but the CRC daemon is not running.',
+    'Open a terminal and run:',
+    '',
+    'systemctl --user reset-failed crc-daemon.service && systemctl --user restart crc-http.socket crc-vsock.socket && crc status',
+    '',
+    'If `crc status` says “Machine does not exist,” that is expected. It means the daemon is ready and the cluster has not been created yet. Return to Podman Desktop and select Deploy again.',
+  ].join('\n');
+}
+
+function repairWithoutClusterGuidance(output: string): string | undefined {
+  const normalized = output.toLowerCase();
+  if (!normalized.includes('no cluster exists') || !normalized.includes('aap-demo create')) {
+    return undefined;
+  }
+
+  if (normalized.includes('aap-demo diagnose') || normalized.includes('cannot proceed without cluster connectivity')) {
+    return [
+      'AAP Demo diagnosis cannot run because no OpenShift Local cluster exists.',
+      'Select Create Cluster first and wait for it to finish. Then run Diagnose again to check cluster health.',
+      'The kubeconfig path is expected to be unavailable until the cluster is created.',
+    ].join('\n');
+  }
+
+  return [
+    'AAP Demo repair cannot run because no OpenShift Local cluster exists.',
+    'Select Create Cluster first and wait for it to finish. Then run Deploy and retry Repair if the cluster still needs recovery.',
+    'The SCC commands were not run because the OpenShift API is unavailable until a cluster exists.',
+  ].join('\n');
+}
+
 export function formatCommandError(error: unknown): string {
   if (error instanceof CommandExecutionError) {
     const output = [error.stderr, error.stdout]
-      .map(value => value.trim())
+      .map(value => cleanTerminalOutput(value).trim())
       .filter(Boolean);
     const commandOutput = output.join('\n');
+    const daemonGuidance = crcDaemonGuidance(commandOutput);
+    const repairGuidance = repairWithoutClusterGuidance(commandOutput);
+    const productDemosGuidance = productDemosSubscriptionGuidance(commandOutput);
     const guidance = crcMemoryFailureGuidance(commandOutput)
-      ?? aoOperatorTimeoutGuidance(commandOutput);
+      ?? daemonGuidance
+      ?? repairGuidance
+      ?? aoOperatorTimeoutGuidance(commandOutput)
+      ?? productDemosGuidance;
     if (guidance) {
+      if (daemonGuidance) return daemonGuidance;
+      if (repairGuidance) return repairGuidance;
+      if (productDemosGuidance) return productDemosGuidance;
       return [guidance, error.message, commandOutput].filter(Boolean).join('\n');
     }
     return [error.message, ...output].join('\n');

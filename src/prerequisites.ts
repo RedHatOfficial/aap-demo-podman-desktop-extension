@@ -10,6 +10,7 @@ const MINIMUM_MEMORY = 16_384;
 export interface PrerequisiteSettings {
   cliPath: string;
   cpus?: number;
+  crcExtensionAvailable?: boolean;
   crcPath: string;
   installLocation?: string;
   pullSecretPath?: string;
@@ -57,6 +58,7 @@ export function checkPrerequisites(
   platform: NodeJS.Platform = process.platform,
 ): PrerequisiteStatus {
   const crcPath = resolveExecutablePath(settings.crcPath, pathValue);
+  const crcAvailable = Boolean(crcPath || settings.crcExtensionAvailable);
   const cliPath = resolveExecutablePath(settings.cliPath, pathValue);
   const installScriptPath = resolveInstallCliScriptPath(
     resolveInstallLocation(settings.installLocation),
@@ -79,12 +81,14 @@ export function checkPrerequisites(
   return {
     cli: cliPath ? { available: true, path: cliPath } : { available: false },
     cpus: cpuStatus,
-    crc: crcPath ? { available: true, path: crcPath } : { available: false },
+    crc: crcPath
+      ? { available: true, path: crcPath }
+      : { available: crcAvailable },
     installScript: installScriptPath
       ? { available: true, path: installScriptPath }
       : { available: false },
     pullSecret,
     memory: memoryStatus,
-    ready: Boolean(cliPath && crcPath && pullSecret.exists && memoryStatus.valid && cpuStatus.valid),
+    ready: Boolean(cliPath && crcAvailable && pullSecret.exists && memoryStatus.valid && cpuStatus.valid),
   };
 }

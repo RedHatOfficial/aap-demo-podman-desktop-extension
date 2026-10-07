@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-10-05
+- Updated: 2026-10-07
 
 The implementation is documented in ADR-001 and the repository README. The
 automated checks cover source checkout safety, runtime detection/install
@@ -56,6 +57,12 @@ The separate **Install/Update aap-demo** actions continue to manage the CLI
 repository under `aap-demo.installLocation`. They do not update the extension
 source.
 
+CLI actions and install/update helper commands resolve host execution before
+spawning them. When the extension runs inside Flatpak, `aap-demo`, Git, and
+Bash can be invoked through `flatpak-spawn --host` so the workflow can use
+tools installed on the host. Missing Git/Bash errors are reported as
+actionable prerequisites rather than raw spawn failures.
+
 Update `README.md` and ADR-001 to document the setup action, the one-time
 OCI-to-local switch, local source updates, and the fact that official
 catalog-managed OCI distribution is a later option rather than a near-term
@@ -89,6 +96,13 @@ On success, the UI explains that the user must remove the OCI extension once
 and add the built checkout under **Extensions → Local Extensions**. It does
 not attempt that switch automatically or delete the OCI image.
 
+The OpenShift Local prerequisite action is separate from this local-extension
+bridge. It uses Podman Desktop navigation to open the Extensions catalog
+searched for OpenShift Local when supported, and falls back to Resources on
+older APIs. If Podman Desktop already has the OpenShift Local extension
+available, the prerequisite is treated as managed by Podman Desktop even when
+the `crc` executable is not directly visible to this extension process.
+
 ## Future distribution option: official OCI/catalog release
 
 When official OCI/catalog distribution becomes a priority, CI can continue to
@@ -106,12 +120,18 @@ promise automatic updates.
 
 ## Safety and failure behavior
 
+Flatpak host-command, environment, secret, and host-file behavior is defined
+in [ADR-004](004-flatpak-host-bridge-and-secret-handling.md).
+
 - Source cloning and npm lifecycle/build commands run only after explicit user
   action.
 - Never automatically uninstall or replace either extension installation.
 - Preserve a cloned checkout on build failure so developers can inspect or retry it.
 - Stream setup output to the existing dashboard output area and give clear
   errors for missing Git, Node.js, npm, network access, or build failures.
+- Resolve normal CLI actions and host Git/Bash through the augmented PATH or
+  Flatpak host delegation before running deploy, clone, pull, or install
+  commands.
 - Keep CLI and extension update status/actions distinct to avoid implying that
   updating one repository updates the other.
 
@@ -132,6 +152,7 @@ promise automatic updates.
   runtime detection, supported package-manager command selection, explicit
   terminal handoff, unavailable package-manager handling, and build failure
   recovery.
+- Test Flatpak host-tool delegation and CRC cache executable discovery.
 - Run typecheck, unit tests, and production build.
 - Manually verify the custom-OCI-to-local one-time setup and subsequent local
   updates in Podman Desktop.

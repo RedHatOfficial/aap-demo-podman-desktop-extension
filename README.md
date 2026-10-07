@@ -89,10 +89,17 @@ tag. To install a newly published image, uninstall the extension from
 
 - If CRC is not detected, install it through the OpenShift Local extension in
   Podman Desktop.
+- If Podman Desktop is installed as a Flatpak, host commands and credential
+  files require `flatpak-spawn --host`. The extension does not fall back to
+  writing host credentials inside the sandbox.
 - If the dashboard reports unsafe SSL, use **Fix SSL** and approve the
   certificate or Keychain prompt.
 - If the CLI is not found after installation, restart Podman Desktop.
 - On Windows, install Git for Windows if prompted: `winget install --id Git.Git -e`.
+
+When enabling AO with OpenAI, the API key is passed to the host-side CLI
+through standard input rather than process arguments. A key already saved in
+the configured AO key file is reused without another prompt.
 
 The extension does not install CRC or accept Podman Desktop prompts on your
 behalf.

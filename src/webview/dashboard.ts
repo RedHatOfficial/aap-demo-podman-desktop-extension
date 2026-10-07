@@ -48,6 +48,10 @@ interface DashboardExtensionSetupCompleteMessage {
   path: string;
 }
 
+interface DashboardPahTokenRequestMessage {
+  type: 'pah-token-request';
+}
+
 interface DashboardCommandMessage {
   type: 'command-result' | 'addon-result' | 'command-output' | 'command-error';
   action?: string;
@@ -91,6 +95,12 @@ const checkRuntime = document.querySelector<HTMLButtonElement>('#check-runtime')
 const runtimeManualGuide = document.querySelector<HTMLAnchorElement>('#runtime-manual-guide');
 const idleToggle = document.querySelector<HTMLButtonElement>('#idle-toggle');
 const fixSslButton = document.querySelector<HTMLButtonElement>('#fix-ssl');
+const pahTokenDialog = document.querySelector<HTMLDivElement>('#pah-token-dialog');
+const pahTokenInput = document.querySelector<HTMLTextAreaElement>('#pah-token-input');
+const pahTokenError = document.querySelector<HTMLParagraphElement>('#pah-token-error');
+const pahTokenCancel = document.querySelector<HTMLButtonElement>('#pah-token-cancel');
+const pahTokenSave = document.querySelector<HTMLButtonElement>('#pah-token-save');
+const pahTokenLink = document.querySelector<HTMLAnchorElement>('#pah-token-link');
 let idleState = true;
 
 function clear(element: Element | null): void {
@@ -108,12 +118,47 @@ function formatState(state: string): string {
   return state.replaceAll('-', ' ').replace(/\b\w/g, character => character.toUpperCase());
 }
 
+function appendLinkedOutput(text: string): void {
+  if (!output || !text) return;
+  const urlPattern = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|(https?:\/\/[^\s<]+)/g;
+  let offset = 0;
+  for (const match of text.matchAll(urlPattern)) {
+    const rawMatch = match[0];
+    const markdownLabel = match[1];
+    const markdownUrl = match[2];
+    const rawUrl = markdownUrl ?? match[3] ?? rawMatch;
+    const url = rawUrl.replace(/[)\].,;:!?]+$/, '');
+    const start = match.index ?? 0;
+    output.append(document.createTextNode(text.slice(offset, start)));
+    const safeUrl = safeExternalUrl(url);
+    if (!safeUrl || (markdownUrl && !markdownLabel)) {
+      output.append(document.createTextNode(rawMatch));
+    } else if (markdownUrl) {
+      const link = document.createElement('a');
+      addExternalLink(link, safeUrl);
+      link.textContent = markdownLabel;
+      output.append(link);
+    } else {
+      const link = document.createElement('a');
+      addExternalLink(link, safeUrl);
+      link.textContent = url;
+      output.append(link, document.createTextNode(rawMatch.slice(url.length)));
+    }
+    offset = start + rawMatch.length;
+  }
+  output.append(document.createTextNode(text.slice(offset)));
+}
+
 function writeOutput(text: string): void {
-  if (output) output.textContent = text || 'No command output.';
+  if (!output) return;
+  output.replaceChildren();
+  appendLinkedOutput(text || 'No command output.');
 }
 
 function appendOutput(text: string): void {
-  if (output) output.textContent = `${output.textContent === 'Ready.' ? '' : output.textContent}${text}`;
+  if (!output) return;
+  if (output.textContent === 'Ready.') output.replaceChildren();
+  appendLinkedOutput(text);
   if (output) output.scrollTop = output.scrollHeight;
 }
 
@@ -127,6 +172,30 @@ function postToHost(message: unknown): void {
   }
   desktopApi.postMessage(message);
 }
+
+function closePahTokenDialog(token?: string): void {
+  if (pahTokenDialog) pahTokenDialog.hidden = true;
+  if (pahTokenError) pahTokenError.textContent = '';
+  if (pahTokenInput) pahTokenInput.value = '';
+  postToHost({ type: 'pah-token-response', ...(token === undefined ? {} : { token }) });
+}
+
+function showPahTokenDialog(): void {
+  if (!pahTokenDialog || !pahTokenInput) return;
+  pahTokenDialog.hidden = false;
+  pahTokenInput.focus();
+}
+
+pahTokenCancel?.addEventListener('click', () => closePahTokenDialog());
+pahTokenSave?.addEventListener('click', () => {
+  const token = pahTokenInput?.value.trim() ?? '';
+  if (!token) {
+    if (pahTokenError) pahTokenError.textContent = 'An Offline Token is required.';
+    pahTokenInput?.focus();
+    return;
+  }
+  closePahTokenDialog(token);
+});
 
 function postAction(action: string, idleStateValue?: boolean): void {
   const label = action === 'trust-ca' ? 'Fix SSL' : action;
@@ -147,6 +216,9 @@ function addExternalLink(link: HTMLAnchorElement, url: string): void {
 
 if (runtimeManualGuide) {
   addExternalLink(runtimeManualGuide, 'https://nodejs.org/en/download/');
+}
+if (pahTokenLink) {
+  addExternalLink(pahTokenLink, 'https://console.redhat.com/ansible/automation-hub/token');
 }
 
 function renderRoutes(status: AapDemoStatus): void {
@@ -205,9 +277,15 @@ function renderCredentials(status: AapDemoStatus): void {
         copied = false;
       }
       if (!copied) {
-        password.select();
+        const copyBuffer = document.createElement('textarea');
+        copyBuffer.value = credential.password;
+        copyBuffer.setAttribute('readonly', '');
+        copyBuffer.style.position = 'fixed';
+        copyBuffer.style.opacity = '0';
+        document.body.append(copyBuffer);
+        copyBuffer.select();
         copied = document.execCommand('copy');
-        password.setSelectionRange(0, 0);
+        copyBuffer.remove();
       }
       copy.textContent = copied ? 'Copied' : 'Copy failed';
       window.setTimeout(() => { copy.textContent = 'Copy'; }, 1200);
@@ -316,13 +394,11 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
     {
       label: 'OpenShift Local (CRC)',
       valid: prerequisites.crc.available,
-      detail: prerequisites.crc.path ?? 'Not detected. If already installed, set aap-demo.crcPath.',
-      helpText: prerequisites.crc.available
-        ? undefined
-        : 'Open the OpenShift Local extension in Podman Desktop and follow its prompts to install the extension and CRC binaries. Then refresh prerequisites.',
-      helpUrl: prerequisites.crc.available
-        ? undefined
-        : 'https://podman-desktop.io/docs/openshift/openshift-local',
+      detail: prerequisites.crc.available
+        ? prerequisites.crc.path ?? 'Managed by Podman Desktop'
+        : 'Not detected. If already installed, set aap-demo.crcPath.',
+      helpText: undefined,
+      helpUrl: undefined,
       actionLabel: prerequisites.crc.available ? undefined : 'Install with Podman Desktop',
     },
     {
@@ -368,7 +444,7 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
       install.className = 'small primary prerequisite-action';
       install.type = 'button';
       install.textContent = check.actionLabel;
-      install.title = 'Open the OpenShift Local extension page in Podman Desktop. Confirm its installation there, then use its dashboard to install CRC.';
+      install.title = 'Install with Podman Desktop';
       install.addEventListener('click', () => {
         postToHost({ type: 'open-crc-extension' });
       });
@@ -439,8 +515,12 @@ checkRuntime?.addEventListener('click', () => {
 });
 
 window.addEventListener('message', event => {
-  const message = unwrapDashboardMessage(event.data) as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardExtensionMessage | DashboardRuntimeRequiredMessage | DashboardRuntimeInstallUnavailableMessage | DashboardRuntimeTerminalOpenedMessage | DashboardExtensionSetupCompleteMessage | DashboardCommandMessage | DashboardCliMessage;
+  const message = unwrapDashboardMessage(event.data) as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardExtensionMessage | DashboardRuntimeRequiredMessage | DashboardRuntimeInstallUnavailableMessage | DashboardRuntimeTerminalOpenedMessage | DashboardExtensionSetupCompleteMessage | DashboardPahTokenRequestMessage | DashboardCommandMessage | DashboardCliMessage;
   if (!message || typeof message !== 'object' || typeof message.type !== 'string') return;
+  if (message.type === 'pah-token-request') {
+    showPahTokenDialog();
+    return;
+  }
   if (message.type === 'cli-missing') {
     handleCliMissing(
       { statusState, statusDot, statusSummary, toolVersion, installCli, updateCli },
@@ -552,7 +632,10 @@ window.addEventListener('message', event => {
       addonActions?.querySelectorAll('button').forEach(button => { button.disabled = false; });
     }
     if (statusDot) statusDot.className = 'status-dot error';
-    if (statusSummary) statusSummary.textContent = message.message ?? 'Command failed.';
+    if (statusSummary) {
+      const actionLabel = message.action === 'trust-ca' ? 'Fix SSL' : formatState(message.action ?? 'command');
+      statusSummary.textContent = `${actionLabel} failed. See command output for recovery steps.`;
+    }
   }
 });
 

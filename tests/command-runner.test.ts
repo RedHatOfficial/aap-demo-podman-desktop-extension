@@ -18,7 +18,7 @@ describe('CommandRunner', () => {
 
     const result = await runner.run(process.execPath, [
       '-e',
-      "process.stdout.write('ready'); process.stderr.write('notice');",
+      "const fs = require('node:fs'); fs.writeSync(1, 'ready'); fs.writeSync(2, 'notice');",
     ]);
 
     expect(result).toEqual({
@@ -34,7 +34,7 @@ describe('CommandRunner', () => {
     await expect(
       runner.run(process.execPath, [
         '-e',
-        "process.stderr.write('failed'); process.exitCode = 7;",
+        "const fs = require('node:fs'); fs.writeSync(2, 'failed'); process.exitCode = 7;",
       ]),
     ).rejects.toMatchObject({
       exitCode: 7,
@@ -46,6 +46,13 @@ describe('CommandRunner', () => {
     const runner = new CommandRunner();
 
     await expect(runner.run('')).rejects.toThrow('Cannot execute an empty command');
+  });
+
+  it('rejects dynamic shell execution', async () => {
+    const runner = new CommandRunner();
+    await expect(runner.run(process.execPath, [], { shell: true })).rejects.toThrow(
+      'Shell execution is not supported for dynamic commands',
+    );
   });
 
   it.runIf(process.platform === 'win32')('runs Windows command shims through the shell', async () => {
@@ -66,7 +73,7 @@ describe('CommandRunner', () => {
 
     await runner.run(
       process.execPath,
-      ['-e', "process.stdout.write('out'); process.stderr.write('err');"],
+      ['-e', "const fs = require('node:fs'); fs.writeSync(1, 'out'); fs.writeSync(2, 'err');"],
       {
         onStdout: chunk => stdout.push(chunk),
         onStderr: chunk => stderr.push(chunk),
