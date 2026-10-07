@@ -42,7 +42,10 @@ export class AapDemoService {
     const args = action === 'idle'
       ? ['idle', String(idleState ?? true)]
       : [action];
-    const optionsWithSettings = this.withSettings(options, action !== 'trust-ca');
+    const optionsWithSettings = this.withSettings(
+      options,
+      action !== 'trust-ca' && action !== 'repair',
+    );
     const command = this.resolveCliCommand(optionsWithSettings?.env);
 
     return this.executor.run(

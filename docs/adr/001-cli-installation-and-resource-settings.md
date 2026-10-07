@@ -75,8 +75,9 @@ the interactive sudo prompt, preserves the existing PVCs, and directs the user
 to retry deployment. The manual CA import remains available for terminal tools
 if browser trust has already been updated.
 Silent extension actions set `AAP_DEMO_TRUST_CA=false` so they never attempt an
-interactive system trust change. The explicit **Fix SSL** action leaves that
-setting unset and is the user-invoked path for certificate trust setup.
+interactive system trust change. The **Repair** and **Fix SSL** actions leave
+that setting unset because both are explicit user-invoked paths that may repair
+certificate trust.
 
 The update action requires an existing Git checkout, runs `git pull --ff-only`,
 then repeats the install and refresh steps. Unrecognized existing directories
