@@ -203,15 +203,11 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardHtml).toContain('<img src="./assets/ansible-logo.png" alt="Ansible Automation Platform logo"');
   });
 
-  it('links to the extension README from the dashboard header', () => {
-    expect(dashboardHtml).toContain('id="readme-link"');
-    expect(dashboardHtml).toContain('Documentation');
-    expect(dashboardSource).toContain("readmeLink.addEventListener('click'");
-    expect(dashboardSource).toContain("postToHost({ type: 'open-extension-info' })");
-    expect(extensionSource).toContain("message.type === 'open-extension-info'");
-    expect(extensionSource).toContain('extensionApi.extensions.all.find(');
-    expect(extensionSource).toContain("extension.packageJSON?.name === 'aap-demo-podman-desktop-extension'");
-    expect(extensionSource).toContain('extensionApi.navigation.navigateToContribution(registeredExtension.id)');
+  it('does not expose a broken extension details link from the dashboard', () => {
+    expect(dashboardHtml).not.toContain('id="readme-link"');
+    expect(dashboardHtml).not.toContain('Documentation');
+    expect(dashboardSource).not.toContain('open-extension-info');
+    expect(extensionSource).not.toContain('open-extension-info');
   });
 
   it('keeps the primary lifecycle actions ordered beside Deploy AAP without duplicating status', () => {

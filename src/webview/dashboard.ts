@@ -89,7 +89,6 @@ const runtimeMessage = document.querySelector<HTMLParagraphElement>('#extension-
 const installRuntime = document.querySelector<HTMLButtonElement>('#install-runtime');
 const checkRuntime = document.querySelector<HTMLButtonElement>('#check-runtime');
 const runtimeManualGuide = document.querySelector<HTMLAnchorElement>('#runtime-manual-guide');
-const readmeLink = document.querySelector<HTMLAnchorElement>('#readme-link');
 const idleToggle = document.querySelector<HTMLButtonElement>('#idle-toggle');
 const fixSslButton = document.querySelector<HTMLButtonElement>('#fix-ssl');
 let idleState = true;
@@ -148,14 +147,6 @@ function addExternalLink(link: HTMLAnchorElement, url: string): void {
 
 if (runtimeManualGuide) {
   addExternalLink(runtimeManualGuide, 'https://nodejs.org/en/download/');
-}
-
-if (readmeLink) {
-  readmeLink.href = '#';
-  readmeLink.addEventListener('click', event => {
-    event.preventDefault();
-    postToHost({ type: 'open-extension-info' });
-  });
 }
 
 function renderRoutes(status: AapDemoStatus): void {

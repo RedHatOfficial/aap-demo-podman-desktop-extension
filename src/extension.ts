@@ -544,23 +544,6 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
               'Could not open the OpenShift Local extension page. In Podman Desktop, open Extensions → Catalog and search for OpenShift Local, then use its dashboard to install CRC.',
             );
           }
-        } else if (message.type === 'open-extension-info') {
-          try {
-            const registeredExtension = extensionApi.extensions.all.find(
-              extension =>
-                path.resolve(extension.extensionPath).toLowerCase() === path.resolve(extensionPath).toLowerCase() ||
-                extension.packageJSON?.name === 'aap-demo-podman-desktop-extension',
-            );
-            if (!registeredExtension) {
-              throw new Error('AAP Demo is not registered with Podman Desktop yet.');
-            }
-            await extensionApi.navigation.navigateToContribution(registeredExtension.id);
-          } catch (error) {
-            console.error('[aap-demo] Could not open the AAP Demo extension information page:', error);
-            await extensionApi.window.showWarningMessage(
-              'Could not open the AAP Demo extension information page in Podman Desktop.',
-            );
-          }
         } else if (message.type === 'addon') {
           await runAddon(message.action, message.addon, message.llmProvider);
         } else if (message.type === 'open-url') {
