@@ -37,9 +37,11 @@ function productDemosSubscriptionGuidance(output: string): string | undefined {
 }
 
 function crcDaemonGuidance(output: string): string | undefined {
+  const normalized = output.toLowerCase();
   if (
-    !/crc daemon.*cannot reach daemon api/i.test(output)
-    || !/crc start failed/i.test(output)
+    !normalized.includes('crc daemon')
+    || !normalized.includes('cannot reach daemon api')
+    || !normalized.includes('crc start failed')
   ) {
     return undefined;
   }

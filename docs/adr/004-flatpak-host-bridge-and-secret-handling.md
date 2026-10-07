@@ -60,7 +60,8 @@ source while preserving the Windows npm workflow.
 
 Unit tests cover selected environment forwarding, Flatpak host-bridge absence,
 symlink-safe host-file command construction, the guarantee that an OpenAI API
-key is absent from Flatpak arguments and the child environment, and rejection
-of dynamic shell execution. Terminal escape-sequence cleanup uses a linear
-scanner rather than a backtracking regular expression. Full validation uses
-`npm test`, `npm run typecheck`, and `npm run build`.
+key is absent from Flatpak arguments and the child environment, rejection of
+dynamic shell execution, and linear command-error matching. Terminal
+escape-sequence cleanup uses a linear scanner rather than a backtracking
+regular expression. Full validation uses `npm test`, `npm run typecheck`, and
+`npm run build`.
