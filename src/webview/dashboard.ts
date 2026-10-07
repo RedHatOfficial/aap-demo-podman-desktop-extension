@@ -118,20 +118,18 @@ function formatState(state: string): string {
   return state.replaceAll('-', ' ').replace(/\b\w/g, character => character.toUpperCase());
 }
 
-function writeOutput(text: string): void {
-  if (!output) return;
-  output.replaceChildren();
-  const value = text || 'No command output.';
+function appendLinkedOutput(text: string): void {
+  if (!output || !text) return;
   const urlPattern = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|(https?:\/\/[^\s<]+)/g;
   let offset = 0;
-  for (const match of value.matchAll(urlPattern)) {
+  for (const match of text.matchAll(urlPattern)) {
     const rawMatch = match[0];
     const markdownLabel = match[1];
     const markdownUrl = match[2];
     const rawUrl = markdownUrl ?? match[3] ?? rawMatch;
     const url = rawUrl.replace(/[)\].,;:!?]+$/, '');
     const start = match.index ?? 0;
-    output.append(document.createTextNode(value.slice(offset, start)));
+    output.append(document.createTextNode(text.slice(offset, start)));
     const safeUrl = safeExternalUrl(url);
     if (!safeUrl || (markdownUrl && !markdownLabel)) {
       output.append(document.createTextNode(rawMatch));
@@ -148,11 +146,19 @@ function writeOutput(text: string): void {
     }
     offset = start + rawMatch.length;
   }
-  output.append(document.createTextNode(value.slice(offset)));
+  output.append(document.createTextNode(text.slice(offset)));
+}
+
+function writeOutput(text: string): void {
+  if (!output) return;
+  output.replaceChildren();
+  appendLinkedOutput(text || 'No command output.');
 }
 
 function appendOutput(text: string): void {
-  if (output) output.textContent = `${output.textContent === 'Ready.' ? '' : output.textContent}${text}`;
+  if (!output) return;
+  if (output.textContent === 'Ready.') output.replaceChildren();
+  appendLinkedOutput(text);
   if (output) output.scrollTop = output.scrollHeight;
 }
 
