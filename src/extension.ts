@@ -469,9 +469,6 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         ? await hasHostFile(runner, galaxyTokenFile, settings.pathValue, process.env)
         : true;
       if (action === 'enable' && addon === 'setup-pah' && !hasGalaxyToken) {
-        await extensionApi.env.openExternal(
-          extensionApi.Uri.parse('https://console.redhat.com/ansible/automation-hub/token', true),
-        );
         const enteredToken = await requestPahToken();
         if (enteredToken === undefined) {
           await runAction('status');

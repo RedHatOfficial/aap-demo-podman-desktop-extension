@@ -331,8 +331,10 @@ describe('getAddonTogglePresentation', () => {
   it('prompts for and saves the PAH offline token before enabling setup-pah', () => {
     expect(extensionSource).toContain("addon === 'setup-pah'");
     expect(extensionSource).toContain('hasHostFile(runner, galaxyTokenFile, settings.pathValue, process.env)');
-    expect(extensionSource).toContain('https://console.redhat.com/ansible/automation-hub/token');
+    expect(dashboardHtml).toContain('https://console.redhat.com/ansible/automation-hub/token');
     expect(dashboardHtml).toContain("Click 'Load token' button");
+    expect(dashboardHtml).toContain('Podman Desktop may ask you to confirm opening the Red Hat sign-in page.');
+    expect(dashboardHtml).toContain('Open the Red Hat Automation Hub token page');
     expect(extensionSource).toContain('saveHostFile(runner, galaxyTokenFile, settings.pathValue, process.env, enteredToken.trim())');
     expect(extensionSource).toContain('password: true');
     expect(extensionSource).toContain("type: 'pah-token-request'");
