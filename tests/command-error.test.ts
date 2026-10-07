@@ -79,6 +79,29 @@ describe('formatCommandError', () => {
     expect(message).not.toContain('Is \'crc daemon\' running?');
   });
 
+  it('explains that repair requires a cluster before applying SCC changes', () => {
+    const error = new CommandExecutionError('Command exited unsuccessfully: flatpak-spawn', {
+      exitCode: 1,
+      signal: null,
+      stderr: '',
+      stdout: [
+        'ERROR: Failed to grant anyuid SCC to namespace aap-operator',
+        'WARNING: No cluster exists',
+        "Run 'aap-demo create' first",
+        'Running repair...',
+        'oc output: Error from server (InternalError): an error on the server has prevented the request from succeeding',
+        'Fix manually: oc adm policy add-scc-to-group anyuid system:serviceaccounts',
+      ].join('\n'),
+    });
+
+    const message = formatCommandError(error);
+    expect(message).toContain('AAP Demo repair cannot run because no OpenShift Local cluster exists.');
+    expect(message).toContain('Select Create Cluster first');
+    expect(message).toContain('The SCC commands were not run');
+    expect(message).not.toContain('oc adm policy add-scc-to-group');
+    expect(message).not.toContain('Command exited unsuccessfully: flatpak-spawn');
+  });
+
   it('explains how to register an AAP subscription before Product Demos', () => {
     const error = new CommandExecutionError('Command exited unsuccessfully: flatpak-spawn', {
       exitCode: 1,

@@ -56,6 +56,10 @@ CRC setup remains a host-level administrator operation. If an action reaches
 terminal commands to reset the failed user service, restart the CRC socket
 units, verify `crc status`, and retry. The extension does not attempt to
 elevate privileges or manage the CRC daemon itself.
+Repair guidance also checks for the no-cluster condition first. When
+`aap-demo repair` reports that no cluster exists, the dashboard directs the
+user to create and deploy the cluster before retrying repair instead of
+recommending SCC commands against an unavailable OpenShift API.
 
 The update action requires an existing Git checkout, runs `git pull --ff-only`,
 then repeats the install and refresh steps. Unrecognized existing directories

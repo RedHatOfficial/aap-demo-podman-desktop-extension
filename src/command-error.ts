@@ -56,6 +56,19 @@ function crcDaemonGuidance(output: string): string | undefined {
   ].join('\n');
 }
 
+function repairWithoutClusterGuidance(output: string): string | undefined {
+  const normalized = output.toLowerCase();
+  if (!normalized.includes('no cluster exists') || !normalized.includes('aap-demo create')) {
+    return undefined;
+  }
+
+  return [
+    'AAP Demo repair cannot run because no OpenShift Local cluster exists.',
+    'Select Create Cluster first and wait for it to finish. Then run Deploy and retry Repair if the cluster still needs recovery.',
+    'The SCC commands were not run because the OpenShift API is unavailable until a cluster exists.',
+  ].join('\n');
+}
+
 export function formatCommandError(error: unknown): string {
   if (error instanceof CommandExecutionError) {
     const output = [error.stderr, error.stdout]
@@ -63,13 +76,16 @@ export function formatCommandError(error: unknown): string {
       .filter(Boolean);
     const commandOutput = output.join('\n');
     const daemonGuidance = crcDaemonGuidance(commandOutput);
+    const repairGuidance = repairWithoutClusterGuidance(commandOutput);
     const productDemosGuidance = productDemosSubscriptionGuidance(commandOutput);
     const guidance = crcMemoryFailureGuidance(commandOutput)
       ?? daemonGuidance
+      ?? repairGuidance
       ?? aoOperatorTimeoutGuidance(commandOutput)
       ?? productDemosGuidance;
     if (guidance) {
       if (daemonGuidance) return daemonGuidance;
+      if (repairGuidance) return repairGuidance;
       if (productDemosGuidance) return productDemosGuidance;
       return [guidance, error.message, commandOutput].filter(Boolean).join('\n');
     }
