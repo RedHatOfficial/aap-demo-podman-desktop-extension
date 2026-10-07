@@ -28,7 +28,14 @@ describe('hasHostFile', () => {
 
     expect(calls[0]).toEqual({
       command: flatpakSpawn,
-      args: ['--host', '/usr/bin/test', '-s', '/home/test/.aap-demo/galaxy-token'],
+      args: [
+        '--host',
+        '/bin/sh',
+        '-c',
+        'test -f "$1" && test ! -L "$1" && test -s "$1"',
+        'aap-demo-token',
+        '/home/test/.aap-demo/galaxy-token',
+      ],
     });
     rmSync(directory, { recursive: true, force: true });
   });
@@ -46,6 +53,29 @@ describe('hasHostFile', () => {
       '/tmp/bin',
       { FLATPAK_ID: 'io.podman_desktop.PodmanDesktop' },
     )).resolves.toBe(false);
+  });
+
+  it('does not fall back to the sandbox when flatpak-spawn is unavailable', async () => {
+    const executor = {
+      async run(): Promise<CommandResult> {
+        throw new Error('should not run in the sandbox');
+      },
+    };
+
+    await expect(hasHostFile(
+      executor,
+      '/home/test/.aap-demo/galaxy-token',
+      '/tmp/bin',
+      { FLATPAK_ID: 'io.podman_desktop.PodmanDesktop' },
+    )).resolves.toBe(false);
+
+    await expect(saveHostFile(
+      executor,
+      '/home/test/.aap-demo/galaxy-token',
+      '/tmp/bin',
+      { FLATPAK_ID: 'io.podman_desktop.PodmanDesktop' },
+      'offline-token',
+    )).rejects.toThrow('flatpak-spawn is unavailable');
   });
 
   it('checks a local file when the extension is not sandboxed', async () => {
@@ -107,7 +137,7 @@ describe('hasHostFile', () => {
         '--host',
         '/bin/sh',
         '-c',
-        'umask 077; mkdir -p "$1"; cat > "$1/$2"; chmod 600 "$1/$2"',
+        `set -eu; umask 077; mkdir -p "$1"; tmp=$(mktemp "$1/.aap-demo-token.XXXXXX"); trap 'rm -f "$tmp"' EXIT; chmod 600 "$tmp"; cat > "$tmp"; mv -f "$tmp" "$1/$2"; trap - EXIT`,
         'aap-demo-token',
         '/home/test/.aap-demo',
         'galaxy-token',

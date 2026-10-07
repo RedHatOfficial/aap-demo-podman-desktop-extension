@@ -2,7 +2,7 @@ import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { resolveHostCommand } from '../src/host-command';
+import { forwardHostEnvironment, resolveHostCommand } from '../src/host-command';
 
 const temporaryRoots: string[] = [];
 
@@ -45,5 +45,15 @@ describe('resolveHostCommand', () => {
       command: 'git',
       argsPrefix: [],
     });
+  });
+});
+
+describe('forwardHostEnvironment', () => {
+  it('forwards selected variables before the host bridge', () => {
+    expect(forwardHostEnvironment(['--host', 'git'], { PATH: '/custom/bin' }, ['PATH'])).toEqual([
+      '--env=PATH=/custom/bin',
+      '--host',
+      'git',
+    ]);
   });
 });

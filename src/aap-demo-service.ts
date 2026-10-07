@@ -2,7 +2,7 @@ import type {
   CommandResult,
   CommandRunnerOptions,
 } from './command-runner';
-import { resolveHostCommand } from './host-command';
+import { forwardHostEnvironment, resolveHostCommand } from './host-command';
 
 export type AapDemoAction = 'create' | 'start' | 'deploy' | 'stop' | 'destroy' | 'status' | 'idle' | 'diagnose' | 'repair' | 'trust-ca';
 export type AddonAction = 'enable' | 'disable';
@@ -59,9 +59,28 @@ export class AapDemoService {
   ): Promise<CommandResult> {
     const optionsWithSettings = this.withSettings(options);
     const command = this.resolveCliCommand(optionsWithSettings?.env);
+    const addonArgs = [action, addon];
+    if (command.argsPrefix.includes('--host') && optionsWithSettings?.env?.OPENAI_API_KEY) {
+      const { OPENAI_API_KEY, ...environment } = optionsWithSettings.env;
+      const hostIndex = command.argsPrefix.indexOf('--host');
+      return this.executor.run(
+        command.command,
+        [
+          ...command.argsPrefix.slice(0, hostIndex),
+          '--host',
+          '/bin/sh',
+          '-c',
+          'IFS= read -r OPENAI_API_KEY; export OPENAI_API_KEY; shift; exec "$@"',
+          'aap-demo-openai-key',
+          this.cliPath,
+          ...addonArgs,
+        ],
+        { ...optionsWithSettings, env: environment, input: `${OPENAI_API_KEY}\n` },
+      );
+    }
     return this.executor.run(
       command.command,
-      [...command.argsPrefix, action, addon],
+      [...command.argsPrefix, ...addonArgs],
       optionsWithSettings,
     );
   }
@@ -87,7 +106,6 @@ export class AapDemoService {
     argsPrefix: string[],
     env: NodeJS.ProcessEnv = {},
   ): string[] {
-    if (argsPrefix[0] !== '--host') return argsPrefix;
     const hostEnvironmentKeys = [
       'QUIET',
       'PYTHONIOENCODING',
@@ -100,16 +118,9 @@ export class AapDemoService {
       'AO_LLM_MODEL',
       'AO_LLM_BASE_URL',
       'AO_LLM_API_KEY_FILE',
-      'OPENAI_API_KEY',
       'GALAXY_TOKEN_FILE',
     ];
-    const hostEnvironmentArgs = hostEnvironmentKeys
-      .flatMap(key => {
-        const value = env[key];
-        return value === undefined ? [] : [`--env=${key}=${value}`];
-      });
-
-    return [...hostEnvironmentArgs, '--host', ...argsPrefix.slice(1)];
+    return forwardHostEnvironment(argsPrefix, env, hostEnvironmentKeys);
   }
 
   private withSettings(options?: CommandRunnerOptions): CommandRunnerOptions | undefined {

@@ -208,4 +208,42 @@ describe('AapDemoService', () => {
       ]),
     });
   });
+
+  it('passes the AO API key through standard input instead of process arguments', async () => {
+    const { directory, executable } = createExecutable('flatpak-spawn');
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor, '/home/test/.local/bin/aap-demo', {
+      pathValue: directory,
+      environment: { FLATPAK_ID: 'io.podman_desktop.PodmanDesktop' },
+    });
+
+    await service.runAddon('enable', 'ao', {
+      env: {
+        OPENAI_API_KEY: 'secret-api-key',
+      },
+    });
+
+    expect(executor.calls[0]).toMatchObject({
+      command: executable,
+      args: [
+        '--env=QUIET=true',
+        '--env=PYTHONIOENCODING=utf-8',
+        '--env=PYTHONUTF8=1',
+        '--env=PATH=' + directory,
+        '--host',
+        '/bin/sh',
+        '-c',
+        'IFS= read -r OPENAI_API_KEY; export OPENAI_API_KEY; shift; exec "$@"',
+        'aap-demo-openai-key',
+        '/home/test/.local/bin/aap-demo',
+        'enable',
+        'ao',
+      ],
+      options: {
+        input: 'secret-api-key\n',
+        env: expect.not.objectContaining({ OPENAI_API_KEY: expect.anything() }),
+      },
+    });
+    expect(executor.calls[0]?.args.join(' ')).not.toContain('secret-api-key');
+  });
 });

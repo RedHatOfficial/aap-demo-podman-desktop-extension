@@ -17,7 +17,7 @@ import { CommandRunner, type CommandRunnerOptions } from './command-runner';
 import { detectCliVersion } from './cli-version';
 import { isDashboardMessage, type AoLlmProvider } from './dashboard-protocol';
 import { augmentPath, resolveConfiguredExecutable, resolveExecutablePath } from './executable-path';
-import { resolveHostCommand } from './host-command';
+import { forwardHostEnvironment, resolveHostCommand } from './host-command';
 import { hasHostFile, saveHostFile } from './host-file';
 import { isLocalExtensionCheckout } from './extension-updater';
 import { ExtensionSourceService, MissingRuntimeError } from './extension-source-service';
@@ -293,7 +293,12 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         options = streamOptions,
       ) => {
         const resolvedCommand = resolveHostCommand(command, settings.pathValue, process.env);
-        return runner.run(resolvedCommand.command, [...resolvedCommand.argsPrefix, ...args], options);
+        const argsPrefix = forwardHostEnvironment(
+          resolvedCommand.argsPrefix,
+          options.env ?? process.env,
+          ['PATH'],
+        );
+        return runner.run(resolvedCommand.command, [...argsPrefix, ...args], options);
       };
       const verifyTool = async (command: string): Promise<void> => {
         try {

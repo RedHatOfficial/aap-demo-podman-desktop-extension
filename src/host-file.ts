@@ -18,9 +18,16 @@ export async function hasHostFile(
     }
   }
 
-  const command = resolveHostCommand('/usr/bin/test', pathValue, environment);
+  const command = resolveHostCommand('/bin/sh', pathValue, environment);
+  if (!command.argsPrefix.includes('--host')) return false;
   try {
-    await executor.run(command.command, [...command.argsPrefix, '-s', filePath]);
+    await executor.run(command.command, [
+      ...command.argsPrefix,
+      '-c',
+      'test -f "$1" && test ! -L "$1" && test -s "$1"',
+      'aap-demo-token',
+      filePath,
+    ]);
     return true;
   } catch {
     return false;
@@ -50,12 +57,15 @@ export async function saveHostFile(
   }
 
   const command = resolveHostCommand('/bin/sh', pathValue, environment);
+  if (!command.argsPrefix.includes('--host')) {
+    throw new Error('Cannot access the host filesystem from Flatpak: flatpak-spawn is unavailable.');
+  }
   await executor.run(
     command.command,
     [
       ...command.argsPrefix,
       '-c',
-      'umask 077; mkdir -p "$1"; cat > "$1/$2"; chmod 600 "$1/$2"',
+      "set -eu; umask 077; mkdir -p \"$1\"; tmp=$(mktemp \"$1/.aap-demo-token.XXXXXX\"); trap 'rm -f \"$tmp\"' EXIT; chmod 600 \"$tmp\"; cat > \"$tmp\"; mv -f \"$tmp\" \"$1/$2\"; trap - EXIT",
       'aap-demo-token',
       path.dirname(filePath),
       path.basename(filePath),
