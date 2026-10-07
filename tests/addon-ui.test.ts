@@ -335,6 +335,7 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardHtml).toContain("Click 'Load token' button");
     expect(dashboardHtml).toContain('Podman Desktop may ask you to confirm opening the Red Hat sign-in page.');
     expect(dashboardHtml).toContain('Open the Red Hat Automation Hub token page');
+    expect(dashboardSource).toContain('addExternalLink(pahTokenLink');
     expect(extensionSource).toContain('saveHostFile(runner, galaxyTokenFile, settings.pathValue, process.env, enteredToken.trim())');
     expect(extensionSource).toContain('password: true');
     expect(extensionSource).toContain("type: 'pah-token-request'");

@@ -100,6 +100,7 @@ const pahTokenInput = document.querySelector<HTMLTextAreaElement>('#pah-token-in
 const pahTokenError = document.querySelector<HTMLParagraphElement>('#pah-token-error');
 const pahTokenCancel = document.querySelector<HTMLButtonElement>('#pah-token-cancel');
 const pahTokenSave = document.querySelector<HTMLButtonElement>('#pah-token-save');
+const pahTokenLink = document.querySelector<HTMLAnchorElement>('#pah-token-link');
 let idleState = true;
 
 function clear(element: Element | null): void {
@@ -180,6 +181,9 @@ function addExternalLink(link: HTMLAnchorElement, url: string): void {
 
 if (runtimeManualGuide) {
   addExternalLink(runtimeManualGuide, 'https://nodejs.org/en/download/');
+}
+if (pahTokenLink) {
+  addExternalLink(pahTokenLink, 'https://console.redhat.com/ansible/automation-hub/token');
 }
 
 function renderRoutes(status: AapDemoStatus): void {
