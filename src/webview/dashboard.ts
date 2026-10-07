@@ -119,7 +119,28 @@ function formatState(state: string): string {
 }
 
 function writeOutput(text: string): void {
-  if (output) output.textContent = text || 'No command output.';
+  if (!output) return;
+  output.replaceChildren();
+  const value = text || 'No command output.';
+  const urlPattern = /https?:\/\/[^\s<]+/g;
+  let offset = 0;
+  for (const match of value.matchAll(urlPattern)) {
+    const rawUrl = match[0];
+    const url = rawUrl.replace(/[.,;:!?]+$/, '');
+    const start = match.index ?? 0;
+    output.append(document.createTextNode(value.slice(offset, start)));
+    const safeUrl = safeExternalUrl(url);
+    if (!safeUrl) {
+      output.append(document.createTextNode(rawUrl));
+    } else {
+      const link = document.createElement('a');
+      addExternalLink(link, safeUrl);
+      link.textContent = url;
+      output.append(link, document.createTextNode(rawUrl.slice(url.length)));
+    }
+    offset = start + rawUrl.length;
+  }
+  output.append(document.createTextNode(value.slice(offset)));
 }
 
 function appendOutput(text: string): void {
