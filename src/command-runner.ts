@@ -1,4 +1,5 @@
 import { spawn, type SpawnOptionsWithoutStdio } from 'node:child_process';
+import * as path from 'node:path';
 
 export interface CommandResult {
   exitCode: number;
@@ -33,6 +34,10 @@ export class CommandExecutionError extends Error {
   }
 }
 
+function windowsShellQuote(value: string): string {
+  return `"${value.replaceAll('"', '\\"')}"`;
+}
+
 export class CommandRunner {
   run(
     command: string,
@@ -52,7 +57,18 @@ export class CommandRunner {
 
     return new Promise((resolve, reject) => {
       const { onStdout, onStderr, ...spawnOptions } = options;
-      const child = spawn(command, args, spawnOptions);
+      let commandToSpawn = command;
+      let argsToSpawn = args;
+      if (
+        process.platform === 'win32'
+        && spawnOptions.shell === undefined
+        && ['.bat', '.cmd'].includes(path.extname(command).toLowerCase())
+      ) {
+        spawnOptions.shell = true;
+        commandToSpawn = [command, ...args].map(windowsShellQuote).join(' ');
+        argsToSpawn = [];
+      }
+      const child = spawn(commandToSpawn, argsToSpawn, spawnOptions);
       let stdout = '';
       let stderr = '';
 

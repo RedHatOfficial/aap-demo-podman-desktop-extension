@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import * as path from 'node:path';
 import {
   getExtensionCheckoutAction,
   parseNodeMajorVersion,
@@ -7,15 +8,15 @@ import {
 
 describe('resolveExtensionInstallLocation', () => {
   it('uses the default checkout location when the setting is blank', () => {
-    expect(resolveExtensionInstallLocation('', '/home/test')).toBe(
-      '/home/test/.aap-demo-podman-desktop-extension',
+    expect(resolveExtensionInstallLocation('', path.join('home', 'test'))).toBe(
+      path.join('home', 'test', '.aap-demo-podman-desktop-extension'),
     );
   });
 
   it('expands a home-relative checkout location', () => {
     expect(
-      resolveExtensionInstallLocation('~/.aap-demo-podman-desktop-extension', '/home/test'),
-    ).toBe('/home/test/.aap-demo-podman-desktop-extension');
+      resolveExtensionInstallLocation('~/.aap-demo-podman-desktop-extension', path.join('home', 'test')),
+    ).toBe(path.join('home', 'test', '.aap-demo-podman-desktop-extension'));
   });
 
   it('keeps an absolute checkout location unchanged', () => {

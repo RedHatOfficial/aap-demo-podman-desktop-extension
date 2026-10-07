@@ -5,9 +5,14 @@ import * as path from 'node:path';
 import {
   installScriptPathFor,
   bashScriptInvocation,
+  installCliCommand,
+  installCliScriptPathFor,
+  installScriptCommand,
   installToolHint,
+  resolveBashCommand,
   resolveBashScriptPath,
   resolveAapDemoSourceLocation,
+  resolveInstallCliScriptPath,
   resolveInstallLocation,
   resolveInstallScriptPath,
 } from '../src/install-script';
@@ -22,8 +27,18 @@ describe('install locations', () => {
   });
 
   it('resolves install.sh inside the selected repository location', () => {
-    expect(installScriptPathFor('/tmp/aap-demo')).toBe('/tmp/aap-demo/install.sh');
-    expect(resolveInstallScriptPath('/tmp/aap-demo')).toBeUndefined();
+    const installLocation = path.join(os.tmpdir(), 'aap-demo-install-location-does-not-exist');
+
+    expect(installScriptPathFor(installLocation)).toBe(path.join(installLocation, 'install.sh'));
+    expect(resolveInstallScriptPath(installLocation)).toBeUndefined();
+  });
+
+  it('resolves the Windows PowerShell installer inside the selected repository location', () => {
+    const installLocation = path.join(os.tmpdir(), 'aap-demo-install-location-does-not-exist');
+
+    expect(installCliScriptPathFor(installLocation, 'win32'))
+      .toBe(path.join(installLocation, 'powershell', 'install.ps1'));
+    expect(resolveInstallCliScriptPath(installLocation, 'win32')).toBeUndefined();
   });
 
   it('converts Windows paths to slash-separated paths for Bash', () => {
@@ -39,6 +54,70 @@ describe('install locations', () => {
   it('uses Git Bash path conversion on Windows', () => {
     expect(bashScriptInvocation('C:\\Users\\adler\\.aap-demo\\aap-demo\\install.sh', 'win32'))
       .toEqual(['C:/Users/adler/.aap-demo/aap-demo/install.sh']);
+  });
+
+  it('wraps Windows installs through PowerShell', () => {
+    expect(installScriptCommand(
+      'C:\\Users\\adler\\.aap-demo\\aap-demo\\install.sh',
+      'C:\\extension\\scripts\\run-install.ps1',
+      'win32',
+    )).toEqual({
+      command: 'powershell.exe',
+      args: [
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        'C:\\extension\\scripts\\run-install.ps1',
+        '-InstallScript',
+        'C:\\Users\\adler\\.aap-demo\\aap-demo\\install.sh',
+      ],
+    });
+  });
+
+  it('runs Windows CLI installs through the aap-demo PowerShell installer', () => {
+    expect(installCliCommand(
+      'C:\\Users\\adler\\.aap-demo\\aap-demo\\powershell\\install.ps1',
+      'win32',
+    )).toEqual({
+      command: 'powershell.exe',
+      args: [
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        'C:\\Users\\adler\\.aap-demo\\aap-demo\\powershell\\install.ps1',
+        '-Quiet',
+      ],
+    });
+  });
+
+  it('runs POSIX CLI installs through bash', () => {
+    expect(installCliCommand('/home/adler/.aap-demo/aap-demo/install.sh', 'linux'))
+      .toEqual({
+        command: 'bash',
+        args: ['/home/adler/.aap-demo/aap-demo/install.sh'],
+      });
+  });
+
+  it('runs POSIX installs directly through bash', () => {
+    expect(installScriptCommand('/home/adler/.aap-demo/aap-demo/install.sh', '/extension/scripts/run-install.ps1', 'linux'))
+      .toEqual({
+        command: 'bash',
+        args: ['/home/adler/.aap-demo/aap-demo/install.sh'],
+      });
+  });
+
+  it('prefers Git for Windows Bash over WSL bash on Windows', () => {
+    const gitCmdPath = 'C:\\Program Files\\Git\\cmd';
+    const gitBashPath = 'C:\\Program Files\\Git\\bin\\bash.exe';
+
+    expect(resolveBashCommand(gitCmdPath, 'win32', candidate => candidate === gitBashPath))
+      .toBe(gitBashPath);
+  });
+
+  it('uses PATH bash on non-Windows platforms', () => {
+    expect(resolveBashCommand('/usr/bin:/bin', 'linux')).toBe('bash');
   });
 
   it('explains the Windows Bash requirement', () => {

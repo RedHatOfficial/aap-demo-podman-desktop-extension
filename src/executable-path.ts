@@ -2,6 +2,11 @@ import { accessSync, constants, statSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
+export interface ResolveExecutablePathOptions {
+  pathExt?: string;
+  platform?: NodeJS.Platform;
+}
+
 function isExecutable(candidate: string): boolean {
   try {
     accessSync(candidate, constants.X_OK);
@@ -28,6 +33,27 @@ function fallbackDirectories(): string[] {
   ];
 }
 
+function windowsExecutableExtensions(pathExt = process.env.PATHEXT ?? ''): string[] {
+  const configured = pathExt
+    .split(';')
+    .map(extension => extension.trim().toLowerCase())
+    .filter(Boolean);
+  return configured.length > 0 ? configured : ['.com', '.exe', '.bat', '.cmd'];
+}
+
+function executableCandidates(
+  command: string,
+  options: ResolveExecutablePathOptions = {},
+): string[] {
+  if ((options.platform ?? process.platform) !== 'win32') return [command];
+  if (path.extname(command)) return [command];
+
+  return [
+    command,
+    ...windowsExecutableExtensions(options.pathExt).map(extension => `${command}${extension}`),
+  ];
+}
+
 export function augmentPath(pathValue = process.env.PATH ?? ''): string {
   return [...new Set([...pathValue.split(path.delimiter), ...fallbackDirectories()])]
     .filter(Boolean)
@@ -37,18 +63,21 @@ export function augmentPath(pathValue = process.env.PATH ?? ''): string {
 export function resolveExecutablePath(
   command: string,
   pathValue = process.env.PATH ?? '',
+  options: ResolveExecutablePathOptions = {},
 ): string | undefined {
   const expandedCommand = expandHome(command);
   if (path.isAbsolute(expandedCommand)) {
-    return isExecutable(expandedCommand) ? expandedCommand : undefined;
+    return executableCandidates(expandedCommand, options).find(isExecutable);
   }
 
   const directories = augmentPath(pathValue).split(path.delimiter);
 
   for (const directory of directories) {
     if (!directory) continue;
-    const candidate = path.join(directory, expandedCommand);
-    if (isExecutable(candidate)) return candidate;
+    for (const commandCandidate of executableCandidates(expandedCommand, options)) {
+      const candidate = path.join(directory, commandCandidate);
+      if (isExecutable(candidate)) return candidate;
+    }
   }
 
   return undefined;
@@ -57,7 +86,8 @@ export function resolveExecutablePath(
 export function resolveConfiguredExecutable(
   command: string,
   pathValue = process.env.PATH ?? '',
+  options: ResolveExecutablePathOptions = {},
 ): string {
   const expandedCommand = expandHome(command);
-  return resolveExecutablePath(expandedCommand, pathValue) ?? expandedCommand;
+  return resolveExecutablePath(expandedCommand, pathValue, options) ?? expandedCommand;
 }

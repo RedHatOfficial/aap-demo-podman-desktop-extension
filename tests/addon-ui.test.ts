@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { getAddonTogglePresentation, sortAddons } from '../src/webview/addon-ui';
+import { getAddonTogglePresentation, renderableAddons, sortAddons } from '../src/webview/addon-ui';
 
 const dashboardHtml = readFileSync(resolve(__dirname, '../src/webview/index.html'), 'utf8');
 const dashboardSource = readFileSync(resolve(__dirname, '../src/webview/dashboard.ts'), 'utf8');
@@ -29,6 +29,15 @@ describe('getAddonTogglePresentation', () => {
     });
   });
 
+  it('labels the portal operator add-on as amd64 only without changing its command name', () => {
+    expect(getAddonTogglePresentation('portal', 'disabled')).toEqual({
+      className: 'addon-toggle disabled',
+      action: 'enable',
+      label: 'portal operator (amd64 only)',
+      ariaLabel: 'Enable portal operator (amd64 only)',
+    });
+  });
+
   it('does not offer a toggle for an unknown state', () => {
     expect(getAddonTogglePresentation('fleet', 'unknown')).toBeUndefined();
   });
@@ -40,9 +49,32 @@ describe('getAddonTogglePresentation', () => {
     expect(addons.map(addon => addon.name)).toEqual(['portal', 'ao', 'fleet']);
   });
 
-  it('labels the section and explains the toggle colors', () => {
-    expect(dashboardHtml).toContain('<h2>Addons</h2>');
-    expect(dashboardHtml).toContain('green means enabled and grey means disabled');
+  it('does not render add-ons hidden from the Podman Desktop dashboard', () => {
+    const addons = [
+      { name: 'portal' },
+      { name: 'product-demo-satellite' },
+      { name: 'local-cache' },
+      { name: 'fleet' },
+      { name: 'mcp-server' },
+    ];
+
+    expect(renderableAddons(addons).map(addon => addon.name)).toEqual(['mcp-server', 'portal']);
+    expect(addons.map(addon => addon.name)).toEqual([
+      'portal',
+      'product-demo-satellite',
+      'local-cache',
+      'fleet',
+      'mcp-server',
+    ]);
+  });
+
+  it('keeps detailed add-on descriptions out of the dashboard page', () => {
+    expect(dashboardHtml).toContain('<h2>Addons <span class="heading-note">(green means enabled and grey means disabled)</span></h2>');
+    expect(dashboardHtml).not.toContain('<p class="muted">green means enabled and grey means disabled</p>');
+    expect(dashboardHtml).not.toContain('Optional capabilities for the local AAP environment.');
+    expect(dashboardHtml).not.toContain('Automation Orchestrator using an OpenAI-compatible provider');
+    expect(dashboardHtml).not.toContain('MCP server');
+    expect(dashboardHtml).not.toContain('portal operator (amd64 only)</strong>');
     expect(dashboardHtml).not.toContain('Add-on actions');
   });
 
@@ -171,12 +203,24 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardHtml).toContain('<img src="./assets/ansible-logo.png" alt="Ansible Automation Platform logo"');
   });
 
-  it('keeps the primary lifecycle actions ordered beside Deploy AAP', () => {
+  it('links to the extension README from the dashboard header', () => {
+    expect(dashboardHtml).toContain('id="readme-link"');
+    expect(dashboardHtml).toContain('Documentation');
+    expect(dashboardSource).toContain("readmeLink.addEventListener('click'");
+    expect(dashboardSource).toContain("postToHost({ type: 'open-extension-info' })");
+    expect(extensionSource).toContain("message.type === 'open-extension-info'");
+    expect(extensionSource).toContain('extensionApi.extensions.all.find(');
+    expect(extensionSource).toContain("extension.packageJSON?.name === 'aap-demo-podman-desktop-extension'");
+    expect(extensionSource).toContain('extensionApi.navigation.navigateToContribution(registeredExtension.id)');
+  });
+
+  it('keeps the primary lifecycle actions ordered beside Deploy AAP without duplicating status', () => {
     const actionsStart = dashboardHtml.indexOf('<div class="actions">');
     const actionsEnd = dashboardHtml.indexOf('</div>', actionsStart);
     const actionRow = dashboardHtml.slice(actionsStart, actionsEnd);
 
     expect(actionRow).not.toContain('data-action="create"');
+    expect(actionRow).not.toContain('data-action="status"');
     expect(actionRow).toContain('<button class="primary" data-action="start">Start</button>');
     expect(actionRow).toContain('<button class="primary" data-action="diagnose">Diagnose</button>');
     expect(actionRow).toContain('<button class="primary" id="idle-toggle">Set idle</button>');
@@ -202,6 +246,15 @@ describe('getAddonTogglePresentation', () => {
     expect(readme).toContain('## Troubleshooting');
   });
 
+  it('documents what each add-on does in extension details', () => {
+    expect(readme).toContain('## Add-ons');
+    expect(readme).toContain('AO with OpenAI');
+    expect(readme).toContain('AO with Ollama');
+    expect(readme).toContain('AO no AI');
+    expect(readme).toContain('MCP server');
+    expect(readme).toContain('portal operator (amd64 only)');
+  });
+
   it('declares the configurable aap-demo repository install location', () => {
     const manifest = JSON.parse(packageJson);
     const installLocation = manifest.contributes.configuration.properties['aap-demo.installLocation'];
@@ -222,5 +275,24 @@ describe('getAddonTogglePresentation', () => {
   it('adds space below the Addons section', () => {
     expect(dashboardHtml).toContain('.addons-card { margin-bottom: 14px; }');
     expect(dashboardHtml).toContain('<section class="card addons-card">');
+  });
+
+  it('keeps credential passwords in a readonly input while toggling visibility', () => {
+    expect(dashboardSource).toContain("document.createElement('input')");
+    expect(dashboardSource).toContain("password.type = 'password'");
+    expect(dashboardSource).toContain("password.value = credential.password");
+    expect(dashboardSource).toContain("password.type = visible ? 'password' : 'text'");
+  });
+
+  it('copies credentials with a browser clipboard fallback', () => {
+    expect(dashboardSource).toContain('navigator.clipboard.writeText(credential.password)');
+    expect(dashboardSource).toContain('document.execCommand(\'copy\')');
+    expect(dashboardSource).toContain("copied ? 'Copied' : 'Copy failed'");
+  });
+
+  it('reuses the saved OpenAI key through the CLI environment', () => {
+    expect(extensionSource).toContain("readFileSync(aoLlmApiKeyFile, 'utf8')");
+    expect(extensionSource).toContain('process.env.OPENAI_API_KEY?.trim() || readSavedAoOpenAiKey()');
+    expect(extensionSource).toContain('addonEnvironment.OPENAI_API_KEY = openAiApiKey');
   });
 });

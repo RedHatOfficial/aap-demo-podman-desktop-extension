@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { resolveExecutablePath } from './executable-path';
-import { resolveInstallLocation, resolveInstallScriptPath } from './install-script';
+import { resolveInstallCliScriptPath, resolveInstallLocation } from './install-script';
 
 const MINIMUM_CPUS = 8;
 const MINIMUM_MEMORY = 16_384;
@@ -54,10 +54,14 @@ function findPullSecret(configuredPath?: string): {
 export function checkPrerequisites(
   settings: PrerequisiteSettings,
   pathValue = process.env.PATH ?? '',
+  platform: NodeJS.Platform = process.platform,
 ): PrerequisiteStatus {
   const crcPath = resolveExecutablePath(settings.crcPath, pathValue);
   const cliPath = resolveExecutablePath(settings.cliPath, pathValue);
-  const installScriptPath = resolveInstallScriptPath(resolveInstallLocation(settings.installLocation));
+  const installScriptPath = resolveInstallCliScriptPath(
+    resolveInstallLocation(settings.installLocation),
+    platform,
+  );
   const pullSecret = findPullSecret(settings.pullSecretPath);
   const cpus = settings.cpus ?? 8;
   const cpuStatus = {

@@ -1,5 +1,5 @@
 import * as fs from 'node:fs/promises';
-import { existsSync, lstatSync, mkdirSync, readdirSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { ExtensionContext, WebviewPanel } from '@podman-desktop/api';
@@ -26,10 +26,11 @@ import {
 import { checkPrerequisites } from './prerequisites';
 import {
   AAP_DEMO_REPOSITORY_URL,
-  bashScriptInvocation,
+  installCliCommand,
   installToolHint,
+  resolveBashCommand,
   resolveAapDemoSourceLocation,
-  resolveInstallScriptPath,
+  resolveInstallCliScriptPath,
 } from './install-script';
 import { parseStatusOutput } from './status-parser';
 import { formatStatusBarText } from './status-bar';
@@ -203,7 +204,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     const verb = mode === 'update' ? 'updated' : 'installed';
     const installLocation = resolveAapDemoSourceLocation(installLocationSetting);
     const streamOptions = {
-      env: { ...process.env, PATH: settings.pathValue },
+      env: { ...process.env, PATH: settings.pathValue, QUIET: 'true' },
       onStdout: (chunk: string) => {
         console.log(`[aap-demo install] ${chunk.trimEnd()}`);
         void postDashboardMessage({ type: 'command-output', stream: 'stdout', text: chunk });
@@ -254,22 +255,27 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
           throw error;
         }
       };
+      const bashCommand = resolveBashCommand(settings.pathValue);
       await verifyTool('git');
-      await verifyTool('bash');
+      if (process.platform !== 'win32') {
+        await verifyTool(bashCommand);
+      }
       if (checkoutAction === 'pull') {
         await runner.run('git', ['-C', installLocation, 'pull', '--ff-only'], streamOptions);
       } else if (checkoutAction === 'clone') {
         mkdirSync(path.dirname(installLocation), { recursive: true });
         await runner.run('git', ['clone', AAP_DEMO_REPOSITORY_URL, installLocation], streamOptions);
       }
-      const installScriptPath = resolveInstallScriptPath(installLocation);
+      const installScriptPath = resolveInstallCliScriptPath(installLocation);
       if (!installScriptPath) {
+        const expectedScript = process.platform === 'win32' ? 'powershell/install.ps1' : 'install.sh';
         throw new Error(
-          `The aap-demo source at ${installLocation} does not contain install.sh after ${checkoutAction}. Check that aap-demo.installLocation points to the aap-demo repository checkout, then try again.`,
+          `The aap-demo source at ${installLocation} does not contain ${expectedScript} after ${checkoutAction}. Check that aap-demo.installLocation points to the aap-demo repository checkout, then try again.`,
         );
       }
-      const result = await runner.run('bash', bashScriptInvocation(installScriptPath), {
-        cwd: path.dirname(installScriptPath),
+      const installCommand = installCliCommand(installScriptPath);
+      const result = await runner.run(installCommand.command, installCommand.args, {
+        cwd: installLocation,
         ...streamOptions,
       });
       await postDashboardMessage({ type: 'command-result', action, stdout: result.stdout, stderr: result.stderr });
@@ -393,12 +399,14 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     await runExtensionSourceOperation(pendingExtensionSourceOperation);
   };
 
-  const hasSavedAoOpenAiKey = (): boolean => {
+  const readSavedAoOpenAiKey = (): string | undefined => {
     try {
       const keyStats = lstatSync(aoLlmApiKeyFile);
-      return keyStats.isFile() && !keyStats.isSymbolicLink() && keyStats.size > 0;
+      if (!keyStats.isFile() || keyStats.isSymbolicLink() || keyStats.size === 0) return undefined;
+      const savedKey = readFileSync(aoLlmApiKeyFile, 'utf8').trim();
+      return savedKey || undefined;
     } catch {
-      return false;
+      return undefined;
     }
   };
 
@@ -408,10 +416,10 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     llmProvider?: AoLlmProvider,
   ): Promise<void> => {
     try {
-      let openAiApiKey = process.env.OPENAI_API_KEY;
+      let openAiApiKey = process.env.OPENAI_API_KEY?.trim() || readSavedAoOpenAiKey();
       if (
         action === 'enable' && addon === 'ao' && llmProvider === 'external' &&
-        !openAiApiKey && !hasSavedAoOpenAiKey()
+        !openAiApiKey
       ) {
         const enteredKey = await extensionApi.window.showInputBox({
           title: 'AO with OpenAI',
@@ -534,6 +542,23 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
             console.error('[aap-demo] Could not open the OpenShift Local extension page:', error);
             await extensionApi.window.showWarningMessage(
               'Could not open the OpenShift Local extension page. In Podman Desktop, open Extensions → Catalog and search for OpenShift Local, then use its dashboard to install CRC.',
+            );
+          }
+        } else if (message.type === 'open-extension-info') {
+          try {
+            const registeredExtension = extensionApi.extensions.all.find(
+              extension =>
+                path.resolve(extension.extensionPath).toLowerCase() === path.resolve(extensionPath).toLowerCase() ||
+                extension.packageJSON?.name === 'aap-demo-podman-desktop-extension',
+            );
+            if (!registeredExtension) {
+              throw new Error('AAP Demo is not registered with Podman Desktop yet.');
+            }
+            await extensionApi.navigation.navigateToContribution(registeredExtension.id);
+          } catch (error) {
+            console.error('[aap-demo] Could not open the AAP Demo extension information page:', error);
+            await extensionApi.window.showWarningMessage(
+              'Could not open the AAP Demo extension information page in Podman Desktop.',
             );
           }
         } else if (message.type === 'addon') {

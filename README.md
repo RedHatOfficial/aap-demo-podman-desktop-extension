@@ -1,6 +1,9 @@
 # AAP Demo
 
-Manage a local `aap-demo` environment from Podman Desktop.
+Run and manage a local Ansible Automation Platform demo environment from
+Podman Desktop. The extension wraps the `aap-demo` CLI with a dashboard for
+cluster lifecycle, prerequisites, routes, credentials, diagnostics, and optional
+add-ons.
 
 ## Quick install
 
@@ -40,7 +43,33 @@ Use it to create, start, deploy, stop, destroy, diagnose, repair, and inspect
 the cluster. Add-ons are listed alphabetically; green means enabled and gray
 means disabled.
 
-For AO, choose **AO with OpenAI**, **AO with Ollama**, or **AO no AI**.
+## Add-ons
+
+Use add-ons to turn on optional capabilities after AAP is deployed.
+
+- **AO with OpenAI** deploys Automation Orchestrator and configures it to use an
+  OpenAI-compatible API endpoint and model.
+- **AO with Ollama** deploys Automation Orchestrator and configures it to use a
+  local Ollama provider.
+- **AO no AI** deploys Automation Orchestrator without connecting an AI
+  provider.
+- **MCP server** exposes the local AAP instance through an MCP endpoint for
+  compatible clients.
+- **portal operator (amd64 only)** enables the portal operator path. This add-on
+  is only intended for amd64 local environments.
+
+## Local development
+
+Install dependencies, then run the local watcher:
+
+```bash
+npm ci
+npm run dev:watch
+```
+
+The command prints the Podman Desktop local-extension setup steps and rebuilds
+the backend and webview as files change. Use `npm run dev:local` for a one-time
+build, or `npm run verify:local` before sharing changes.
 
 ## Install the aap-demo CLI
 

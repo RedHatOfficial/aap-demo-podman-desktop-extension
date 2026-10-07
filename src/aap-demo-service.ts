@@ -53,11 +53,11 @@ export class AapDemoService {
   }
 
   private withSettings(options?: CommandRunnerOptions): CommandRunnerOptions | undefined {
-    if (!options && !this.settings.pullSecretPath && !this.settings.cpus && !this.settings.memory && !this.settings.pathValue) {
-      return undefined;
-    }
     const configuredEnvironment: NodeJS.ProcessEnv = {
       ...(options?.env ?? process.env),
+      PYTHONIOENCODING: 'utf-8',
+      PYTHONUTF8: '1',
+      QUIET: 'true',
     };
     if (this.settings.pullSecretPath) {
       configuredEnvironment.PULL_SECRET_PATH = this.settings.pullSecretPath;

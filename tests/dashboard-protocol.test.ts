@@ -49,6 +49,10 @@ describe('isDashboardMessage', () => {
     expect(isDashboardMessage({ type: 'open-crc-extension' })).toBe(true);
   });
 
+  it('accepts the extension information page handoff request', () => {
+    expect(isDashboardMessage({ type: 'open-extension-info' })).toBe(true);
+  });
+
   it('rejects unsupported messages', () => {
     expect(isDashboardMessage({ type: 'run', action: 'shell' })).toBe(false);
     expect(isDashboardMessage({ type: 'open-url', url: 'file:///etc/passwd' })).toBe(false);

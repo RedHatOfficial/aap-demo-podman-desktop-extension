@@ -26,6 +26,14 @@ export function resolveInstallScriptPath(configuredPath = ''): string | undefine
   return isReadableFile(candidate) ? candidate : undefined;
 }
 
+export function resolveInstallCliScriptPath(
+  configuredPath = '',
+  platform: NodeJS.Platform = process.platform,
+): string | undefined {
+  const candidate = installCliScriptPathFor(configuredPath, platform);
+  return isReadableFile(candidate) ? candidate : undefined;
+}
+
 export function resolveInstallLocation(configuredPath = ''): string {
   const configured = configuredPath.trim();
   return expandHome(configured || '~/.aap-demo/aap-demo');
@@ -65,6 +73,16 @@ export function installScriptPathFor(installLocation: string): string {
   return path.join(resolveAapDemoSourceLocation(installLocation), 'install.sh');
 }
 
+export function installCliScriptPathFor(
+  installLocation: string,
+  platform: NodeJS.Platform = process.platform,
+): string {
+  const sourceLocation = resolveAapDemoSourceLocation(installLocation);
+  return platform === 'win32'
+    ? path.join(sourceLocation, 'powershell', 'install.ps1')
+    : path.join(sourceLocation, 'install.sh');
+}
+
 /** Git for Windows Bash accepts native Windows paths; keep the drive visible. */
 export function resolveBashScriptPath(
   scriptPath: string,
@@ -80,6 +98,82 @@ export function bashScriptInvocation(
 ): string[] {
   const bashPath = resolveBashScriptPath(scriptPath, platform);
   return [bashPath];
+}
+
+export function installScriptCommand(
+  scriptPath: string,
+  wrapperPath: string,
+  platform: NodeJS.Platform = process.platform,
+): { command: string; args: string[] } {
+  if (platform === 'win32') {
+    return {
+      command: 'powershell.exe',
+      args: [
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        wrapperPath,
+        '-InstallScript',
+        scriptPath,
+      ],
+    };
+  }
+
+  return { command: 'bash', args: bashScriptInvocation(scriptPath, platform) };
+}
+
+export function installCliCommand(
+  scriptPath: string,
+  platform: NodeJS.Platform = process.platform,
+): { command: string; args: string[] } {
+  if (platform === 'win32') {
+    return {
+      command: 'powershell.exe',
+      args: [
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        scriptPath,
+        '-Quiet',
+      ],
+    };
+  }
+
+  return { command: 'bash', args: bashScriptInvocation(scriptPath, platform) };
+}
+
+function windowsGitBashCandidates(pathValue: string): string[] {
+  const pathCandidates = pathValue
+    .split(path.delimiter)
+    .filter(Boolean)
+    .flatMap(directory => {
+      const normalized = path.normalize(directory);
+      const parent = path.dirname(normalized);
+      return path.basename(normalized).toLowerCase() === 'cmd'
+        ? [
+            path.join(parent, 'bin', 'bash.exe'),
+            path.join(parent, 'usr', 'bin', 'bash.exe'),
+          ]
+        : [];
+    });
+
+  return [
+    ...pathCandidates,
+    'C:\\Program Files\\Git\\bin\\bash.exe',
+    'C:\\Program Files\\Git\\usr\\bin\\bash.exe',
+  ];
+}
+
+export function resolveBashCommand(
+  pathValue = process.env.PATH ?? '',
+  platform: NodeJS.Platform = process.platform,
+  exists: (candidate: string) => boolean = existsSync,
+): string {
+  if (platform !== 'win32') return 'bash';
+
+  return windowsGitBashCandidates(pathValue).find(exists) ?? 'bash';
 }
 
 export function installToolHint(

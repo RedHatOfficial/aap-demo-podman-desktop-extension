@@ -145,9 +145,12 @@
     "build": "npm run build:backend && npm run build:webview",
     "build:backend": "vite build --config vite.backend.config.ts",
     "build:webview": "vite build --config vite.webview.config.ts",
+    "dev:local": "npm run build && node scripts/local-dev.mjs",
+    "dev:watch": "node scripts/local-dev.mjs && npm run watch",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "watch": "npm run build:backend -- --watch & npm run build:webview -- --watch"
+    "verify:local": "npm test && npm run typecheck && npm run build",
+    "watch": "node scripts/watch.mjs"
   },
   "devDependencies": {
     "@podman-desktop/api": "1.12.0",

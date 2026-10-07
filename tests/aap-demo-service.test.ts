@@ -35,9 +35,11 @@ describe('AapDemoService', () => {
 
     await service.run(action);
 
-    expect(executor.calls).toEqual([
-      { command: '/custom/bin/aap-demo', args },
-    ]);
+    expect(executor.calls[0]).toMatchObject({
+      command: '/custom/bin/aap-demo',
+      args,
+      options: { env: { QUIET: 'true' } },
+    });
   });
 
   it('passes the desired idle state to the CLI', async () => {
@@ -46,7 +48,11 @@ describe('AapDemoService', () => {
 
     await service.run('idle', false);
 
-    expect(executor.calls).toEqual([{ command: 'aap-demo', args: ['idle', 'false'] }]);
+    expect(executor.calls[0]).toMatchObject({
+      command: 'aap-demo',
+      args: ['idle', 'false'],
+      options: { env: { QUIET: 'true' } },
+    });
   });
 
   it('falls back to aap-demo when the configured CLI path is empty', async () => {
@@ -55,7 +61,32 @@ describe('AapDemoService', () => {
 
     await service.run('status');
 
-    expect(executor.calls).toEqual([{ command: 'aap-demo', args: ['status'] }]);
+    expect(executor.calls[0]).toMatchObject({
+      command: 'aap-demo',
+      args: ['status'],
+      options: { env: { QUIET: 'true' } },
+    });
+  });
+
+  it('always runs the CLI quietly for Podman Desktop', async () => {
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor);
+
+    await service.run('status');
+
+    expect(executor.calls[0]?.options?.env?.QUIET).toBe('true');
+  });
+
+  it('forces Python UTF-8 output for Windows provisioning helpers', async () => {
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor);
+
+    await service.runAddon('enable', 'ao');
+
+    expect(executor.calls[0]?.options?.env).toMatchObject({
+      PYTHONIOENCODING: 'utf-8',
+      PYTHONUTF8: '1',
+    });
   });
 
   it('runs add-on enable and disable actions with the selected add-on', async () => {
@@ -65,10 +96,16 @@ describe('AapDemoService', () => {
     await service.runAddon('enable', 'mcp-server');
     await service.runAddon('disable', 'mcp-server');
 
-    expect(executor.calls).toEqual([
-      { command: 'aap-demo', args: ['enable', 'mcp-server'] },
-      { command: 'aap-demo', args: ['disable', 'mcp-server'] },
-    ]);
+    expect(executor.calls[0]).toMatchObject({
+      command: 'aap-demo',
+      args: ['enable', 'mcp-server'],
+      options: { env: { QUIET: 'true' } },
+    });
+    expect(executor.calls[1]).toMatchObject({
+      command: 'aap-demo',
+      args: ['disable', 'mcp-server'],
+      options: { env: { QUIET: 'true' } },
+    });
   });
 
   it('passes configured pull secret, CPU, and memory settings to the CLI', async () => {

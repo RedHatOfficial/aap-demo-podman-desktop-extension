@@ -123,6 +123,18 @@ image when the extension is only disabled and re-enabled.
 
 ## Local development without manually rebuilding
 
+For the npm-only workflow, install dependencies once and start the local
+watcher:
+
+```bash
+npm ci
+npm run dev:watch
+```
+
+Use `npm run dev:local` when you only need a one-time build plus the local
+extension setup steps. Use `npm run verify:local` before sharing a change; it
+runs tests, typecheck, and the production build.
+
 Start the continuous compiler:
 
 ```bash

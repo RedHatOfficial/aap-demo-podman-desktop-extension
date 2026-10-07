@@ -12,8 +12,11 @@
       h1, h2, p { margin-top: 0; }
       h1 { margin-bottom: 4px; font-size: 1.6rem; }
       h2 { margin-bottom: 12px; font-size: 1rem; }
+      .heading-note { color: #a9b1bb; font-weight: 400; }
       .brand-logo { display: block; width: 132px; height: auto; margin-bottom: 10px; }
       .muted { color: #a9b1bb; }
+      .header-links { display: flex; flex-wrap: wrap; gap: 10px; }
+      .header-links a { color: #58a6ff; }
       .status { padding: 18px; border: 1px solid #39424d; border-radius: 10px; margin: 20px 0; background: #20262d; }
       .status-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
       .status-state { display: flex; align-items: center; gap: 10px; font-size: 1.15rem; font-weight: 650; }
@@ -41,6 +44,7 @@
       .list-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid #303842; }
       .list-row:last-child { border-bottom: 0; }
       .list-row a { color: #58a6ff; overflow-wrap: anywhere; }
+      .credential-password { min-width: 0; width: 10rem; padding: 5px 7px; border: 1px solid #596675; border-radius: 5px; color: inherit; background: #15191e; }
       .badge { padding: 3px 7px; border-radius: 999px; font-size: .78rem; background: #303842; }
       .badge.enabled { color: #7ee787; background: #1c3927; }
       .badge.disabled { color: #a9b1bb; }
@@ -66,6 +70,7 @@
           <img src="./assets/ansible-logo.png" alt="Ansible Automation Platform logo" class="brand-logo" />
           <h1>AAP Demo</h1>
           <p class="muted">Local Ansible Automation Platform environment</p>
+          <div class="header-links"><a id="readme-link" href="#">Documentation</a></div>
         </div>
         <button data-action="status">Refresh status</button>
       </header>
@@ -105,8 +110,7 @@
         <button class="danger" data-action="destroy">Destroy cluster</button>
       </div>
       <section class="card addons-card">
-        <h2>Addons</h2>
-        <p class="muted">green means enabled and grey means disabled</p>
+        <h2>Addons <span class="heading-note">(green means enabled and grey means disabled)</span></h2>
         <div class="actions addon-actions" id="addon-actions"><p class="empty">No add-on actions available.</p></div>
       </section>
       <div class="grid">

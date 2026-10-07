@@ -13,6 +13,28 @@ SPEC.loader.exec_module(MODULE)
 
 
 class PodmanExtensionScriptTests(unittest.TestCase):
+    def test_package_exposes_local_development_npm_scripts(self):
+        manifest = json.loads((Path(__file__).parents[1] / "package.json").read_text())
+
+        scripts = manifest["scripts"]
+
+        self.assertEqual(
+            scripts["dev:local"],
+            "npm run build && node scripts/local-dev.mjs",
+        )
+        self.assertEqual(
+            scripts["dev:watch"],
+            "node scripts/local-dev.mjs && npm run watch",
+        )
+        self.assertEqual(
+            scripts["verify:local"],
+            "npm test && npm run typecheck && npm run build",
+        )
+        self.assertEqual(
+            scripts["watch"],
+            "node scripts/watch.mjs",
+        )
+
     def test_validate_manifest_reports_all_required_fields(self):
         with tempfile.TemporaryDirectory() as directory:
             manifest = Path(directory) / "package.json"

@@ -2,7 +2,7 @@ import type { AapDemoStatus } from '../status-parser';
 import type { PrerequisiteStatus } from '../prerequisites';
 import { safeExternalUrl, unwrapDashboardMessage } from '../dashboard-protocol';
 import { acquireDesktopApi, type DesktopApi } from './desktop-api';
-import { getAddonTogglePresentation, sortAddons } from './addon-ui';
+import { getAddonTogglePresentation, renderableAddons } from './addon-ui';
 import { handleCliMissing } from './cli-ui';
 import { shouldShowFixSsl } from './ssl-ui';
 
@@ -89,6 +89,7 @@ const runtimeMessage = document.querySelector<HTMLParagraphElement>('#extension-
 const installRuntime = document.querySelector<HTMLButtonElement>('#install-runtime');
 const checkRuntime = document.querySelector<HTMLButtonElement>('#check-runtime');
 const runtimeManualGuide = document.querySelector<HTMLAnchorElement>('#runtime-manual-guide');
+const readmeLink = document.querySelector<HTMLAnchorElement>('#readme-link');
 const idleToggle = document.querySelector<HTMLButtonElement>('#idle-toggle');
 const fixSslButton = document.querySelector<HTMLButtonElement>('#fix-ssl');
 let idleState = true;
@@ -149,6 +150,14 @@ if (runtimeManualGuide) {
   addExternalLink(runtimeManualGuide, 'https://nodejs.org/en/download/');
 }
 
+if (readmeLink) {
+  readmeLink.href = '#';
+  readmeLink.addEventListener('click', event => {
+    event.preventDefault();
+    postToHost({ type: 'open-extension-info' });
+  });
+}
+
 function renderRoutes(status: AapDemoStatus): void {
   clear(routes);
   if (!routes || status.routes.length === 0) {
@@ -177,22 +186,39 @@ function renderCredentials(status: AapDemoStatus): void {
     row.className = 'list-row';
     const label = document.createElement('span');
     label.textContent = `${credential.namespace} / ${credential.username}`;
-    const password = document.createElement('code');
-    password.textContent = '••••••••';
+    const password = document.createElement('input');
+    password.type = 'password';
+    password.value = credential.password;
+    password.readOnly = true;
+    password.className = 'credential-password';
+    password.setAttribute('aria-label', `${credential.namespace} password`);
     const reveal = document.createElement('button');
     reveal.className = 'small';
     reveal.textContent = 'Show';
     reveal.addEventListener('click', () => {
-      const visible = password.textContent === credential.password;
-      password.textContent = visible ? '••••••••' : credential.password;
+      const visible = password.type === 'text';
+      password.type = visible ? 'password' : 'text';
       reveal.textContent = visible ? 'Show' : 'Hide';
     });
     const copy = document.createElement('button');
     copy.className = 'small';
     copy.textContent = 'Copy';
     copy.addEventListener('click', async () => {
-      await navigator.clipboard?.writeText(credential.password);
-      copy.textContent = 'Copied';
+      let copied = false;
+      try {
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(credential.password);
+          copied = true;
+        }
+      } catch {
+        copied = false;
+      }
+      if (!copied) {
+        password.select();
+        copied = document.execCommand('copy');
+        password.setSelectionRange(0, 0);
+      }
+      copy.textContent = copied ? 'Copied' : 'Copy failed';
       window.setTimeout(() => { copy.textContent = 'Copy'; }, 1200);
     });
     const value = document.createElement('span');
@@ -208,7 +234,7 @@ function renderAddons(status: AapDemoStatus): void {
     addonActions?.append(emptyMessage('No add-on actions available.'));
     return;
   }
-  for (const addon of sortAddons(status.addons)) {
+  for (const addon of renderableAddons(status.addons)) {
     if (addon.name.toLowerCase() === 'ao' && addon.state === 'disabled') {
       const control = document.createElement('div');
       control.className = 'addon-control ao-provider-actions';

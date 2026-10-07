@@ -53,7 +53,7 @@ describe('ExtensionSourceService', () => {
       'npm --version': '11.0.0',
     });
 
-    await createService(executor).prepare();
+    await createService(executor, false, false, 'linux').prepare();
 
     expect(executor.calls.map(({ command, args }) => [command, ...args])).toEqual([
       ['git', 'clone', AAP_DEMO_EXTENSION_REPOSITORY_URL, '/home/test/.aap-demo-podman-desktop-extension'],
@@ -139,7 +139,7 @@ describe('ExtensionSourceService', () => {
   it('reports Node.js as missing and stops before npm commands', async () => {
     const executor = new RecordingExecutor({}, 'node --version');
 
-    await expect(createService(executor).prepare()).rejects.toMatchObject({
+    await expect(createService(executor, false, false, 'linux').prepare()).rejects.toMatchObject({
       name: 'MissingRuntimeError',
       runtime: 'node',
       reason: 'missing',
@@ -164,7 +164,7 @@ describe('ExtensionSourceService', () => {
       'npm --version',
     );
 
-    await expect(createService(executor).prepare()).rejects.toMatchObject({
+    await expect(createService(executor, false, false, 'linux').prepare()).rejects.toMatchObject({
       runtime: 'npm',
       reason: 'missing',
     });
