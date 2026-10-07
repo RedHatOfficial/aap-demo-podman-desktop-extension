@@ -29,9 +29,9 @@ function productDemosSubscriptionGuidance(output: string): string | undefined {
     ?? 'https://aap-aap-operator.apps.127.0.0.1.nip.io';
   return [
     'Product Demos cannot start until AAP has a registered subscription.',
-    `Open AAP: ${aapUrl}`,
-    'In AAP, go to Settings → Subscription and register or attach your subscription.',
-    'Return to Podman Desktop and enable Product Demos again, or run: aap-demo enable product-demos',
+    `1. Open AAP: ${aapUrl}`,
+    '2. In AAP, go to Settings → Subscription and register or attach your subscription.',
+    '3. Return to Podman Desktop and enable Product Demos again, or run: aap-demo enable product-demos',
   ].join('\n');
 }
 
