@@ -24,6 +24,7 @@ export type DashboardMessage =
   | { type: 'install-runtime' }
   | { type: 'check-runtime' }
   | { type: 'open-crc-extension' }
+  | { type: 'pah-token-response'; token?: string }
   | { type: 'run'; action: AapDemoAction; idleState?: boolean }
   | { type: 'addon'; action: AddonAction; addon: string; llmProvider?: AoLlmProvider }
   | { type: 'open-url'; url: string };
@@ -82,6 +83,9 @@ export function isDashboardMessage(message: unknown): message is DashboardMessag
   if (candidate.type === 'install-runtime') return true;
   if (candidate.type === 'check-runtime') return true;
   if (candidate.type === 'open-crc-extension') return true;
+  if (candidate.type === 'pah-token-response') {
+    return candidate.token === undefined || typeof candidate.token === 'string';
+  }
   if (candidate.type === 'run') {
     return supportedActions.has(candidate.action as AapDemoAction);
   }

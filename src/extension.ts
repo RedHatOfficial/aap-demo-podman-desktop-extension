@@ -137,6 +137,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     console.warn('[aap-demo] Could not persist the detected CLI version', error);
   }
   let panel: WebviewPanel | undefined;
+  let pahTokenResolver: ((token: string | undefined) => void) | undefined;
   const postDashboardMessage = async (message: unknown): Promise<boolean> => {
     const currentPanel = panel;
     if (!currentPanel) return false;
@@ -145,6 +146,22 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       console.warn('[aap-demo] Dashboard webview did not accept a message', message);
     }
     return delivered;
+  };
+  const requestPahToken = async (): Promise<string | undefined> => {
+    if (!panel) {
+      return extensionApi.window.showInputBox({
+        title: 'Private Automation Hub',
+        prompt: 'Paste the Offline Token from Red Hat Automation Hub. It will be saved securely to ~/.aap-demo/galaxy-token.',
+        password: true,
+        ignoreFocusOut: true,
+        placeHolder: 'Offline Token',
+        validateInput: value => value.trim() ? undefined : 'An Offline Token is required.',
+      });
+    }
+    return new Promise(resolve => {
+      pahTokenResolver = resolve;
+      void postDashboardMessage({ type: 'pah-token-request' });
+    });
   };
   const refreshPrerequisites = async (): Promise<void> => {
     await postDashboardMessage({
@@ -455,19 +472,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         await extensionApi.env.openExternal(
           extensionApi.Uri.parse('https://console.redhat.com/ansible/automation-hub/token', true),
         );
-        const enteredToken = await extensionApi.window.showInputBox({
-          title: 'Private Automation Hub',
-          prompt: [
-            '1. Log in with your Red Hat account.',
-            "2. Click 'Load token' button.",
-            "3. Copy the 'Offline Token' and paste it below.",
-            'It will be saved securely to ~/.aap-demo/galaxy-token.',
-          ].join(' '),
-          password: true,
-          ignoreFocusOut: true,
-          placeHolder: 'Offline Token',
-          validateInput: value => value.trim() ? undefined : 'An Offline Token is required.',
-        });
+        const enteredToken = await requestPahToken();
         if (enteredToken === undefined) {
           await runAction('status');
           return;
@@ -586,6 +591,12 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       void runAction('status');
     };
     const messageSubscription = panel.webview.onDidReceiveMessage(async message => {
+      if (isDashboardMessage(message) && message.type === 'pah-token-response') {
+        const resolveToken = pahTokenResolver;
+        pahTokenResolver = undefined;
+        resolveToken?.(message.token);
+        return;
+      }
       if (isDashboardMessage(message)) {
         if (message.type === 'ready') {
           void initializeDashboard();
@@ -624,6 +635,8 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
           if (!opened) {
             await extensionApi.window.showWarningMessage(`Could not open ${message.url}`);
           }
+        } else if (message.type === 'pah-token-response') {
+          return;
         } else {
           await runAction(message.action, message.idleState);
         }
@@ -637,6 +650,8 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       panel.onDidDispose(() => {
         if (initializationTimer) clearTimeout(initializationTimer);
         clearInterval(statusPoll);
+        pahTokenResolver?.(undefined);
+        pahTokenResolver = undefined;
         panel = undefined;
       }),
     );

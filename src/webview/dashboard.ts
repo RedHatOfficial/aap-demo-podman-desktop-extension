@@ -48,6 +48,10 @@ interface DashboardExtensionSetupCompleteMessage {
   path: string;
 }
 
+interface DashboardPahTokenRequestMessage {
+  type: 'pah-token-request';
+}
+
 interface DashboardCommandMessage {
   type: 'command-result' | 'addon-result' | 'command-output' | 'command-error';
   action?: string;
@@ -91,6 +95,11 @@ const checkRuntime = document.querySelector<HTMLButtonElement>('#check-runtime')
 const runtimeManualGuide = document.querySelector<HTMLAnchorElement>('#runtime-manual-guide');
 const idleToggle = document.querySelector<HTMLButtonElement>('#idle-toggle');
 const fixSslButton = document.querySelector<HTMLButtonElement>('#fix-ssl');
+const pahTokenDialog = document.querySelector<HTMLDivElement>('#pah-token-dialog');
+const pahTokenInput = document.querySelector<HTMLTextAreaElement>('#pah-token-input');
+const pahTokenError = document.querySelector<HTMLParagraphElement>('#pah-token-error');
+const pahTokenCancel = document.querySelector<HTMLButtonElement>('#pah-token-cancel');
+const pahTokenSave = document.querySelector<HTMLButtonElement>('#pah-token-save');
 let idleState = true;
 
 function clear(element: Element | null): void {
@@ -127,6 +136,30 @@ function postToHost(message: unknown): void {
   }
   desktopApi.postMessage(message);
 }
+
+function closePahTokenDialog(token?: string): void {
+  if (pahTokenDialog) pahTokenDialog.hidden = true;
+  if (pahTokenError) pahTokenError.textContent = '';
+  if (pahTokenInput) pahTokenInput.value = '';
+  postToHost({ type: 'pah-token-response', ...(token === undefined ? {} : { token }) });
+}
+
+function showPahTokenDialog(): void {
+  if (!pahTokenDialog || !pahTokenInput) return;
+  pahTokenDialog.hidden = false;
+  pahTokenInput.focus();
+}
+
+pahTokenCancel?.addEventListener('click', () => closePahTokenDialog());
+pahTokenSave?.addEventListener('click', () => {
+  const token = pahTokenInput?.value.trim() ?? '';
+  if (!token) {
+    if (pahTokenError) pahTokenError.textContent = 'An Offline Token is required.';
+    pahTokenInput?.focus();
+    return;
+  }
+  closePahTokenDialog(token);
+});
 
 function postAction(action: string, idleStateValue?: boolean): void {
   const label = action === 'trust-ca' ? 'Fix SSL' : action;
@@ -443,8 +476,12 @@ checkRuntime?.addEventListener('click', () => {
 });
 
 window.addEventListener('message', event => {
-  const message = unwrapDashboardMessage(event.data) as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardExtensionMessage | DashboardRuntimeRequiredMessage | DashboardRuntimeInstallUnavailableMessage | DashboardRuntimeTerminalOpenedMessage | DashboardExtensionSetupCompleteMessage | DashboardCommandMessage | DashboardCliMessage;
+  const message = unwrapDashboardMessage(event.data) as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardExtensionMessage | DashboardRuntimeRequiredMessage | DashboardRuntimeInstallUnavailableMessage | DashboardRuntimeTerminalOpenedMessage | DashboardExtensionSetupCompleteMessage | DashboardPahTokenRequestMessage | DashboardCommandMessage | DashboardCliMessage;
   if (!message || typeof message !== 'object' || typeof message.type !== 'string') return;
+  if (message.type === 'pah-token-request') {
+    showPahTokenDialog();
+    return;
+  }
   if (message.type === 'cli-missing') {
     handleCliMissing(
       { statusState, statusDot, statusSummary, toolVersion, installCli, updateCli },

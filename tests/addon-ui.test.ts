@@ -332,8 +332,13 @@ describe('getAddonTogglePresentation', () => {
     expect(extensionSource).toContain("addon === 'setup-pah'");
     expect(extensionSource).toContain('hasHostFile(runner, galaxyTokenFile, settings.pathValue, process.env)');
     expect(extensionSource).toContain('https://console.redhat.com/ansible/automation-hub/token');
-    expect(extensionSource).toContain('Click \'Load token\' button');
+    expect(dashboardHtml).toContain("Click 'Load token' button");
     expect(extensionSource).toContain('saveHostFile(runner, galaxyTokenFile, settings.pathValue, process.env, enteredToken.trim())');
     expect(extensionSource).toContain('password: true');
+    expect(extensionSource).toContain("type: 'pah-token-request'");
+    expect(dashboardHtml).toContain('id="pah-token-dialog"');
+    expect(dashboardHtml).toContain('id="pah-token-input"');
+    expect(dashboardSource).toContain('pah-token-response');
+    expect(dashboardSource).toContain('pahTokenInput');
   });
 });
