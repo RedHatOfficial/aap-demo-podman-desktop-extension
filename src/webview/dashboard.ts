@@ -633,6 +633,7 @@ window.addEventListener('message', event => {
   if (message.type === 'command-error') {
     writeOutput(message.message ?? 'Command failed.');
     if (message.action === 'install-cli' && installCli) installCli.disabled = false;
+    if (message.action === 'status' && fixSslButton) fixSslButton.hidden = true;
     if (message.action === 'update-cli' && updateCli) updateCli.disabled = false;
     if (message.action === 'setup-extension' || message.action === 'update-extension') {
       if (setupExtension) setupExtension.disabled = false;

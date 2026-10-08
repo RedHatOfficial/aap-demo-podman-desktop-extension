@@ -10,7 +10,7 @@ import {
   type AapDemoAction,
   type AapDemoSettings,
 } from './aap-demo-service';
-import { formatCommandError } from './command-error';
+import { formatAapDemoActionError, formatCommandError } from './command-error';
 import { hasHostOpenAiKey } from './ao-key';
 import { getCliCheckoutAction } from './cli-checkout';
 import { CommandRunner, type CommandRunnerOptions } from './command-runner';
@@ -254,7 +254,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       await extensionApi.window.showInformationMessage(`AAP Demo ${actionLabel} completed.`);
       void runAction('status');
     } catch (error) {
-      const message = formatCommandError(error);
+      const message = formatAapDemoActionError(action, formatCommandError(error), process.platform, cliPath);
       await postDashboardMessage({ type: 'command-error', action, message });
       await extensionApi.window.showWarningMessage(`AAP Demo ${actionLabel} failed: ${message}`);
     }

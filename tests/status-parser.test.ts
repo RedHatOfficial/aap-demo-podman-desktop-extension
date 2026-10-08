@@ -69,6 +69,16 @@ Addons:
     expect(status.ingressCaTrust).toBe('not-trusted');
   });
 
+  it('keeps trust unresolved when either system or browser trust is unresolved', () => {
+    const status = parseStatusOutput([
+      'Cluster: running',
+      'TLS:',
+      'System trust: not trusted',
+      'Browser trust: trusted (Chrome/Firefox NSS)',
+    ].join('\n'));
+
+    expect(status.ingressCaTrust).toBe('not-trusted');
+  });
   it('stops parsing add-ons when a later status section begins', () => {
     const status = parseStatusOutput(`Addons:
 -------

@@ -257,6 +257,17 @@ describe('getAddonTogglePresentation', () => {
     expect(actionRow.indexOf('data-action="deploy"')).toBeLessThan(actionRow.indexOf('data-action="start"'));
   });
 
+  it('includes a hidden Fix SSL action for untrusted ingress certificates', () => {
+    expect(dashboardHtml).toContain('data-action="trust-ca"');
+    expect(dashboardHtml).toContain('id="fix-ssl"');
+    expect(dashboardSource).toContain('shouldShowFixSsl');
+  });
+
+  it('hides Fix SSL when a status refresh fails', () => {
+    expect(dashboardSource).toContain("message.action === 'status'");
+    expect(dashboardSource).toContain('fixSslButton.hidden = true');
+  });
+
   it('declares and packages the extension icon for Podman Desktop', () => {
     expect(packageJson).toContain('"icon": "icon.png"');
     expect(packageJson).toContain('"activationEvents": ["onStartupFinished"]');
