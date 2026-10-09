@@ -72,7 +72,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   const localExtensionCheckout = isLocalExtensionCheckout(extensionPath);
   const configuration = extensionApi.configuration.getConfiguration('aap-demo');
   const configuredCliPath = configuration.get('cliPath', 'aap-demo').trim() || 'aap-demo';
-  const cliPath = resolveConfiguredExecutable(configuredCliPath);
+  const resolveCliPath = (): string => resolveConfiguredExecutable(configuredCliPath, settings.pathValue);
   const installLocationSetting = configuration.get('installLocation', '~/.aap-demo/aap-demo');
   const extensionInstallLocationSetting = configuration.get(
     'extensionInstallLocation',
@@ -100,7 +100,8 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     memory: configuration.get('memory', 24_576),
     pathValue: augmentPath(),
   };
-  const service = new AapDemoService(runner, cliPath, settings);
+  const cliPath = resolveCliPath();
+  const service = new AapDemoService(runner, resolveCliPath, settings);
   const cliVersion = await detectCliVersion(runner, cliPath);
   const cliTool = extensionApi.cli.createCliTool({
     name: 'aap-demo',
@@ -130,11 +131,11 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     await postDashboardMessage({
       type: 'prerequisites',
       prerequisites: checkPrerequisites({
-        cliPath,
+        cliPath: configuredCliPath,
         crcPath,
         installLocation: installLocationSetting,
         ...settings,
-      }),
+      }, settings.pathValue),
     });
   };
   const statusBar = extensionApi.window.createStatusBarItem(extensionApi.StatusBarAlignLeft, 100);

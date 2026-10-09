@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { augmentPath, resolveConfiguredExecutable, resolveExecutablePath } from '../src/executable-path';
@@ -44,6 +44,13 @@ describe('resolveExecutablePath', () => {
     expect(resolveExecutablePath(executable, '')).toBe(executable);
   });
 
+  it('accepts an explicit executable path with surrounding quotes', () => {
+    const { directory, executable } = createExecutable('aap-demo-test');
+    temporaryRoots.push(directory);
+
+    expect(resolveExecutablePath(`"${executable}"`, '')).toBe(executable);
+  });
+
   it('accepts an explicit Windows executable path without the extension', () => {
     const { directory, executable } = createExecutable('crc.exe');
     temporaryRoots.push(directory);
@@ -59,6 +66,21 @@ describe('resolveExecutablePath', () => {
     temporaryRoots.push(directory);
 
     expect(resolveExecutablePath('definitely-not-installed', directory)).toBeUndefined();
+  });
+
+  it('checks the Windows USERPROFILE bin directory when resolving a command by name', () => {
+    const userProfile = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-userprofile-'));
+    const binDirectory = path.join(userProfile, 'bin');
+    temporaryRoots.push(userProfile);
+    mkdirSync(binDirectory);
+    const executable = path.join(binDirectory, 'aap-demo-userprofile-test.cmd');
+    writeFileSync(executable, '@echo off\r\n');
+
+    expect(resolveExecutablePath('aap-demo-userprofile-test', '', {
+      homeDirectory: userProfile,
+      pathExt: '.CMD',
+      platform: 'win32',
+    })).toBe(executable);
   });
 });
 
@@ -83,6 +105,19 @@ describe('resolveConfiguredExecutable', () => {
     expect(resolveConfiguredExecutable('~/missing/aap-demo', '/bin:/usr/bin')).toBe(
       path.join(os.homedir(), 'missing', 'aap-demo'),
     );
+  });
+
+  it('removes surrounding quotes from unresolved configured values', () => {
+    expect(resolveConfiguredExecutable('"C:\\Users\\adler\\bin\\missing-aap-demo.cmd"', '', {
+      platform: 'win32',
+    })).toBe('C:\\Users\\adler\\bin\\missing-aap-demo.cmd');
+  });
+
+  it('expands a leading tilde to the Windows USERPROFILE directory when provided', () => {
+    expect(resolveConfiguredExecutable('~/bin/aap-demo', '', {
+      homeDirectory: 'C:\\Users\\adler',
+      platform: 'win32',
+    })).toBe('C:\\Users\\adler\\bin\\aap-demo');
   });
 });
 

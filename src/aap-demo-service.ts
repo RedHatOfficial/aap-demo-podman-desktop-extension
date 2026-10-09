@@ -21,15 +21,19 @@ export interface CommandExecutor {
   ): Promise<CommandResult>;
 }
 
+export type CliPathResolver = string | (() => string);
+
 export class AapDemoService {
-  private readonly cliPath: string;
+  private readonly cliPathResolver: () => string;
 
   constructor(
     private readonly executor: CommandExecutor,
-    cliPath = 'aap-demo',
+    cliPath: CliPathResolver = 'aap-demo',
     private readonly settings: AapDemoSettings = {},
   ) {
-    this.cliPath = cliPath.trim() || 'aap-demo';
+    this.cliPathResolver = typeof cliPath === 'function'
+      ? () => cliPath().trim() || 'aap-demo'
+      : () => cliPath.trim() || 'aap-demo';
   }
 
   run(
@@ -41,7 +45,7 @@ export class AapDemoService {
       ? ['idle', String(idleState ?? true)]
       : [action];
 
-    return this.executor.run(this.cliPath, args, this.withSettings(options));
+    return this.executor.run(this.cliPathResolver(), args, this.withSettings(options));
   }
 
   runAddon(
@@ -49,7 +53,7 @@ export class AapDemoService {
     addon: string,
     options?: CommandRunnerOptions,
   ): Promise<CommandResult> {
-    return this.executor.run(this.cliPath, [action, addon], this.withSettings(options));
+    return this.executor.run(this.cliPathResolver(), [action, addon], this.withSettings(options));
   }
 
   private withSettings(options?: CommandRunnerOptions): CommandRunnerOptions | undefined {
