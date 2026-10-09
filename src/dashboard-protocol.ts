@@ -1,5 +1,7 @@
 import type { AddonAction, AapDemoAction } from './aap-demo-service';
 
+export type AoLlmProvider = 'external' | 'ollama' | 'none';
+
 const supportedActions = new Set<AapDemoAction>([
   'create',
   'start',
@@ -18,7 +20,7 @@ export type DashboardMessage =
   | { type: 'update-cli' }
   | { type: 'update-extension' }
   | { type: 'run'; action: AapDemoAction; idleState?: boolean }
-  | { type: 'addon'; action: AddonAction; addon: string }
+  | { type: 'addon'; action: AddonAction; addon: string; llmProvider?: AoLlmProvider }
   | { type: 'open-url'; url: string };
 
 function isSafeExternalUrl(url: unknown): url is string {
@@ -75,10 +77,21 @@ export function isDashboardMessage(message: unknown): message is DashboardMessag
   if (candidate.type === 'open-url') {
     return isSafeExternalUrl(candidate.url);
   }
-  return (
-    candidate.type === 'addon' &&
-    (candidate.action === 'enable' || candidate.action === 'disable') &&
-    typeof candidate.addon === 'string' &&
-    candidate.addon.length > 0
-  );
+  if (candidate.type !== 'addon') return false;
+  const addonMessage = candidate as {
+    action?: unknown;
+    addon?: unknown;
+    llmProvider?: unknown;
+  };
+  if (
+    (addonMessage.action !== 'enable' && addonMessage.action !== 'disable') ||
+    typeof addonMessage.addon !== 'string' ||
+    addonMessage.addon.length === 0
+  ) {
+    return false;
+  }
+  if (addonMessage.addon === 'ao' && addonMessage.action === 'enable') {
+    return ['external', 'ollama', 'none'].includes(String(addonMessage.llmProvider));
+  }
+  return addonMessage.llmProvider === undefined;
 }

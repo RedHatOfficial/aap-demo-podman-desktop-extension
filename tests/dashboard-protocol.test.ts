@@ -24,6 +24,15 @@ describe('isDashboardMessage', () => {
     expect(isDashboardMessage({ type: 'update-extension' })).toBe(true);
   });
 
+  it('accepts AO provider choices and rejects missing or invalid providers', () => {
+    expect(isDashboardMessage({ type: 'addon', action: 'enable', addon: 'ao', llmProvider: 'external' })).toBe(true);
+    expect(isDashboardMessage({ type: 'addon', action: 'enable', addon: 'ao', llmProvider: 'ollama' })).toBe(true);
+    expect(isDashboardMessage({ type: 'addon', action: 'enable', addon: 'ao', llmProvider: 'none' })).toBe(true);
+    expect(isDashboardMessage({ type: 'addon', action: 'enable', addon: 'ao' })).toBe(false);
+    expect(isDashboardMessage({ type: 'addon', action: 'enable', addon: 'ao', llmProvider: 'invalid' })).toBe(false);
+    expect(isDashboardMessage({ type: 'addon', action: 'disable', addon: 'ao' })).toBe(true);
+  });
+
   it('accepts safe external URL requests', () => {
     expect(isDashboardMessage({ type: 'open-url', url: 'https://example.test/path' })).toBe(true);
   });

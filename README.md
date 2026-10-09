@@ -161,6 +161,20 @@ The `aap-demo.pullSecretPath`, `aap-demo.cpus`, and `aap-demo.memory` settings
 are passed to the CLI as `PULL_SECRET_PATH`, `CRC_CPUS`, and `CRC_MEMORY` when
 commands run. CPU count defaults to 8, with a minimum of 4. CRC is detected
 from the configured `aap-demo.crcPath` or common installation locations.
+If CRC is missing, install the **OpenShift Local** extension from Podman
+Desktop's **Extensions → Catalog** page, then open its dashboard and click
+**Install** to install the OpenShift Local binaries. See the [OpenShift Local
+installation guide](https://podman-desktop.io/docs/openshift/openshift-local).
+
+When enabling the AO add-on, choose **AO with OpenAI**, **AO with Ollama**, or
+**AO no AI**. OpenAI settings are configurable in Podman Desktop settings:
+`aap-demo.aoLlmModel` (default `gpt-5.6-luna`),
+`aap-demo.aoLlmBaseUrl` (default `https://api.openai.com/v1`), and
+`aap-demo.aoLlmApiKeyFile` (blank by default, which uses
+`$AAP_DEMO_DIR/ao/llm-api-key` or `~/.aap-demo/ao/llm-api-key`). The extension
+prompts for the OpenAI key using a masked input when one is not already
+available. The key itself is not stored in Podman Desktop settings;
+`aap-demo` writes it to the configured file with restricted permissions.
 
 The dashboard provides lifecycle controls, prerequisite checks, streamed command
 output, parsed routes and credentials, add-on controls, and periodic status

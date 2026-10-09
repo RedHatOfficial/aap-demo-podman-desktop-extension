@@ -2,7 +2,14 @@ import type { AapDemoStatus } from '../status-parser';
 import type { PrerequisiteStatus } from '../prerequisites';
 import { unwrapDashboardMessage } from '../dashboard-protocol';
 import { acquireDesktopApi, type DesktopApi } from './desktop-api';
-import { getAddonTogglePresentation, sortAddons } from './addon-ui';
+import { copyText } from './clipboard';
+import {
+  getAddonTogglePresentation,
+  getAddonTogglePresentationAfterAction,
+  getAddonToggleStateForRender,
+  sortAddons,
+} from './addon-ui';
+import type { AddonToggleState } from './addon-ui';
 
 export {};
 
@@ -54,6 +61,8 @@ const updateCli = document.querySelector<HTMLButtonElement>('#update-cli');
 const updateExtension = document.querySelector<HTMLButtonElement>('#update-extension');
 const idleToggle = document.querySelector<HTMLButtonElement>('#idle-toggle');
 let idleState = true;
+let latestStatus: AapDemoStatus | undefined;
+const pendingAddonStates = new Map<string, AddonToggleState>();
 
 function clear(element: Element | null): void {
   if (element) element.replaceChildren();
@@ -117,7 +126,18 @@ function renderRoutes(status: AapDemoStatus): void {
     const link = document.createElement('a');
     addExternalLink(link, route);
     link.textContent = route;
-    row.append(link);
+    const actions = document.createElement('span');
+    actions.className = 'route-actions';
+    const copy = document.createElement('button');
+    copy.className = 'small';
+    copy.textContent = 'Copy';
+    copy.addEventListener('click', async () => {
+      const copied = await copyText(route, 'route URL');
+      copy.textContent = copied ? 'Copied' : 'Copy failed';
+      window.setTimeout(() => { copy.textContent = 'Copy'; }, 1200);
+    });
+    actions.append(copy);
+    row.append(link, actions);
     routes.append(row);
   }
 }
@@ -147,11 +167,12 @@ function renderCredentials(status: AapDemoStatus): void {
     copy.className = 'small';
     copy.textContent = 'Copy';
     copy.addEventListener('click', async () => {
-      await navigator.clipboard?.writeText(credential.password);
-      copy.textContent = 'Copied';
+      const copied = await copyText(credential.password, 'credential password');
+      copy.textContent = copied ? 'Copied' : 'Copy failed';
       window.setTimeout(() => { copy.textContent = 'Copy'; }, 1200);
     });
     const value = document.createElement('span');
+    value.className = 'credential-value';
     value.append(password, reveal, copy);
     row.append(label, value);
     credentials.append(row);
@@ -165,7 +186,40 @@ function renderAddons(status: AapDemoStatus): void {
     return;
   }
   for (const addon of sortAddons(status.addons)) {
-    const presentation = getAddonTogglePresentation(addon.name, addon.state);
+    if (pendingAddonStates.get(addon.name) === addon.state) pendingAddonStates.delete(addon.name);
+    const effectiveState = getAddonToggleStateForRender(addon.name, addon.state, pendingAddonStates);
+
+    if (addon.name.toLowerCase() === 'ao' && effectiveState === 'disabled') {
+      const control = document.createElement('div');
+      control.className = 'addon-control ao-provider-actions';
+      const choices = [
+        { label: 'AO with OpenAI', provider: 'external' },
+        { label: 'AO with Ollama', provider: 'ollama' },
+        { label: 'AO no AI', provider: 'none' },
+      ] as const;
+      for (const choice of choices) {
+        const button = document.createElement('button');
+        button.className = 'small primary';
+        button.textContent = choice.label;
+        button.addEventListener('click', () => {
+          control.querySelectorAll('button').forEach(item => { item.disabled = true; });
+          pendingAddonStates.set('ao', 'enabled');
+          button.textContent = `Enabling ${choice.label}...`;
+          if (statusSummary) statusSummary.textContent = `Enabling ${choice.label}...`;
+          postToHost({
+            type: 'addon',
+            action: 'enable',
+            addon: 'ao',
+            llmProvider: choice.provider,
+          });
+        });
+        control.append(button);
+      }
+      addonActions.append(control);
+      continue;
+    }
+
+    const presentation = getAddonTogglePresentation(addon.name, effectiveState);
     if (presentation) {
       const control = document.createElement('div');
       control.className = 'addon-control';
@@ -174,7 +228,12 @@ function renderAddons(status: AapDemoStatus): void {
       button.textContent = presentation.label;
       button.setAttribute('aria-label', presentation.ariaLabel);
       button.addEventListener('click', () => {
+        const nextState: AddonToggleState = presentation.action === 'disable' ? 'disabled' : 'enabled';
+        const nextPresentation = getAddonTogglePresentationAfterAction(addon.name, presentation.action);
+        pendingAddonStates.set(addon.name, nextState);
         button.disabled = true;
+        button.className = nextPresentation.className;
+        button.setAttribute('aria-label', nextPresentation.ariaLabel);
         button.textContent = `${presentation.label}...`;
         postToHost({ type: 'addon', action: presentation.action, addon: addon.name });
       });
@@ -186,6 +245,7 @@ function renderAddons(status: AapDemoStatus): void {
 }
 
 function renderStatus(status: AapDemoStatus): void {
+  latestStatus = status;
   const state = formatState(status.cluster.state);
   if (statusState) statusState.textContent = state;
   if (statusDot) statusDot.className = `status-dot ${status.cluster.state}`;
@@ -210,26 +270,40 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
       label: 'aap-demo CLI',
       valid: prerequisites.cli.available,
       detail: prerequisites.cli.path ?? 'Not installed',
+      helpText: undefined,
+      helpUrl: undefined,
     },
     {
       label: 'CPUs',
       valid: prerequisites.cpus.valid,
       detail: `${prerequisites.cpus.value} (minimum ${prerequisites.cpus.minimum})`,
+      helpText: undefined,
+      helpUrl: undefined,
     },
     {
       label: 'OpenShift Local (CRC)',
       valid: prerequisites.crc.available,
-      detail: prerequisites.crc.path ?? 'Set aap-demo.crcPath in settings',
+      detail: prerequisites.crc.path ?? 'Not detected. If already installed, set aap-demo.crcPath.',
+      helpText: prerequisites.crc.available
+        ? undefined
+        : 'In Podman Desktop, open Extensions → Catalog and install the OpenShift Local extension. Then open its dashboard and click Install to install the OpenShift Local binaries. Return here and refresh prerequisites.',
+      helpUrl: prerequisites.crc.available
+        ? undefined
+        : 'https://podman-desktop.io/docs/openshift/openshift-local',
     },
     {
       label: 'Pull secret',
       valid: prerequisites.pullSecret.exists,
       detail: prerequisites.pullSecret.path ?? 'Set aap-demo.pullSecretPath in settings',
+      helpText: undefined,
+      helpUrl: undefined,
     },
     {
       label: 'Memory',
       valid: prerequisites.memory.valid,
       detail: `${prerequisites.memory.value} MiB (minimum ${prerequisites.memory.minimum} MiB)`,
+      helpText: undefined,
+      helpUrl: undefined,
     },
   ];
   for (const check of checks) {
@@ -241,6 +315,18 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
     detail.className = 'muted';
     detail.textContent = check.detail;
     row.append(label, detail);
+    if (check.helpText) {
+      const help = document.createElement('span');
+      help.className = 'muted prerequisite-help';
+      help.textContent = check.helpText;
+      if (check.helpUrl) {
+        const guide = document.createElement('a');
+        addExternalLink(guide, check.helpUrl);
+        guide.textContent = ' Open install guide';
+        help.append(guide);
+      }
+      row.append(help);
+    }
     prerequisiteList.append(row);
   }
   if (installCli) {
@@ -313,6 +399,8 @@ window.addEventListener('message', event => {
     writeOutput(message.message ?? 'Command failed.');
     if (message.action === 'update-cli' && updateCli) updateCli.disabled = false;
     if (message.action === 'update-extension' && updateExtension) updateExtension.disabled = false;
+    if (message.addon) pendingAddonStates.delete(message.addon);
+    if (message.addon && latestStatus) renderAddons(latestStatus);
     if (statusDot) statusDot.className = 'status-dot error';
     if (statusSummary) statusSummary.textContent = message.message ?? 'Command failed.';
   }

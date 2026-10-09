@@ -107,6 +107,21 @@
           "default": true,
           "description": "Open the AAP Demo dashboard automatically when Podman Desktop starts."
         },
+        "aap-demo.aoLlmModel": {
+          "type": "string",
+          "default": "gpt-5.6-luna",
+          "description": "Default model used when enabling the AO add-on with OpenAI."
+        },
+        "aap-demo.aoLlmBaseUrl": {
+          "type": "string",
+          "default": "https://api.openai.com/v1",
+          "description": "OpenAI-compatible API endpoint used when enabling AO with OpenAI."
+        },
+        "aap-demo.aoLlmApiKeyFile": {
+          "type": "string",
+          "default": "",
+          "description": "Optional path where aap-demo securely stores the OpenAI API key entered when enabling AO. Defaults to $AAP_DEMO_DIR/ao/llm-api-key or ~/.aap-demo/ao/llm-api-key. The key itself is never stored in Podman Desktop settings."
+        },
         "aap-demo.crcPath": {
           "type": "string",
           "default": "crc",

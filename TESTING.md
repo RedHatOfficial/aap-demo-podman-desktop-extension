@@ -232,10 +232,18 @@ If the cluster already exists and should be preserved, limit the test to
 
 ### Routes and credentials
 
-1. Click each AAP route and confirm it opens in the default browser.
-2. Confirm credentials are masked initially.
-3. Use **Show**/**Hide** to reveal and re-mask a credential.
-4. Use **Copy** and confirm the button reports **Copied**.
+1. Confirm each AAP route has its own **Copy** button.
+2. Click the route link itself and confirm it still opens the exact URL in the
+   default browser.
+3. Click a route's **Copy** button and confirm it copies that route's exact URL
+   and briefly reports **Copied**.
+4. Temporarily deny or disable clipboard access and confirm the same button
+   reports **Copy failed**, not **Copied**.
+5. Confirm credentials are masked initially and that the value, **Show**/**Hide**,
+   and **Copy** controls have space from the card's right edge.
+6. Use **Show**/**Hide** to reveal and re-mask a credential.
+7. Use credential **Copy** and confirm it reports **Copied** on success and
+   **Copy failed** when clipboard access fails.
 
 ## Troubleshooting
 

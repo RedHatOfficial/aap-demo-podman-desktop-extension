@@ -34,3 +34,18 @@ export function getAddonTogglePresentation(
   }
   return undefined;
 }
+
+export function getAddonTogglePresentationAfterAction(
+  name: string,
+  action: AddonToggleAction,
+): AddonTogglePresentation {
+  return getAddonTogglePresentation(name, action === 'disable' ? 'disabled' : 'enabled')!;
+}
+
+export function getAddonToggleStateForRender(
+  name: string,
+  reportedState: AddonToggleState,
+  pendingStates: ReadonlyMap<string, AddonToggleState>,
+): AddonToggleState {
+  return pendingStates.get(name) ?? reportedState;
+}

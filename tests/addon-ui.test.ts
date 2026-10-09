@@ -1,9 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { getAddonTogglePresentation, sortAddons } from '../src/webview/addon-ui';
+import {
+  getAddonTogglePresentation,
+  getAddonTogglePresentationAfterAction,
+  getAddonToggleStateForRender,
+  sortAddons,
+} from '../src/webview/addon-ui';
 
 const dashboardHtml = readFileSync(resolve(__dirname, '../src/webview/index.html'), 'utf8');
+const dashboardSource = readFileSync(resolve(__dirname, '../src/webview/dashboard.ts'), 'utf8');
 const extensionSource = readFileSync(resolve(__dirname, '../src/extension.ts'), 'utf8');
 const packageJson = readFileSync(resolve(__dirname, '../package.json'), 'utf8');
 const containerfile = readFileSync(resolve(__dirname, '../Containerfile'), 'utf8');
@@ -27,6 +33,21 @@ describe('getAddonTogglePresentation', () => {
     });
   });
 
+  it('switches to the disabled presentation as soon as an enabled add-on is disabled', () => {
+    expect(getAddonTogglePresentationAfterAction('ao', 'disable')).toEqual({
+      className: 'addon-toggle disabled',
+      action: 'enable',
+      label: 'ao',
+      ariaLabel: 'Enable ao',
+    });
+  });
+
+  it('keeps the requested state while the status command catches up', () => {
+    const pendingStates = new Map([['ao', 'disabled' as const]]);
+
+    expect(getAddonToggleStateForRender('ao', 'enabled', pendingStates)).toBe('disabled');
+  });
+
   it('does not offer a toggle for an unknown state', () => {
     expect(getAddonTogglePresentation('fleet', 'unknown')).toBeUndefined();
   });
@@ -42,6 +63,24 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardHtml).toContain('<h2>Addons</h2>');
     expect(dashboardHtml).toContain('green means enabled and grey means disabled');
     expect(dashboardHtml).not.toContain('Add-on actions');
+  });
+
+  it('offers AO provider choices when AO is disabled', () => {
+    expect(dashboardSource).toContain('AO with OpenAI');
+    expect(dashboardSource).toContain('AO with Ollama');
+    expect(dashboardSource).toContain('AO no AI');
+    expect(dashboardSource).toContain("llmProvider: choice.provider");
+    expect(extensionSource).toContain('AO_LLM_PROVIDER');
+    expect(packageJson).toContain('"aap-demo.aoLlmModel"');
+    expect(packageJson).toContain('"aap-demo.aoLlmBaseUrl"');
+    expect(packageJson).toContain('"aap-demo.aoLlmApiKeyFile"');
+  });
+
+  it('keeps the UX spacing for provider choices and prerequisite help', () => {
+    expect(dashboardHtml).toContain('.ao-provider-actions { flex-wrap: wrap; }');
+    expect(dashboardHtml).toContain('flex-wrap: wrap; gap: 10px; padding: 6px 0;');
+    expect(dashboardHtml).toContain('.prerequisite-help { flex-basis: 100%; margin-left: 22px; line-height: 1.5; }');
+    expect(dashboardHtml).toContain('.prerequisite-action { margin-left: 22px; }');
   });
 
   it('keeps prerequisites inside the Status card', () => {
@@ -81,9 +120,20 @@ describe('getAddonTogglePresentation', () => {
     );
   });
 
-  it('places start and stop controls beside Deploy AAP', () => {
-    const actionsStart = dashboardHtml.indexOf('<div class="actions">');
-    const actionsEnd = dashboardHtml.indexOf('</div>', actionsStart);
+  it('refreshes add-on status before waiting for the completion toast', () => {
+    const runAddon = extensionSource.slice(
+      extensionSource.indexOf('const runAddon'),
+      extensionSource.indexOf('const openDashboard'),
+    );
+
+    expect(runAddon.indexOf("await runAction('status')")).toBeLessThan(
+      runAddon.indexOf('showInformationMessage'),
+    );
+  });
+
+  it('renders the primary lifecycle controls', () => {
+    const actionsStart = dashboardHtml.indexOf('<div class="actions lifecycle-actions">');
+    const actionsEnd = dashboardHtml.indexOf('<section class="card addons-card">', actionsStart);
     const actionRow = dashboardHtml.slice(actionsStart, actionsEnd);
 
     expect(actionRow).toContain('data-action="start"');
@@ -96,16 +146,47 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardHtml).toContain('<img src="./assets/ansible-logo.png" alt="Ansible Automation Platform logo"');
   });
 
-  it('keeps the primary lifecycle actions ordered beside Deploy AAP', () => {
-    const actionsStart = dashboardHtml.indexOf('<div class="actions">');
-    const actionsEnd = dashboardHtml.indexOf('</div>', actionsStart);
+  it('keeps the primary lifecycle actions ordered in their groups', () => {
+    const actionsStart = dashboardHtml.indexOf('<div class="actions lifecycle-actions">');
+    const actionsEnd = dashboardHtml.indexOf('<section class="card addons-card">', actionsStart);
     const actionRow = dashboardHtml.slice(actionsStart, actionsEnd);
 
     expect(actionRow).not.toContain('data-action="create"');
     expect(actionRow).toContain('<button class="primary" data-action="start">Start</button>');
     expect(actionRow).toContain('<button class="primary" data-action="diagnose">Diagnose</button>');
     expect(actionRow).toContain('<button class="primary" id="idle-toggle">Set idle</button>');
-    expect(actionRow.indexOf('data-action="deploy"')).toBeLessThan(actionRow.indexOf('data-action="start"'));
+    expect(actionRow.indexOf('data-action="start"')).toBeLessThan(actionRow.indexOf('data-action="deploy"'));
+  });
+
+  it('groups lifecycle actions with Start and Stop first and Destroy last', () => {
+    const actionsStart = dashboardHtml.indexOf('<div class="actions lifecycle-actions">');
+    const actionsEnd = dashboardHtml.indexOf('<section class="card addons-card">', actionsStart);
+    const actionRow = dashboardHtml.slice(actionsStart, actionsEnd);
+    const primaryGroup = actionRow.indexOf('class="lifecycle-group primary-actions"');
+    const middleGroup = actionRow.indexOf('class="lifecycle-group middle-actions"');
+    const destroyGroup = actionRow.indexOf('class="lifecycle-group destroy-actions"');
+
+    expect(primaryGroup).toBeGreaterThanOrEqual(0);
+    expect(middleGroup).toBeGreaterThan(primaryGroup);
+    expect(destroyGroup).toBeGreaterThan(middleGroup);
+    expect(actionRow.indexOf('data-action="start"')).toBeLessThan(actionRow.indexOf('data-action="stop"'));
+    expect(actionRow.indexOf('data-action="stop"')).toBeLessThan(actionRow.indexOf('data-action="deploy"'));
+    expect(actionRow.indexOf('data-action="deploy"')).toBeLessThan(actionRow.indexOf('data-action="diagnose"'));
+    expect(actionRow.indexOf('data-action="diagnose"')).toBeLessThan(actionRow.indexOf('data-action="repair"'));
+    expect(actionRow.indexOf('data-action="repair"')).toBeLessThan(actionRow.indexOf('id="idle-toggle"'));
+    expect(actionRow.indexOf('id="idle-toggle"')).toBeLessThan(actionRow.indexOf('data-action="destroy"'));
+    expect(dashboardHtml).toContain('.lifecycle-group + .lifecycle-group { margin-left: 24px; }');
+  });
+
+  it('provides truthful copy feedback for routes and credentials with wrapping classes', () => {
+    expect(dashboardSource).toContain('copyText(route, \'route URL\')');
+    expect(dashboardSource).toContain('copyText(credential.password, \'credential password\')');
+    expect(dashboardSource).toContain("copy.textContent = copied ? 'Copied' : 'Copy failed'");
+    expect(dashboardSource).toContain("link.target = '_blank'");
+    expect(dashboardSource).toContain("postToHost({ type: 'open-url', url });");
+    expect(dashboardSource).toContain("value.className = 'credential-value'");
+    expect(dashboardHtml).toContain('.credential-value {');
+    expect(dashboardHtml).toContain('min-width: 0;');
   });
 
   it('declares and packages the extension icon for Podman Desktop', () => {
