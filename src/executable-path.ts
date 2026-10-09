@@ -3,6 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 export interface ResolveExecutablePathOptions {
+  homeDirectory?: string;
   pathExt?: string;
   platform?: NodeJS.Platform;
 }
@@ -16,12 +17,31 @@ function isExecutable(candidate: string): boolean {
   }
 }
 
-function expandHome(command: string): string {
-  if (command === '~') return os.homedir();
+function homeDirectory(options: ResolveExecutablePathOptions = {}): string {
+  if (options.homeDirectory?.trim()) return options.homeDirectory;
+  if ((options.platform ?? process.platform) === 'win32' && process.env.USERPROFILE?.trim()) {
+    return process.env.USERPROFILE;
+  }
+  return os.homedir();
+}
+
+function expandHome(command: string, options: ResolveExecutablePathOptions = {}): string {
+  const home = homeDirectory(options);
+  if (command === '~') return home;
   if (command.startsWith('~/') || command.startsWith('~\\')) {
-    return path.join(os.homedir(), command.slice(2));
+    return path.join(home, command.slice(2));
   }
   return command;
+}
+
+function stripWrappingQuotes(command: string): string {
+  const trimmed = command.trim();
+  if (trimmed.length < 2) return trimmed;
+  const first = trimmed[0];
+  const last = trimmed[trimmed.length - 1];
+  return (first === last && (first === '"' || first === "'"))
+    ? trimmed.slice(1, -1)
+    : trimmed;
 }
 
 export function crcCacheExecutableDirectories(homeDirectory = os.homedir()): string[] {
@@ -36,13 +56,15 @@ export function crcCacheExecutableDirectories(homeDirectory = os.homedir()): str
   }
 }
 
-function fallbackDirectories(): string[] {
+function fallbackDirectories(options: ResolveExecutablePathOptions = {}): string[] {
+  const home = homeDirectory(options);
   return [
     '/usr/local/bin',
     '/opt/homebrew/bin',
-    path.join(os.homedir(), '.crc', 'bin'),
-    ...crcCacheExecutableDirectories(),
-    path.join(os.homedir(), '.local', 'bin'),
+    path.join(home, 'bin'),
+    path.join(home, '.crc', 'bin'),
+    ...crcCacheExecutableDirectories(home),
+    path.join(home, '.local', 'bin'),
   ];
 }
 
@@ -67,8 +89,11 @@ function executableCandidates(
   ];
 }
 
-export function augmentPath(pathValue = process.env.PATH ?? ''): string {
-  return [...new Set([...pathValue.split(path.delimiter), ...fallbackDirectories()])]
+export function augmentPath(
+  pathValue = process.env.PATH ?? '',
+  options: ResolveExecutablePathOptions = {},
+): string {
+  return [...new Set([...pathValue.split(path.delimiter), ...fallbackDirectories(options)])]
     .filter(Boolean)
     .join(path.delimiter);
 }
@@ -78,12 +103,12 @@ export function resolveExecutablePath(
   pathValue = process.env.PATH ?? '',
   options: ResolveExecutablePathOptions = {},
 ): string | undefined {
-  const expandedCommand = expandHome(command);
+  const expandedCommand = expandHome(stripWrappingQuotes(command), options);
   if (path.isAbsolute(expandedCommand)) {
     return executableCandidates(expandedCommand, options).find(isExecutable);
   }
 
-  const directories = augmentPath(pathValue).split(path.delimiter);
+  const directories = augmentPath(pathValue, options).split(path.delimiter);
 
   for (const directory of directories) {
     if (!directory) continue;
@@ -101,6 +126,6 @@ export function resolveConfiguredExecutable(
   pathValue = process.env.PATH ?? '',
   options: ResolveExecutablePathOptions = {},
 ): string {
-  const expandedCommand = expandHome(command);
+  const expandedCommand = expandHome(stripWrappingQuotes(command), options);
   return resolveExecutablePath(expandedCommand, pathValue, options) ?? expandedCommand;
 }

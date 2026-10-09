@@ -50,6 +50,13 @@ describe('resolveExecutablePath', () => {
     expect(resolveExecutablePath(executable, '')).toBe(executable);
   });
 
+  it('accepts an explicit executable path with surrounding quotes', () => {
+    const { directory, executable } = createExecutable('aap-demo-test');
+    temporaryRoots.push(directory);
+
+    expect(resolveExecutablePath(`"${executable}"`, '')).toBe(executable);
+  });
+
   it('accepts an explicit Windows executable path without the extension', () => {
     const { directory, executable } = createExecutable('crc.exe');
     temporaryRoots.push(directory);
@@ -89,6 +96,19 @@ describe('resolveConfiguredExecutable', () => {
     expect(resolveConfiguredExecutable('~/missing/aap-demo', '/bin:/usr/bin')).toBe(
       path.join(os.homedir(), 'missing', 'aap-demo'),
     );
+  });
+
+  it('removes surrounding quotes from unresolved configured values', () => {
+    expect(resolveConfiguredExecutable('"C:\\Users\\adler\\bin\\missing-aap-demo.cmd"', '', {
+      platform: 'win32',
+    })).toBe('C:\\Users\\adler\\bin\\missing-aap-demo.cmd');
+  });
+
+  it('expands a leading tilde to the Windows USERPROFILE directory when provided', () => {
+    expect(resolveConfiguredExecutable('~/bin/aap-demo', '', {
+      homeDirectory: 'C:\\Users\\adler',
+      platform: 'win32',
+    })).toBe(path.join('C:\\Users\\adler', 'bin', 'aap-demo'));
   });
 });
 

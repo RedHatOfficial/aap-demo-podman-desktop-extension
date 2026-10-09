@@ -17,6 +17,7 @@ import { CommandRunner, type CommandRunnerOptions } from './command-runner';
 import { detectCliVersion } from './cli-version';
 import { isDashboardMessage, type AoLlmProvider } from './dashboard-protocol';
 import { augmentPath, resolveConfiguredExecutable, resolveExecutablePath } from './executable-path';
+import { externalOpenFailed } from './external-link';
 import { forwardHostEnvironment, resolveHostCommand } from './host-command';
 import { hasHostFile, saveHostFile } from './host-file';
 import { isLocalExtensionCheckout } from './extension-updater';
@@ -88,7 +89,6 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   const localExtensionCheckout = isLocalExtensionCheckout(extensionPath);
   const configuration = extensionApi.configuration.getConfiguration('aap-demo');
   const configuredCliPath = configuration.get('cliPath', 'aap-demo').trim() || 'aap-demo';
-  const cliPath = resolveConfiguredExecutable(configuredCliPath);
   const installLocationSetting = configuration.get('installLocation', '~/.aap-demo/aap-demo');
   const extensionInstallLocationSetting = configuration.get(
     'extensionInstallLocation',
@@ -121,7 +121,9 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     memory: configuration.get('memory', 24_576),
     pathValue: augmentPath(),
   };
-  const service = new AapDemoService(runner, cliPath, settings);
+  const resolveCliPath = (): string => resolveConfiguredExecutable(configuredCliPath, settings.pathValue);
+  const cliPath = resolveCliPath();
+  const service = new AapDemoService(runner, resolveCliPath, settings);
   const cliVersion = await detectCliVersion(runner, cliPath, settings.pathValue, process.env);
   const cliTool = extensionApi.cli.createCliTool({
     name: 'aap-demo',
@@ -654,7 +656,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
           await runAddon(message.action, message.addon, message.llmProvider);
         } else if (message.type === 'open-url') {
           const opened = await extensionApi.env.openExternal(extensionApi.Uri.parse(message.url, true));
-          if (!opened) {
+          if (externalOpenFailed(opened)) {
             await extensionApi.window.showWarningMessage(`Could not open ${message.url}`);
           }
         } else if (message.type === 'pah-token-response') {
