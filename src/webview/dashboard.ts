@@ -4,6 +4,7 @@ import { safeExternalUrl, unwrapDashboardMessage } from '../dashboard-protocol';
 import { acquireDesktopApi, type DesktopApi } from './desktop-api';
 import { getAddonTogglePresentation, renderableAddons } from './addon-ui';
 import { handleCliMissing } from './cli-ui';
+import { copyText } from './clipboard';
 import { shouldShowFixSsl } from './ssl-ui';
 
 export {};
@@ -227,6 +228,12 @@ if (pahTokenLink) {
   addExternalLink(pahTokenLink, 'https://console.redhat.com/ansible/automation-hub/token');
 }
 
+async function copyValue(button: HTMLButtonElement, value: string): Promise<void> {
+  const copied = await copyText(value);
+  button.textContent = copied ? 'Copied' : 'Copy failed';
+  window.setTimeout(() => { button.textContent = 'Copy'; }, copied ? 1200 : 1800);
+}
+
 function renderRoutes(status: AapDemoStatus): void {
   clear(routes);
   if (!routes || status.routes.length === 0) {
@@ -239,7 +246,12 @@ function renderRoutes(status: AapDemoStatus): void {
     const link = document.createElement('a');
     addExternalLink(link, route);
     link.textContent = route;
-    row.append(link);
+    const copy = document.createElement('button');
+    copy.className = 'small';
+    copy.textContent = 'Copy';
+    copy.setAttribute('aria-label', `Copy ${route}`);
+    copy.addEventListener('click', () => { void copyValue(copy, route); });
+    row.append(link, copy);
     routes.append(row);
   }
 }
@@ -272,30 +284,8 @@ function renderCredentials(status: AapDemoStatus): void {
     const copy = document.createElement('button');
     copy.className = 'small';
     copy.textContent = 'Copy';
-    copy.addEventListener('click', async () => {
-      let copied = false;
-      try {
-        if (navigator.clipboard) {
-          await navigator.clipboard.writeText(credential.password);
-          copied = true;
-        }
-      } catch {
-        copied = false;
-      }
-      if (!copied) {
-        const copyBuffer = document.createElement('textarea');
-        copyBuffer.value = credential.password;
-        copyBuffer.setAttribute('readonly', '');
-        copyBuffer.style.position = 'fixed';
-        copyBuffer.style.opacity = '0';
-        document.body.append(copyBuffer);
-        copyBuffer.select();
-        copied = document.execCommand('copy');
-        copyBuffer.remove();
-      }
-      copy.textContent = copied ? 'Copied' : 'Copy failed';
-      window.setTimeout(() => { copy.textContent = 'Copy'; }, 1200);
-    });
+    copy.setAttribute('aria-label', `Copy ${credential.namespace} password`);
+    copy.addEventListener('click', () => { void copyValue(copy, credential.password); });
     const value = document.createElement('span');
     value.append(password, reveal, copy);
     row.append(label, value);

@@ -23,15 +23,19 @@ export interface CommandExecutor {
   ): Promise<CommandResult>;
 }
 
+export type CliPathResolver = string | (() => string);
+
 export class AapDemoService {
-  private readonly cliPath: string;
+  private readonly cliPathResolver: () => string;
 
   constructor(
     private readonly executor: CommandExecutor,
-    cliPath = 'aap-demo',
+    cliPath: CliPathResolver = 'aap-demo',
     private readonly settings: AapDemoSettings = {},
   ) {
-    this.cliPath = cliPath.trim() || 'aap-demo';
+    this.cliPathResolver = typeof cliPath === 'function'
+      ? () => cliPath().trim() || 'aap-demo'
+      : () => cliPath.trim() || 'aap-demo';
   }
 
   run(
@@ -75,7 +79,7 @@ export class AapDemoService {
           '-c',
           'IFS= read -r OPENAI_API_KEY; export OPENAI_API_KEY; shift; exec "$@"',
           'aap-demo-openai-key',
-          this.cliPath,
+          this.cliPathResolver(),
           ...addonArgs,
         ],
         { ...optionsWithSettings, env: environment, input: `${OPENAI_API_KEY}\n` },
@@ -89,13 +93,14 @@ export class AapDemoService {
   }
 
   private resolveCliCommand(env?: NodeJS.ProcessEnv): ReturnType<typeof resolveHostCommand> {
+    const cliPath = this.cliPathResolver();
     const environment = this.settings.environment ?? process.env;
     if (!environment.FLATPAK_ID) {
-      return { command: this.cliPath, argsPrefix: [] };
+      return { command: cliPath, argsPrefix: [] };
     }
 
     const command = resolveHostCommand(
-      this.cliPath,
+      cliPath,
       this.settings.pathValue,
       environment,
     );

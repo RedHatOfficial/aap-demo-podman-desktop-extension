@@ -88,6 +88,21 @@ describe('AapDemoService', () => {
     });
   });
 
+  it('resolves the CLI path for each command so a newly installed shim is used', async () => {
+    const executor = new RecordingExecutor();
+    let cliPath = '/old/profile/bin/aap-demo.cmd';
+    const service = new AapDemoService(executor, () => cliPath);
+
+    await service.run('status');
+    cliPath = '/current/profile/bin/aap-demo.cmd';
+    await service.run('status');
+
+    expect(executor.calls.map(call => call.command)).toEqual([
+      '/old/profile/bin/aap-demo.cmd',
+      '/current/profile/bin/aap-demo.cmd',
+    ]);
+  });
+
   it('always runs the CLI quietly for Podman Desktop', async () => {
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor);

@@ -36,6 +36,10 @@ function parseCluster(value: string): AapDemoStatus['cluster'] {
   return name ? { state, name } : { state };
 }
 
+function isMcpRoute(url: string): boolean {
+  return /(?:^|[./-])mcp(?:[./-]|$)/i.test(url);
+}
+
 function combineTrustStates(states: Array<IngressCaTrustState | undefined>): IngressCaTrustState | undefined {
   if (states.includes('not-trusted')) return 'not-trusted';
   if (states.includes('unknown')) return 'unknown';
@@ -104,7 +108,7 @@ export function parseStatusOutput(output: string): AapDemoStatus {
     const kubeconfig = trimmed.match(/^Kubeconfig:\s*(.+)$/);
     if (kubeconfig) status.kubeconfig = kubeconfig[1];
 
-    if (section === 'routes' && /^https?:\/\//.test(trimmed)) {
+    if (section === 'routes' && /^https?:\/\//.test(trimmed) && !isMcpRoute(trimmed)) {
       status.routes.push(trimmed);
       continue;
     }

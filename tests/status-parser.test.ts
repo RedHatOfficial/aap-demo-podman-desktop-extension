@@ -57,6 +57,14 @@ Addons:
     });
   });
 
+  it('omits the MCP endpoint from AAP access links', () => {
+    const status = parseStatusOutput(`AAP Deployments:
+      https://aap.apps.example.test
+      https://mcp-server.apps.example.test/mcp`);
+
+    expect(status.routes).toEqual(['https://aap.apps.example.test']);
+  });
+
   it('detects an ingress certificate trust problem from the TLS status section', () => {
     const status = parseStatusOutput([
       'Cluster: running',
