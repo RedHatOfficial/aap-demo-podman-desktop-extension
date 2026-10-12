@@ -272,6 +272,10 @@ symlink: temporarily remove the symlink from `PATH`, refresh status, and confirm
 that the failed **aap-demo CLI** prerequisite includes the inline instruction to
 select **Install aap-demo**. Restore the symlink afterward.
 
+Navigate away from the dashboard, wait for a status refresh, and confirm the
+bottom AAP Demo status item remains visible and reflects the latest cluster
+state. Reopen the dashboard and confirm its details refresh normally.
+
 ### Lifecycle actions
 
 Use a disposable environment for state-changing tests.
