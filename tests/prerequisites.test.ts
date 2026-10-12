@@ -1,3 +1,6 @@
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import * as os from 'node:os';
@@ -125,5 +128,22 @@ describe('checkPrerequisites', () => {
       memory: { value: 8192, valid: false, minimum: 16384 },
       ready: false,
     });
+  });
+
+  it('treats a working Flatpak host bridge as CLI availability', () => {
+    const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-prerequisites-flatpak-'));
+    const flatpakSpawn = path.join(directory, 'flatpak-spawn');
+    writeFileSync(flatpakSpawn, '#!/bin/sh\n');
+    chmodSync(flatpakSpawn, 0o755);
+
+    try {
+      expect(checkPrerequisites({
+        cliPath: 'aap-demo',
+        crcPath: '/bin/sh',
+        environment: { FLATPAK_ID: 'io.podman_desktop.PodmanDesktop' },
+      }, directory).cli).toEqual({ available: true, path: 'aap-demo' });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 });
