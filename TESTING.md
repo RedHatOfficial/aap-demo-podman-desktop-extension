@@ -89,10 +89,14 @@ This uses the extension `Containerfile` and defaults to:
 localhost/aap-demo-podman-extension:dev
 ```
 
-The script prints the image name. In Podman Desktop, open
-**Extensions → Install custom...**, enter that image name, and install it.
-The container contains the compiled extension assets; the extension still calls
-the host `aap-demo` and CRC executables at runtime.
+The script prints the image name and confirms that the image contains the
+compiled extension assets. Do not paste a `localhost/...` tag into Podman
+Desktop's **Extensions → Install custom...** dialog unless the image is
+available through Podman Desktop's active engine. Otherwise the dialog may
+attempt `https://localhost/v2/` and fail with an auth or self-signed
+certificate error. For local source testing, use the local-folder workflow
+above. Use **Install custom...** for an image pushed to a reachable registry;
+the extension still calls the host `aap-demo` and CRC executables at runtime.
 
 ## Install the Quay-hosted image
 
@@ -246,14 +250,17 @@ work there.
 
 Use a disposable environment for state-changing tests.
 
-1. Click **Create cluster** when no cluster exists and confirm streamed output.
-2. Click **Deploy AAP** after the cluster is ready.
-3. Refresh status and confirm routes, credentials, and add-ons appear.
-4. Use **Diagnose** and confirm command output is shown.
-5. Use **Repair** after a recoverable cluster issue and confirm command output
+1. Confirm the controls are grouped and ordered as **Start**, **Stop**;
+   **Deploy AAP**, **Diagnose**, **Repair**, **Set idle**; then **Destroy cluster**,
+   with visible spacing between the groups.
+2. Click **Create cluster** when no cluster exists and confirm streamed output.
+3. Click **Deploy AAP** after the cluster is ready.
+4. Refresh status and confirm routes, credentials, and add-ons appear.
+5. Use **Diagnose** and confirm command output is shown.
+6. Use **Repair** after a recoverable cluster issue and confirm command output
    reports the repair steps and any problem pods restarted.
-6. Test **Set idle** and confirm it changes to **Wake AAP**.
-7. Use **Destroy cluster** only when cleanup is explicitly intended.
+7. Test **Set idle** and confirm it changes to **Wake AAP**.
+8. Use **Destroy cluster** only when cleanup is explicitly intended.
 
 If the cluster already exists and should be preserved, limit the test to
 **Refresh status**, **Diagnose**, and read-only dashboard checks.
@@ -269,10 +276,18 @@ If the cluster already exists and should be preserved, limit the test to
 
 ### Routes and credentials
 
-1. Click each AAP route and confirm it opens in the default browser.
-2. Confirm credentials are masked initially.
-3. Use **Show**/**Hide** to reveal and re-mask a credential.
-4. Use **Copy** and confirm the button reports **Copied**.
+1. Confirm each AAP route has its own **Copy** button.
+2. Click the route link itself and confirm it still opens the exact URL in the
+   default browser.
+3. Click a route's **Copy** button and confirm it copies that route's exact URL
+   and briefly reports **Copied**.
+4. Temporarily deny or disable clipboard access and confirm the same button
+   reports **Copy failed**, not **Copied**.
+5. Confirm credentials are masked initially and that the value, **Show**/**Hide**,
+   and **Copy** controls have space from the card's right edge.
+6. Use **Show**/**Hide** to reveal and re-mask a credential.
+7. Use credential **Copy** and confirm it reports **Copied** on success and
+   **Copy failed** when clipboard access fails.
 
 ## Troubleshooting
 
