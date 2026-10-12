@@ -60,6 +60,8 @@ function fallbackDirectories(options: ResolveExecutablePathOptions = {}): string
   const home = homeDirectory(options);
   return [
     '/usr/local/bin',
+    '/usr/sbin',
+    '/sbin',
     '/opt/homebrew/bin',
     path.join(home, 'bin'),
     path.join(home, '.crc', 'bin'),

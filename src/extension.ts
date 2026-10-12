@@ -120,6 +120,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     pullSecretPath: configuration.get('pullSecretPath', ''),
     memory: configuration.get('memory', 24_576),
     pathValue: augmentPath(),
+    environment: process.env,
   };
   const resolveCliPath = (): string => resolveConfiguredExecutable(configuredCliPath, settings.pathValue);
   const cliPath = resolveCliPath();
