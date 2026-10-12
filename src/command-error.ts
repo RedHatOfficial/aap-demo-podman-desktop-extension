@@ -187,7 +187,7 @@ export function formatCommandError(error: unknown): string {
     const commandOutput = output.join('\n');
     const skopeoGuidance = skopeoInstallationGuidance(commandOutput);
     if (skopeoGuidance) {
-      return [skopeoGuidance, error.message, commandOutput].filter(Boolean).join('\n');
+      return [skopeoGuidance, 'Diagnostics:', error.message, commandOutput].filter(Boolean).join('\n');
     }
     const daemonGuidance = crcDaemonGuidance(commandOutput);
     const crcSshGuidance = crcSshUnavailableGuidance(commandOutput);
