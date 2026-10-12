@@ -69,11 +69,12 @@ export class CommandRunner {
         && ['.bat', '.cmd'].includes(path.extname(command).toLowerCase())
       ) {
         commandToSpawn = process.env.ComSpec ?? 'cmd.exe';
+        spawnOptions.windowsVerbatimArguments = true;
         argsToSpawn = [
           '/d',
           '/s',
           '/c',
-          [command, ...args].map(windowsCommandQuote).join(' '),
+          `"${[command, ...args].map(windowsCommandQuote).join(' ')}"`,
         ];
       } else if (spawnOptions.shell) {
         return reject(

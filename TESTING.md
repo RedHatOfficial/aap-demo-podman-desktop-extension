@@ -286,6 +286,10 @@ should refresh immediately on reveal; the status bar should continue polling
 while the dashboard is closed. The automated status-persistence tests use
 platform-neutral paths and should pass unchanged on all three operating systems.
 
+On Windows, set `aap-demo.cliPath` to the installed `.cmd` file both with and
+without surrounding quotes, then confirm Refresh status succeeds and the CLI
+receives the `status` argument.
+
 ### Lifecycle actions
 
 Use a disposable environment for state-changing tests.
