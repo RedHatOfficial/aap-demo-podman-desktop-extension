@@ -92,7 +92,7 @@ function deployTrustAndExistingStorageGuidance(output: string): string | undefin
     return undefined;
   }
 
-  const caPath = output.match(/Ingress CA saved to\s+(\S+)\s+but automatic trust import failed/i)?.[1]
+  const caPath = output.match(/Ingress CA saved to\s+(.+?)\s+but automatic trust import failed/i)?.[1]?.trim()
     ?? '~/.aap-demo/crc-ingress-ca.crt';
   const caArgument = safeCaPathArgument(caPath);
 
