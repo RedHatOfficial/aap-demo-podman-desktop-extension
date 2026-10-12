@@ -16,6 +16,15 @@ quay.io/cferman/aap-demo-podman-desktop-extension:latest
 
 Select **Install**. Before creating a cluster, complete the requirements below.
 
+For local development, do not enter a `localhost/...` image in **Install
+custom...** unless that image is available through the Podman engine selected
+by Podman Desktop. If it is not, Podman Desktop treats the name as a registry
+reference and may report an auth or certificate error for `https://localhost`.
+Use the local-folder workflow instead: run `npm run dev:local`, then select
+the repository under **Extensions → Local Extensions → Add a local folder
+extension...**. The OCI image workflow is intended for an image pushed to a
+reachable registry.
+
 ## OpenShift Local (CRC) requirements
 
 AAP Demo runs on OpenShift Local (CRC). Install the **OpenShift Local** extension

@@ -89,10 +89,14 @@ This uses the extension `Containerfile` and defaults to:
 localhost/aap-demo-podman-extension:dev
 ```
 
-The script prints the image name. In Podman Desktop, open
-**Extensions → Install custom...**, enter that image name, and install it.
-The container contains the compiled extension assets; the extension still calls
-the host `aap-demo` and CRC executables at runtime.
+The script prints the image name and confirms that the image contains the
+compiled extension assets. Do not paste a `localhost/...` tag into Podman
+Desktop's **Extensions → Install custom...** dialog unless the image is
+available through Podman Desktop's active engine. Otherwise the dialog may
+attempt `https://localhost/v2/` and fail with an auth or self-signed
+certificate error. For local source testing, use the local-folder workflow
+above. Use **Install custom...** for an image pushed to a reachable registry;
+the extension still calls the host `aap-demo` and CRC executables at runtime.
 
 ## Install the Quay-hosted image
 

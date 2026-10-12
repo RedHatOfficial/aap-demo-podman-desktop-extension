@@ -287,6 +287,13 @@ describe('getAddonTogglePresentation', () => {
     expect(readme).toContain('## Troubleshooting');
   });
 
+  it('documents the local image versus local-folder installation paths', () => {
+    expect(readme).toContain('do not enter a `localhost/...` image');
+    expect(readme).toContain('## Local development');
+    expect(readme).toContain('local-folder workflow');
+    expect(readme).toContain('reachable registry');
+  });
+
   it('documents what each add-on does in extension details', () => {
     expect(readme).toContain('## Add-ons');
     expect(readme).toContain('AO with OpenAI');
