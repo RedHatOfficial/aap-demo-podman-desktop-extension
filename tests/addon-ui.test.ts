@@ -296,6 +296,14 @@ describe('getAddonTogglePresentation', () => {
     expect(readme).toContain('portal operator (amd64 only)');
   });
 
+  it('documents the OCI-to-local extension setup and update workflow', () => {
+    expect(readme).toContain('### Set up a local extension checkout from the OCI extension');
+    expect(readme).toContain('Set up local extension updates');
+    expect(readme).toContain('aap-demo.extensionInstallLocation');
+    expect(readme).toContain('Extensions → Local Extensions');
+    expect(readme).toContain('Update extension');
+  });
+
   it('declares the configurable aap-demo repository install location', () => {
     const manifest = JSON.parse(packageJson);
     const installLocation = manifest.contributes.configuration.properties['aap-demo.installLocation'];

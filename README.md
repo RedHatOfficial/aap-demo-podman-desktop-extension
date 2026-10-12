@@ -71,6 +71,36 @@ The command prints the Podman Desktop local-extension setup steps and rebuilds
 the backend and webview as files change. Use `npm run dev:local` for a one-time
 build, or `npm run verify:local` before sharing changes.
 
+### Set up a local extension checkout from the OCI extension
+
+When developing from the installed OCI image, open the AAP Demo dashboard and
+choose **Set up local extension updates** in the **Status** box. This action:
+
+1. Checks for Git, Node.js 24 or newer, and npm.
+2. Clones the official extension repository, or fast-forwards an existing
+   checkout whose `origin` is the official repository.
+3. Runs `npm ci` and the production build in that checkout.
+
+The default checkout is `~/.aap-demo-podman-desktop-extension`. Override it with
+`aap-demo.extensionInstallLocation`. The action never overwrites a non-Git
+directory, silently installs packages, elevates privileges, or uninstalls the
+OCI extension. If Node.js or npm is missing, the dashboard offers a visible
+terminal-based install when a supported package manager is available; review
+and run that command yourself, then choose **Check again**.
+
+After setup succeeds, remove the OCI extension from **Extensions → Installed**
+and add the reported checkout under **Extensions → Local Extensions**. This
+one-time switch is manual because Podman Desktop does not provide a supported
+API for an extension to replace itself. Once the local extension is running,
+use **Update extension** in the Status box to pull, reinstall dependencies, and
+rebuild it. Stop and start the local extension afterward so Podman Desktop loads
+the rebuilt backend and webview.
+
+The extension source checkout and the `aap-demo` CLI checkout are independent:
+`aap-demo.extensionInstallLocation` controls the former, while
+`aap-demo.installLocation` controls the latter. This workflow is intended for
+development and is not required for catalog-distributed installations.
+
 ## Install the aap-demo CLI
 
 If the CLI is missing, click **Install aap-demo** in the **Status** box. You can
