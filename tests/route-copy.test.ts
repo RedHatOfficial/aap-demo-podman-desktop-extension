@@ -9,7 +9,7 @@ describe('route copy behavior', () => {
   it('keeps route navigation separate from local copying', () => {
     expect(dashboardSource).toContain("import { copyText } from './clipboard';");
     expect(dashboardSource).toContain('const copied = await copyText(value);');
-    expect(dashboardSource).toContain("copy.textContent = 'Copy failed'");
+    expect(dashboardSource).toContain("button.textContent = copied ? 'Copied' : 'Copy failed'");
     expect(dashboardSource).toContain("postToHost({ type: 'open-url', url });");
     expect(dashboardHtml).toContain('id="routes"');
   });
