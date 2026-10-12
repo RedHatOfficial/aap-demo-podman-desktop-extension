@@ -75,7 +75,7 @@ describe('AapDemoService', () => {
     });
   });
 
-  it('runs repair without interactive CA trust setup', async () => {
+  it('allows repair to use interactive CA trust setup', async () => {
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor);
 
@@ -84,8 +84,8 @@ describe('AapDemoService', () => {
     expect(executor.calls[0]).toMatchObject({
       command: 'aap-demo',
       args: ['repair'],
-      options: { env: { AAP_DEMO_TRUST_CA: 'false' } },
     });
+    expect(executor.calls[0].options?.env?.AAP_DEMO_TRUST_CA).not.toBe('false');
   });
 
   it('falls back to aap-demo when the configured CLI path is empty', async () => {
