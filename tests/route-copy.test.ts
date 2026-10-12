@@ -8,7 +8,8 @@ const dashboardHtml = readFileSync(resolve(__dirname, '../src/webview/index.html
 describe('route copy behavior', () => {
   it('keeps route navigation separate from local copying', () => {
     expect(dashboardSource).toContain("import { copyText } from './clipboard';");
-    expect(dashboardSource).toContain("copy.textContent = copied ? 'Copied' : 'Copy failed'");
+    expect(dashboardSource).toContain('const copied = await copyText(value);');
+    expect(dashboardSource).toContain("copy.textContent = 'Copy failed'");
     expect(dashboardSource).toContain("postToHost({ type: 'open-url', url });");
     expect(dashboardHtml).toContain('.route-actions');
   });
