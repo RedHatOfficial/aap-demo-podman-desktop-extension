@@ -1,6 +1,16 @@
 import { CommandExecutionError } from './command-runner';
 import { cleanTerminalOutput } from './terminal-output';
 
+function shellQuote(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+function safeCaPathArgument(value: string): string {
+  return value.startsWith('~/') && /^[A-Za-z0-9_./~-]+$/u.test(value)
+    ? value
+    : shellQuote(value);
+}
+
 function crcMemoryFailureGuidance(output: string): string | undefined {
   const memoryMatch = output.match(/unable to allocate\s+(\d+)\s+MB of RAM/i);
   if (!memoryMatch || !/0x800705AA/i.test(output)) return undefined;
@@ -84,13 +94,14 @@ function deployTrustAndExistingStorageGuidance(output: string): string | undefin
 
   const caPath = output.match(/Ingress CA saved to\s+(\S+)\s+but automatic trust import failed/i)?.[1]
     ?? '~/.aap-demo/crc-ingress-ca.crt';
+  const caArgument = safeCaPathArgument(caPath);
 
   return [
     'Deploy found an existing AAP storage setup and could not complete the system-wide certificate import from Flatpak because sudo needs an interactive terminal.',
     'The ingress CA was saved and browser trust was updated. Do not delete the existing PostgreSQL or Hub Redis PVCs; they contain the previous deployment storage.',
     'Retry Deploy. If terminal tools still report certificate errors, open a terminal and run:',
     '',
-    `sudo cp ${caPath} /etc/pki/ca-trust/source/anchors/crc-ingress-ca.crt && sudo update-ca-trust`,
+    `sudo cp ${caArgument} /etc/pki/ca-trust/source/anchors/crc-ingress-ca.crt && sudo update-ca-trust`,
     '',
     'Fully quit and reopen Chrome or Firefox if the AAP URL still shows an untrusted certificate.',
   ].join('\n');
