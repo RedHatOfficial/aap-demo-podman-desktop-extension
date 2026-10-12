@@ -287,6 +287,7 @@ function renderCredentials(status: AapDemoStatus): void {
     copy.setAttribute('aria-label', `Copy ${credential.namespace} password`);
     copy.addEventListener('click', () => { void copyValue(copy, credential.password); });
     const value = document.createElement('span');
+    value.className = 'credential-value';
     value.append(password, reveal, copy);
     row.append(label, value);
     credentials.append(row);

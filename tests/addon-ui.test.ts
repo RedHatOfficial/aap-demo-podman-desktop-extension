@@ -80,7 +80,7 @@ describe('getAddonTogglePresentation', () => {
 
   it('keeps prerequisites inside the Status card', () => {
     const statusStart = dashboardHtml.indexOf('<div class="status" id="status">');
-    const statusEnd = dashboardHtml.indexOf('<div class="actions">', statusStart);
+    const statusEnd = dashboardHtml.indexOf('<div class="actions lifecycle-actions">', statusStart);
 
     expect(dashboardHtml.slice(statusStart, statusEnd)).toContain('<h2>Status</h2>');
     expect(dashboardHtml.slice(statusStart, statusEnd)).toContain('id="prerequisite-list"');
@@ -222,15 +222,11 @@ describe('getAddonTogglePresentation', () => {
     expect(prerequisiteRefresh).toContain('settings.pathValue');
   });
 
-  it('places start and stop controls beside Deploy AAP', () => {
-    const actionsStart = dashboardHtml.indexOf('<div class="actions">');
-    const actionsEnd = dashboardHtml.indexOf('</div>', actionsStart);
-    const actionRow = dashboardHtml.slice(actionsStart, actionsEnd);
-
-    expect(actionRow).toContain('data-action="start"');
-    expect(actionRow).toContain('>Start</button>');
-    expect(actionRow).toContain('data-action="stop"');
-    expect(actionRow).toContain('>Stop</button>');
+  it('groups start and stop before the middle lifecycle actions', () => {
+    expect(dashboardHtml).toContain('<div class="actions lifecycle-actions">');
+    expect(dashboardHtml).toContain('<div class="action-group primary-actions">');
+    expect(dashboardHtml).toContain('<div class="action-group middle-actions">');
+    expect(dashboardHtml).toContain('<div class="action-group destroy-actions">');
   });
 
   it('shows the Ansible Automation Platform logo in the dashboard header', () => {
@@ -244,17 +240,21 @@ describe('getAddonTogglePresentation', () => {
     expect(extensionSource).not.toContain('open-extension-info');
   });
 
-  it('keeps the primary lifecycle actions ordered beside Deploy AAP without duplicating status', () => {
-    const actionsStart = dashboardHtml.indexOf('<div class="actions">');
-    const actionsEnd = dashboardHtml.indexOf('</div>', actionsStart);
-    const actionRow = dashboardHtml.slice(actionsStart, actionsEnd);
+  it('orders lifecycle actions as start, stop, middle actions, then destroy', () => {
+    const actionOrder = [
+      'data-action="start"',
+      'data-action="stop"',
+      'data-action="deploy"',
+      'data-action="diagnose"',
+      'data-action="repair"',
+      'id="idle-toggle"',
+      'data-action="destroy"',
+    ].map(marker => dashboardHtml.indexOf(marker));
 
-    expect(actionRow).not.toContain('data-action="create"');
-    expect(actionRow).not.toContain('data-action="status"');
-    expect(actionRow).toContain('<button class="primary" data-action="start">Start</button>');
-    expect(actionRow).toContain('<button class="primary" data-action="diagnose">Diagnose</button>');
-    expect(actionRow).toContain('<button class="primary" id="idle-toggle">Set idle</button>');
-    expect(actionRow.indexOf('data-action="deploy"')).toBeLessThan(actionRow.indexOf('data-action="start"'));
+    expect(actionOrder.every(index => index >= 0)).toBe(true);
+    expect(actionOrder).toEqual([...actionOrder].sort((left, right) => left - right));
+    expect(dashboardHtml).toContain('column-gap: 22px');
+    expect(dashboardHtml).toContain('row-gap: 14px');
   });
 
   it('includes a hidden Fix SSL action for untrusted ingress certificates', () => {
@@ -323,6 +323,9 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardSource).toContain("password.type = 'password'");
     expect(dashboardSource).toContain("password.value = credential.password");
     expect(dashboardSource).toContain("password.type = visible ? 'password' : 'text'");
+    expect(dashboardSource).toContain("value.className = 'credential-value'");
+    expect(dashboardHtml).toContain('.credential-value {');
+    expect(dashboardHtml).toContain('padding-right: 8px');
   });
 
   it('copies credentials with a browser clipboard fallback', () => {

@@ -246,14 +246,17 @@ work there.
 
 Use a disposable environment for state-changing tests.
 
-1. Click **Create cluster** when no cluster exists and confirm streamed output.
-2. Click **Deploy AAP** after the cluster is ready.
-3. Refresh status and confirm routes, credentials, and add-ons appear.
-4. Use **Diagnose** and confirm command output is shown.
-5. Use **Repair** after a recoverable cluster issue and confirm command output
+1. Confirm the controls are grouped and ordered as **Start**, **Stop**;
+   **Deploy AAP**, **Diagnose**, **Repair**, **Set idle**; then **Destroy cluster**,
+   with visible spacing between the groups.
+2. Click **Create cluster** when no cluster exists and confirm streamed output.
+3. Click **Deploy AAP** after the cluster is ready.
+4. Refresh status and confirm routes, credentials, and add-ons appear.
+5. Use **Diagnose** and confirm command output is shown.
+6. Use **Repair** after a recoverable cluster issue and confirm command output
    reports the repair steps and any problem pods restarted.
-6. Test **Set idle** and confirm it changes to **Wake AAP**.
-7. Use **Destroy cluster** only when cleanup is explicitly intended.
+7. Test **Set idle** and confirm it changes to **Wake AAP**.
+8. Use **Destroy cluster** only when cleanup is explicitly intended.
 
 If the cluster already exists and should be preserved, limit the test to
 **Refresh status**, **Diagnose**, and read-only dashboard checks.
