@@ -121,7 +121,7 @@ describe('formatCommandError', () => {
     expect(message).toContain('Deploy found an existing AAP storage setup');
     expect(message).toContain('Do not delete the existing PostgreSQL or Hub Redis PVCs');
     expect(message).toContain('Retry Deploy');
-    expect(message).toContain('sudo cp /home/cferman/.aap-demo/crc-ingress-ca.crt');
+    expect(message).toContain("sudo cp '/home/cferman/.aap-demo/crc-ingress-ca.crt'");
     expect(message).not.toContain('postgres-15-aap-postgres-15-0');
     expect(message).not.toContain('Command exited unsuccessfully: flatpak-spawn');
   });
