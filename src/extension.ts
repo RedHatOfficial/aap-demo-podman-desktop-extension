@@ -15,6 +15,7 @@ import { hasHostOpenAiKey } from './ao-key';
 import { getCliCheckoutAction } from './cli-checkout';
 import { CommandRunner, type CommandRunnerOptions } from './command-runner';
 import { detectCliVersion } from './cli-version';
+import { canInvokeCli, missingCliMessage } from './cli-readiness';
 import { isDashboardMessage, type AoLlmProvider } from './dashboard-protocol';
 import { augmentPath, resolveConfiguredExecutable, resolveExecutablePath } from './executable-path';
 import { externalOpenFailed } from './external-link';
@@ -126,7 +127,9 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     : resolveConfiguredExecutable(configuredCliPath, settings.pathValue);
   const cliPath = resolveCliPath();
   const service = new AapDemoService(runner, resolveCliPath, settings);
-  const cliVersion = await detectCliVersion(runner, cliPath, settings.pathValue, process.env);
+  const cliVersion = canInvokeCli(configuredCliPath, settings.pathValue)
+    ? await detectCliVersion(runner, cliPath, settings.pathValue, process.env)
+    : 'unknown';
   const cliTool = extensionApi.cli.createCliTool({
     name: 'aap-demo',
     displayName: 'AAP Demo CLI',
@@ -192,14 +195,14 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
 
   const runAction = async (action: AapDemoAction, idleState?: boolean): Promise<void> => {
     const actionLabel = action === 'trust-ca' ? 'Fix SSL' : action;
-    if (!process.env.FLATPAK_ID && !resolveExecutablePath(configuredCliPath, settings.pathValue)) {
+    if (!canInvokeCli(configuredCliPath, settings.pathValue)) {
+      const message = missingCliMessage(configuredCliPath);
       statusBar.text = 'AAP Demo: CLI missing';
-      statusBar.tooltip = 'Install the aap-demo CLI from the dashboard';
+      statusBar.tooltip = message;
       await postDashboardMessage({ type: 'cli-missing' });
+      await refreshPrerequisites();
       if (!panel && action !== 'status') {
-        await extensionApi.window.showWarningMessage(
-          'The aap-demo CLI is not installed. Open the AAP Demo dashboard and select Install aap-demo.',
-        );
+        await extensionApi.window.showWarningMessage(message);
       }
       return;
     }
@@ -493,6 +496,16 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     addon: string,
     llmProvider?: AoLlmProvider,
   ): Promise<void> => {
+    if (!canInvokeCli(configuredCliPath, settings.pathValue)) {
+      const message = missingCliMessage(configuredCliPath);
+      statusBar.text = 'AAP Demo: CLI missing';
+      statusBar.tooltip = message;
+      await postDashboardMessage({ type: 'cli-missing' });
+      await refreshPrerequisites();
+      await postDashboardMessage({ type: 'command-error', action, addon, message });
+      return;
+    }
+
     try {
       const hasGalaxyToken = action === 'enable' && addon === 'setup-pah'
         ? await hasHostFile(runner, galaxyTokenFile, settings.pathValue, process.env)

@@ -246,6 +246,11 @@ work there.
    flow for CRC binaries; return to AAP Demo and refresh prerequisites.
 5. Click **Refresh status** and confirm the timestamp and command output update.
 
+When `aap-demo` is unavailable, confirm that Refresh status and lifecycle actions
+show an actionable missing-CLI message and the **Install aap-demo** action rather
+than a portal or child-process error. After installing the CLI, retry Refresh
+status without restarting Podman Desktop.
+
 ### Lifecycle actions
 
 Use a disposable environment for state-changing tests.
