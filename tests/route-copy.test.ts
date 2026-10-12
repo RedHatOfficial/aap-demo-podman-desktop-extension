@@ -11,6 +11,6 @@ describe('route copy behavior', () => {
     expect(dashboardSource).toContain('const copied = await copyText(value);');
     expect(dashboardSource).toContain("copy.textContent = 'Copy failed'");
     expect(dashboardSource).toContain("postToHost({ type: 'open-url', url });");
-    expect(dashboardHtml).toContain('.route-actions');
+    expect(dashboardHtml).toContain('id="routes"');
   });
 });
