@@ -75,6 +75,19 @@ describe('AapDemoService', () => {
     });
   });
 
+  it('runs repair without interactive CA trust setup', async () => {
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor);
+
+    await service.run('repair');
+
+    expect(executor.calls[0]).toMatchObject({
+      command: 'aap-demo',
+      args: ['repair'],
+      options: { env: { AAP_DEMO_TRUST_CA: 'false' } },
+    });
+  });
+
   it('falls back to aap-demo when the configured CLI path is empty', async () => {
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor, '');
@@ -170,6 +183,7 @@ describe('AapDemoService', () => {
       PULL_SECRET_PATH: '/tmp/pull-secret.txt',
       CRC_CPUS: '8',
       CRC_MEMORY: '24576',
+      AAP_DEMO_TRUST_CA: 'false',
     });
   });
 
