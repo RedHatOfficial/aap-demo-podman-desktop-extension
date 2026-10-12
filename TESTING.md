@@ -314,6 +314,10 @@ If the cluster already exists and should be preserved, limit the test to
    the command runs.
 5. Refresh status and confirm the add-on state changed.
 
+If `skopeo` is absent, run the add-on from the dashboard and confirm the error
+explains that sudo needs a terminal, includes `sudo dnf install skopeo`, and
+instructs the user to retry after installation.
+
 ### Routes and credentials
 
 1. Confirm each AAP route has its own **Copy** button.
