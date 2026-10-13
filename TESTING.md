@@ -246,6 +246,10 @@ work there.
    flow for CRC binaries; return to AAP Demo and refresh prerequisites.
 5. Click **Refresh status** and confirm the timestamp and command output update.
 
+On Windows, set `aap-demo.cliPath` to the installed `.cmd` file both with and
+without surrounding quotes, then confirm Refresh status succeeds and the CLI
+receives the `status` argument.
+
 ### Lifecycle actions
 
 Use a disposable environment for state-changing tests.
