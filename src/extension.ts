@@ -298,6 +298,8 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     }
   };
 
+  // Keep status polling with the extension lifetime, not the dashboard panel,
+  // so the status bar stays current on every supported host OS.
   const statusPoll = setInterval(() => void runAction('status'), 30_000);
   extensionContext.subscriptions.push({ dispose: () => clearInterval(statusPoll) });
   void runAction('status');
@@ -654,6 +656,8 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   const openDashboard = extensionApi.commands.registerCommand('aap-demo.openDashboard', async () => {
     if (panel) {
       panel.reveal();
+      // A revealed panel may have been hidden while the cluster changed.
+      void runAction('status');
       return;
     }
 

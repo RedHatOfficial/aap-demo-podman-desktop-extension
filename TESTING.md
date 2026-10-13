@@ -276,6 +276,13 @@ Navigate away from the dashboard, wait for a status refresh, and confirm the
 bottom AAP Demo status item remains visible and reflects the latest cluster
 state. Reopen the dashboard and confirm its details refresh normally.
 
+Repeat the reopen check on each available host OS (macOS, Linux, and Windows):
+stop and start the local extension after rebuilding, open the dashboard, navigate
+away, change or refresh the AAP Demo state, and reopen the dashboard. The status
+should refresh immediately on reveal; the status bar should continue polling
+while the dashboard is closed. The automated status-persistence tests use
+platform-neutral paths and should pass unchanged on all three operating systems.
+
 ### Lifecycle actions
 
 Use a disposable environment for state-changing tests.

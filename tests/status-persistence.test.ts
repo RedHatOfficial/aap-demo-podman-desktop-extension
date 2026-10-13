@@ -14,4 +14,24 @@ describe('status polling lifetime', () => {
     expect(source.slice(openDashboard)).not.toContain('setInterval(() => void runAction');
     expect(source).toContain('clearInterval(statusPoll)');
   });
+
+  it('refreshes status when an existing dashboard is opened again', () => {
+    const openDashboard = source.indexOf("const openDashboard =");
+    const existingPanelBranch = source.slice(
+      openDashboard,
+      source.indexOf("panel = extensionApi.window.createWebviewPanel", openDashboard),
+    );
+
+    expect(existingPanelBranch).toMatch(/panel\.reveal\(\);[\s\S]*void runAction\('status'\);/);
+  });
+
+  it('does not gate reopen refresh on a host platform', () => {
+    const openDashboard = source.indexOf("const openDashboard =");
+    const existingPanelBranch = source.slice(
+      openDashboard,
+      source.indexOf("panel = extensionApi.window.createWebviewPanel", openDashboard),
+    );
+
+    expect(existingPanelBranch).not.toContain('process.platform');
+  });
 });
