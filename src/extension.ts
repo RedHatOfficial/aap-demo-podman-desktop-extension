@@ -121,7 +121,9 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     memory: configuration.get('memory', 24_576),
     pathValue: augmentPath(),
   };
-  const resolveCliPath = (): string => resolveConfiguredExecutable(configuredCliPath, settings.pathValue);
+  const resolveCliPath = (): string => process.env.FLATPAK_ID
+    ? configuredCliPath
+    : resolveConfiguredExecutable(configuredCliPath, settings.pathValue);
   const cliPath = resolveCliPath();
   const service = new AapDemoService(runner, resolveCliPath, settings);
   const cliVersion = await detectCliVersion(runner, cliPath, settings.pathValue, process.env);

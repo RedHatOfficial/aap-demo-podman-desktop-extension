@@ -9,6 +9,7 @@ const MINIMUM_MEMORY = 16_384;
 
 export interface PrerequisiteSettings {
   cliPath: string;
+  environment?: NodeJS.ProcessEnv;
   cpus?: number;
   crcExtensionAvailable?: boolean;
   crcPath: string;
@@ -59,7 +60,13 @@ export function checkPrerequisites(
 ): PrerequisiteStatus {
   const crcPath = resolveExecutablePath(settings.crcPath, pathValue);
   const crcAvailable = Boolean(crcPath || settings.crcExtensionAvailable);
-  const cliPath = resolveExecutablePath(settings.cliPath, pathValue);
+  const hostBridgeAvailable = Boolean(
+    settings.environment?.FLATPAK_ID
+      && resolveExecutablePath('flatpak-spawn', pathValue),
+  );
+  const cliPath = hostBridgeAvailable
+    ? settings.cliPath
+    : resolveExecutablePath(settings.cliPath, pathValue);
   const installScriptPath = resolveInstallCliScriptPath(
     resolveInstallLocation(settings.installLocation),
     platform,

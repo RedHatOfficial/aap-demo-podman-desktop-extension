@@ -120,6 +120,8 @@ describe('augmentPath', () => {
     expect(augmented.split(path.delimiter)).toEqual(expect.arrayContaining([
       ...suppliedPaths,
       '/usr/local/bin',
+      '/usr/sbin',
+      '/sbin',
       '/opt/homebrew/bin',
       path.join(os.homedir(), '.crc', 'bin'),
       path.join(os.homedir(), '.local', 'bin'),

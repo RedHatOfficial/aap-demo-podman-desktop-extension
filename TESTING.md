@@ -262,6 +262,9 @@ Use a disposable environment for state-changing tests.
 7. Test **Set idle** and confirm it changes to **Wake AAP**.
 8. Use **Destroy cluster** only when cleanup is explicitly intended.
 
+For a Flatpak installation, confirm Deploy can find a host-installed `getcap`
+under `/usr/sbin` and does not report the utility as missing.
+
 If the cluster already exists and should be preserved, limit the test to
 **Refresh status**, **Diagnose**, and read-only dashboard checks.
 
