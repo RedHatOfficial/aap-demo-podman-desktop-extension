@@ -30,6 +30,12 @@ export type DashboardMessage =
   | { type: 'addon'; action: AddonAction; addon: string; llmProvider?: AoLlmProvider }
   | { type: 'open-url'; url: string };
 
+export type DashboardCopyResultMessage = {
+  type: 'copy-result';
+  requestId: string;
+  copied: boolean;
+};
+
 export function safeExternalUrl(url: unknown): string | undefined {
   if (typeof url !== 'string') return undefined;
   try {
@@ -40,6 +46,16 @@ export function safeExternalUrl(url: unknown): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+export function isDashboardCopyResultMessage(message: unknown): message is DashboardCopyResultMessage {
+  if (typeof message !== 'object' || message === null) return false;
+  const candidate = message as Record<string, unknown>;
+  return Object.keys(candidate).length === 3
+    && candidate.type === 'copy-result'
+    && typeof candidate.requestId === 'string'
+    && /^copy-\d+$/.test(candidate.requestId)
+    && typeof candidate.copied === 'boolean';
 }
 
 export function unwrapDashboardMessage(message: unknown): unknown {

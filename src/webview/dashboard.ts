@@ -1,6 +1,6 @@
 import type { AapDemoStatus } from '../status-parser';
 import type { PrerequisiteStatus } from '../prerequisites';
-import { safeExternalUrl, unwrapDashboardMessage } from '../dashboard-protocol';
+import { isDashboardCopyResultMessage, safeExternalUrl, unwrapDashboardMessage } from '../dashboard-protocol';
 import { acquireDesktopApi, type DesktopApi } from './desktop-api';
 import { getAddonTogglePresentation, renderableAddons } from './addon-ui';
 import { handleCliMissing } from './cli-ui';
@@ -72,12 +72,6 @@ interface DashboardCommandMessage {
 
 interface DashboardCliMessage {
   type: 'cli-missing';
-}
-
-interface DashboardCopyResultMessage {
-  type: 'copy-result';
-  requestId: string;
-  copied: boolean;
 }
 
 declare function acquirePodmanDesktopApi(): DesktopApi;
@@ -547,14 +541,19 @@ checkRuntime?.addEventListener('click', () => {
 });
 
 window.addEventListener('message', event => {
-  const message = unwrapDashboardMessage(event.data) as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardExtensionMessage | DashboardRuntimeRequiredMessage | DashboardRuntimeInstallUnavailableMessage | DashboardRuntimeTerminalOpenedMessage | DashboardTrustCaTerminalOpenedMessage | DashboardExtensionSetupCompleteMessage | DashboardPahTokenRequestMessage | DashboardCommandMessage | DashboardCliMessage | DashboardCopyResultMessage;
+  const unwrappedMessage = unwrapDashboardMessage(event.data);
+  if (isDashboardCopyResultMessage(unwrappedMessage)) {
+    const resolveCopy = pendingCopyRequests.get(unwrappedMessage.requestId);
+    if (resolveCopy) {
+      pendingCopyRequests.delete(unwrappedMessage.requestId);
+      resolveCopy(unwrappedMessage.copied);
+    }
+    return;
+  }
+  const message = unwrappedMessage as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardExtensionMessage | DashboardRuntimeRequiredMessage | DashboardRuntimeInstallUnavailableMessage | DashboardRuntimeTerminalOpenedMessage | DashboardTrustCaTerminalOpenedMessage | DashboardExtensionSetupCompleteMessage | DashboardPahTokenRequestMessage | DashboardCommandMessage | DashboardCliMessage;
   if (!message || typeof message !== 'object' || typeof message.type !== 'string') return;
   if (message.type === 'pah-token-request') {
     showPahTokenDialog();
-    return;
-  }
-  if (message.type === 'copy-result') {
-    pendingCopyRequests.get(message.requestId)?.(message.copied);
     return;
   }
   if (message.type === 'cli-missing') {
