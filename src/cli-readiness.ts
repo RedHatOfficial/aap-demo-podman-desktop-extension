@@ -1,4 +1,20 @@
+import type { CommandExecutor } from './aap-demo-service';
 import { resolveExecutablePath } from './executable-path';
+import { forwardHostEnvironment } from './host-command';
+
+export function shouldAutomaticallyInstallCli(options: {
+  action: string;
+  configuredPath: string;
+  flatpakId?: string;
+  installScriptAvailable: boolean;
+  repairAlreadyAttempted: boolean;
+}): boolean {
+  return options.action === 'status'
+    && options.configuredPath === 'aap-demo'
+    && Boolean(options.flatpakId)
+    && options.installScriptAvailable
+    && !options.repairAlreadyAttempted;
+}
 
 export function missingCliMessage(configuredPath: string): string {
   return [
@@ -7,14 +23,31 @@ export function missingCliMessage(configuredPath: string): string {
   ].join(' ');
 }
 
-export function canInvokeCli(
+export async function canInvokeCli(
   configuredPath: string,
   pathValue = process.env.PATH ?? '',
   environment: NodeJS.ProcessEnv = process.env,
   platform: NodeJS.Platform = process.platform,
-): boolean {
+  executor?: CommandExecutor,
+): Promise<boolean> {
   if (platform !== 'win32' && environment.FLATPAK_ID) {
-    return Boolean(resolveExecutablePath('flatpak-spawn', pathValue));
+    const flatpakSpawn = resolveExecutablePath('flatpak-spawn', pathValue, { platform });
+    if (!flatpakSpawn || !executor) return false;
+
+    try {
+      const hostArguments = forwardHostEnvironment(['--host'], { PATH: pathValue }, ['PATH']);
+      await executor.run(flatpakSpawn, [
+        ...hostArguments,
+        'sh',
+        '-c',
+        'command -v "$1" >/dev/null 2>&1',
+        'aap-demo-cli-check',
+        configuredPath,
+      ]);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   return Boolean(resolveExecutablePath(configuredPath, pathValue));
