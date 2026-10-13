@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-10-03
-- Updated: 2026-10-07
+- Updated: 2026-10-13
 
 ## Context
 
@@ -37,6 +37,11 @@ The action:
 5. Runs the selected checkout's `install.sh` with Bash.
 6. Streams clone, update, and install output to the dashboard, then refreshes
    CLI and prerequisite status.
+
+When the CLI is unavailable, the Status box marks the prerequisite as failed,
+keeps the **Install aap-demo** action visible, and displays the recovery
+instruction inline. Command output remains supplemental because it is collapsed
+by default.
 
 When the extension runs inside a Flatpak sandbox and `flatpak-spawn` is
 available, CLI actions and install/update helper commands are delegated through

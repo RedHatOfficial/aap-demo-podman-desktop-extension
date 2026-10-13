@@ -30,6 +30,22 @@ npm run build
 
 The test suite is non-destructive. It does not create or destroy a cluster.
 
+## Mock the CLI for dashboard testing
+
+To exercise dashboard status, lifecycle actions, and add-on toggles without
+starting an AAP Demo cluster, set `aap-demo.cliPath` in Podman Desktop to this
+repository's `scripts/mock-aap-demo.sh` (Linux/macOS) or
+`scripts/mock-aap-demo.cmd` (Windows). The mock CLI stores simulated state in
+the system temporary directory; reset it by running the selected script with
+the `reset` argument.
+
+The mock reports a local simulator version and fake controller details. Create,
+start, deploy, stop, destroy, idle, diagnose, repair, and add-on commands only
+change that simulated state. They never call CRC, Podman, or AAP. Prerequisite
+checks still inspect the real host, so missing CRC or pull-secret warnings may
+remain visible. Keep one real Podman Desktop smoke check to confirm the host
+webview bridge works.
+
 ## Build and open locally
 
 Build the extension outputs from this repository:
@@ -245,6 +261,16 @@ work there.
    confirm installing that extension, then use its dashboard's **Install**
    flow for CRC binaries; return to AAP Demo and refresh prerequisites.
 5. Click **Refresh status** and confirm the timestamp and command output update.
+
+When `aap-demo` is unavailable, confirm that Refresh status and lifecycle actions
+show an actionable missing-CLI message and the **Install aap-demo** action rather
+than a portal or child-process error. After installing the CLI, retry Refresh
+status without restarting Podman Desktop.
+
+On macOS, this can be reproduced safely when `aap-demo` is provided through a
+symlink: temporarily remove the symlink from `PATH`, refresh status, and confirm
+that the failed **aap-demo CLI** prerequisite includes the inline instruction to
+select **Install aap-demo**. Restore the symlink afterward.
 
 ### Lifecycle actions
 

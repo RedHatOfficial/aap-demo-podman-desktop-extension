@@ -14,6 +14,10 @@ describe('getCliCheckoutAction', () => {
     expect(getCliCheckoutAction('install', true, true, true, false)).toBe('pull');
   });
 
+  it('reuses an existing source without pulling when only reinstalling its CLI link', () => {
+    expect(getCliCheckoutAction('install', true, true, true, false, true)).toBe('reuse');
+  });
+
   it('reuses a recognizable source folder during install even without Git metadata', () => {
     expect(getCliCheckoutAction('install', true, false, true, false)).toBe('reuse');
   });

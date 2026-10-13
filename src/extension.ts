@@ -15,6 +15,7 @@ import { hasHostOpenAiKey } from './ao-key';
 import { getCliCheckoutAction } from './cli-checkout';
 import { CommandRunner, type CommandRunnerOptions } from './command-runner';
 import { detectCliVersion } from './cli-version';
+import { canInvokeCli, missingCliMessage, shouldAutomaticallyInstallCli } from './cli-readiness';
 import { isDashboardMessage, type AoLlmProvider } from './dashboard-protocol';
 import { augmentPath, resolveConfiguredExecutable, resolveExecutablePath } from './executable-path';
 import { externalOpenFailed } from './external-link';
@@ -126,7 +127,16 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     : resolveConfiguredExecutable(configuredCliPath, settings.pathValue);
   const cliPath = resolveCliPath();
   const service = new AapDemoService(runner, resolveCliPath, settings);
-  const cliVersion = await detectCliVersion(runner, cliPath, settings.pathValue, process.env);
+  const cliAvailable = await canInvokeCli(
+    configuredCliPath,
+    settings.pathValue,
+    process.env,
+    process.platform,
+    runner,
+  );
+  const cliVersion = cliAvailable
+    ? await detectCliVersion(runner, cliPath, settings.pathValue, process.env)
+    : 'unknown';
   const cliTool = extensionApi.cli.createCliTool({
     name: 'aap-demo',
     displayName: 'AAP Demo CLI',
@@ -190,16 +200,40 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     void refreshPrerequisites();
   }));
 
+  let automaticCliRepairAttempted = false;
   const runAction = async (action: AapDemoAction, idleState?: boolean): Promise<void> => {
     const actionLabel = action === 'trust-ca' ? 'Fix SSL' : action;
-    if (!process.env.FLATPAK_ID && !resolveExecutablePath(configuredCliPath, settings.pathValue)) {
+    if (!await canInvokeCli(
+      configuredCliPath,
+      settings.pathValue,
+      process.env,
+      process.platform,
+      runner,
+    )) {
+      const installSourceLocation = resolveAapDemoSourceLocation(installLocationSetting);
+      const installScriptAvailable = Boolean(
+        resolveInstallCliScriptPath(installLocationSetting)
+        && existsSync(path.join(installSourceLocation, 'aap-demo.sh')),
+      );
+      if (shouldAutomaticallyInstallCli({
+        action,
+        configuredPath: configuredCliPath,
+        flatpakId: process.env.FLATPAK_ID,
+        installScriptAvailable,
+        repairAlreadyAttempted: automaticCliRepairAttempted,
+      })) {
+        automaticCliRepairAttempted = true;
+        await runCliMaintenance('install', { reuseExistingSource: true });
+        return;
+      }
+
+      const message = missingCliMessage(configuredCliPath);
       statusBar.text = 'AAP Demo: CLI missing';
-      statusBar.tooltip = 'Install the aap-demo CLI from the dashboard';
+      statusBar.tooltip = message;
       await postDashboardMessage({ type: 'cli-missing' });
+      await refreshPrerequisites();
       if (!panel && action !== 'status') {
-        await extensionApi.window.showWarningMessage(
-          'The aap-demo CLI is not installed. Open the AAP Demo dashboard and select Install aap-demo.',
-        );
+        await extensionApi.window.showWarningMessage(message);
       }
       return;
     }
@@ -264,7 +298,10 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     }
   };
 
-  const runCliMaintenance = async (mode: 'install' | 'update'): Promise<void> => {
+  const runCliMaintenance = async (
+    mode: 'install' | 'update',
+    options: { reuseExistingSource?: boolean } = {},
+  ): Promise<void> => {
     const action = mode === 'update' ? 'update-cli' : 'install-cli';
     const verb = mode === 'update' ? 'updated' : 'installed';
     const installLocation = resolveAapDemoSourceLocation(installLocationSetting);
@@ -294,6 +331,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         gitMetadataExists,
         hasAapDemoSource,
         locationIsEmpty,
+        options.reuseExistingSource,
       );
 
       if (checkoutAction === 'missing') {
@@ -334,7 +372,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         }
       };
       const bashCommand = resolveBashCommand(settings.pathValue);
-      await verifyTool('git');
+      if (!options.reuseExistingSource) await verifyTool('git');
       if (process.platform !== 'win32') {
         await verifyTool(bashCommand);
       }
@@ -493,6 +531,22 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     addon: string,
     llmProvider?: AoLlmProvider,
   ): Promise<void> => {
+    if (!await canInvokeCli(
+      configuredCliPath,
+      settings.pathValue,
+      process.env,
+      process.platform,
+      runner,
+    )) {
+      const message = missingCliMessage(configuredCliPath);
+      statusBar.text = 'AAP Demo: CLI missing';
+      statusBar.tooltip = message;
+      await postDashboardMessage({ type: 'cli-missing' });
+      await refreshPrerequisites();
+      await postDashboardMessage({ type: 'command-error', action, addon, message });
+      return;
+    }
+
     try {
       const hasGalaxyToken = action === 'enable' && addon === 'setup-pah'
         ? await hasHostFile(runner, galaxyTokenFile, settings.pathValue, process.env)

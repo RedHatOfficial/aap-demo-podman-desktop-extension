@@ -15,8 +15,10 @@ export function getCliCheckoutAction(
   gitMetadataExists: boolean,
   hasAapDemoSource: boolean,
   locationIsEmpty: boolean,
+  reuseExistingSource = false,
 ): CliCheckoutAction {
   if (!locationExists) return mode === 'update' ? 'missing' : 'clone';
+  if (mode === 'install' && reuseExistingSource && hasAapDemoSource) return 'reuse';
   if (gitMetadataExists) return 'pull';
   if (hasAapDemoSource) return mode === 'install' ? 'reuse' : 'not-updatable';
   if (locationIsEmpty && mode === 'install') return 'clone';

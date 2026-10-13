@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-10-12
+- Updated: 2026-10-13
 - Issue: #20
 
 ## Context
@@ -14,7 +15,10 @@ utilities such as `getcap`, even when they exist at `/usr/sbin/getcap`.
 When `FLATPAK_ID` is present, invoke the configured CLI through
 `flatpak-spawn --host`. Forward the augmented `PATH` and resource environment
 variables before `--host`; the fallback PATH includes `/usr/sbin` and `/sbin`.
-Non-Flatpak execution remains direct.
+Readiness checks use the same host bridge to test whether the configured CLI is
+available before an action runs. If the host probe fails, the dashboard reports
+the missing prerequisite and exposes the CLI install recovery path. Non-Flatpak
+execution remains direct.
 
 ## Consequences
 
