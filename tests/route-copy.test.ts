@@ -12,13 +12,12 @@ describe('route copy behavior', () => {
     expect(dashboardSource).toContain("import { copyText } from './clipboard';");
     expect(dashboardSource).toContain('let copied = await copyText(value);');
     expect(dashboardSource).toContain("button.textContent = copied ? 'Copied' : 'Copy failed'");
-    expect(dashboardSource).toContain('link.href = safeUrl;');
-    expect(dashboardSource).toContain("link.target = '_blank';");
-    expect(dashboardSource).toContain("link.rel = 'noreferrer';");
+    expect(dashboardSource).toContain("postToHost({ type: 'open-url', url: safeUrl });");
     expect(dashboardSource).toContain("postToHost({ type: 'copy-text', requestId, text: value });");
     expect(dashboardSource).toContain("message.type === 'copy-result'");
     expect(extensionSource).toContain('await extensionApi.env.clipboard.writeText(message.text)');
     expect(extensionSource).toContain("type: 'copy-result'");
+    expect(extensionSource).toContain('await openExternalUrl(message.url, runner, settings.pathValue, process.env)');
     expect(protocolSource).toContain("candidate.type === 'copy-text'");
     expect(dashboardHtml).toContain('id="routes"');
   });
