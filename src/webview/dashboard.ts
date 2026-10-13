@@ -212,10 +212,13 @@ function postAction(action: string, idleStateValue?: boolean): void {
 
 function addExternalLink(link: HTMLAnchorElement, url: string): void {
   const safeUrl = safeExternalUrl(url);
-  if (!safeUrl) return;
-  link.href = safeUrl;
-  link.target = '_blank';
-  link.rel = 'noreferrer';
+  // Keep untrusted route data out of the DOM URL sink; navigation is delegated
+  // to the extension host after protocol validation.
+  link.href = '#';
+  link.addEventListener('click', event => {
+    event.preventDefault();
+    if (safeUrl) postToHost({ type: 'open-url', url: safeUrl });
+  });
 }
 
 if (runtimeManualGuide) {

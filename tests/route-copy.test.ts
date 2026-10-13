@@ -10,9 +10,7 @@ describe('route copy behavior', () => {
     expect(dashboardSource).toContain("import { copyText } from './clipboard';");
     expect(dashboardSource).toContain('const copied = await copyText(value);');
     expect(dashboardSource).toContain("button.textContent = copied ? 'Copied' : 'Copy failed'");
-    expect(dashboardSource).toContain('link.href = safeUrl;');
-    expect(dashboardSource).toContain("link.target = '_blank';");
-    expect(dashboardSource).toContain("link.rel = 'noreferrer';");
+    expect(dashboardSource).toContain("postToHost({ type: 'open-url', url: safeUrl });");
     expect(dashboardHtml).toContain('id="routes"');
   });
 });
