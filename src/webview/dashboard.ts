@@ -376,7 +376,10 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
       label: 'aap-demo CLI',
       valid: prerequisites.cli.available,
       detail: prerequisites.cli.path ?? 'Not installed',
-      helpText: undefined,
+      // Command output is collapsed by default, so keep the recovery path visible here.
+      helpText: prerequisites.cli.available
+        ? undefined
+        : 'Click Install aap-demo below to clone or reuse the aap-demo source and run its installer.',
       helpUrl: undefined,
       actionLabel: undefined,
     },

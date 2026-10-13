@@ -97,6 +97,12 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardHtml).toContain('Update extension');
   });
 
+  it('shows CLI recovery guidance directly in the prerequisite list', () => {
+    expect(dashboardSource).toContain(
+      "Click Install aap-demo below to clone or reuse the aap-demo source and run its installer.",
+    );
+  });
+
   it('restores the CLI install button when installation fails', () => {
     expect(dashboardSource).toContain("message.action === 'install-cli' && installCli");
     expect(dashboardSource).toContain('installCli.disabled = false');

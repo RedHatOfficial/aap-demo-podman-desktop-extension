@@ -267,6 +267,11 @@ show an actionable missing-CLI message and the **Install aap-demo** action rathe
 than a portal or child-process error. After installing the CLI, retry Refresh
 status without restarting Podman Desktop.
 
+On macOS, this can be reproduced safely when `aap-demo` is provided through a
+symlink: temporarily remove the symlink from `PATH`, refresh status, and confirm
+that the failed **aap-demo CLI** prerequisite includes the inline instruction to
+select **Install aap-demo**. Restore the symlink afterward.
+
 ### Lifecycle actions
 
 Use a disposable environment for state-changing tests.
