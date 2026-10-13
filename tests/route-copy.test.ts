@@ -16,6 +16,8 @@ describe('route copy behavior', () => {
     expect(dashboardSource).toContain("postToHost({ type: 'open-url', url: safeUrl });");
     expect(dashboardSource).toContain("postToHost({ type: 'copy-text', requestId, text: value });");
     expect(dashboardSource).toContain('isDashboardCopyResultMessage(unwrappedMessage)');
+    expect(dashboardSource).not.toContain('pendingCopyRequests.get(unwrappedMessage.requestId)');
+    expect(dashboardSource).toContain('pendingCopy.resolve(unwrappedMessage.copied);');
     expect(extensionSource).toContain('await extensionApi.env.clipboard.writeText(message.text)');
     expect(extensionSource).toContain("type: 'copy-result'");
     expect(extensionSource).toContain('await openExternalUrl(message.url, runner, settings.pathValue, process.env)');

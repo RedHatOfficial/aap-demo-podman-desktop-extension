@@ -110,7 +110,17 @@ const pahTokenSave = document.querySelector<HTMLButtonElement>('#pah-token-save'
 const pahTokenLink = document.querySelector<HTMLAnchorElement>('#pah-token-link');
 let idleState = true;
 let copyRequestSequence = 0;
-const pendingCopyRequests = new Map<string, (copied: boolean) => void>();
+interface PendingCopyRequest {
+  requestId: string;
+  resolve: (copied: boolean) => void;
+}
+
+const pendingCopyRequests: PendingCopyRequest[] = [];
+
+function removePendingCopyRequest(requestId: string): void {
+  const index = pendingCopyRequests.findIndex(request => request.requestId === requestId);
+  if (index >= 0) pendingCopyRequests.splice(index, 1);
+}
 
 function clear(element: Element | null): void {
   if (element) element.replaceChildren();
@@ -234,14 +244,14 @@ async function copyValue(button: HTMLButtonElement, value: string): Promise<void
     const requestId = `copy-${++copyRequestSequence}`;
     copied = await new Promise<boolean>(resolve => {
       const timeout = window.setTimeout(() => {
-        pendingCopyRequests.delete(requestId);
+        removePendingCopyRequest(requestId);
         resolve(false);
       }, 2_000);
-      pendingCopyRequests.set(requestId, hostCopied => {
+      pendingCopyRequests.push({ requestId, resolve: hostCopied => {
         window.clearTimeout(timeout);
-        pendingCopyRequests.delete(requestId);
+        removePendingCopyRequest(requestId);
         resolve(hostCopied);
-      });
+      } });
       postToHost({ type: 'copy-text', requestId, text: value });
     });
   }
@@ -543,10 +553,10 @@ checkRuntime?.addEventListener('click', () => {
 window.addEventListener('message', event => {
   const unwrappedMessage = unwrapDashboardMessage(event.data);
   if (isDashboardCopyResultMessage(unwrappedMessage)) {
-    const resolveCopy = pendingCopyRequests.get(unwrappedMessage.requestId);
-    if (resolveCopy) {
-      pendingCopyRequests.delete(unwrappedMessage.requestId);
-      resolveCopy(unwrappedMessage.copied);
+    const pendingCopy = pendingCopyRequests.find(request => request.requestId === unwrappedMessage.requestId);
+    if (pendingCopy) {
+      removePendingCopyRequest(unwrappedMessage.requestId);
+      pendingCopy.resolve(unwrappedMessage.copied);
     }
     return;
   }
