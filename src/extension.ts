@@ -18,7 +18,7 @@ import { detectCliVersion } from './cli-version';
 import { canInvokeCli, missingCliMessage, shouldAutomaticallyInstallCli } from './cli-readiness';
 import { isDashboardMessage, type AoLlmProvider } from './dashboard-protocol';
 import { augmentPath, resolveConfiguredExecutable, resolveExecutablePath } from './executable-path';
-import { externalOpenFailed } from './external-link';
+import { openExternalUrl } from './external-open';
 import { forwardHostEnvironment, resolveHostCommand } from './host-command';
 import { hasHostFile, saveHostFile } from './host-file';
 import { isLocalExtensionCheckout } from './extension-updater';
@@ -716,11 +716,22 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
               'Could not open the Extensions catalog. Open the Extensions catalog and search for OpenShift Local.',
             );
           }
+        } else if (message.type === 'copy-text') {
+          let copied = false;
+          try {
+            await extensionApi.env.clipboard.writeText(message.text);
+            copied = true;
+          } catch (error) {
+            console.warn('[aap-demo] Could not copy text to the system clipboard', error);
+          }
+          await postDashboardMessage({ type: 'copy-result', requestId: message.requestId, copied });
         } else if (message.type === 'addon') {
           await runAddon(message.action, message.addon, message.llmProvider);
         } else if (message.type === 'open-url') {
-          const opened = await extensionApi.env.openExternal(extensionApi.Uri.parse(message.url, true));
-          if (externalOpenFailed(opened)) {
+          try {
+            await openExternalUrl(message.url, runner, settings.pathValue, process.env);
+          } catch (error) {
+            console.error(`[aap-demo] Could not open ${message.url}`, error);
             await extensionApi.window.showWarningMessage(`Could not open ${message.url}`);
           }
         } else if (message.type === 'pah-token-response') {

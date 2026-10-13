@@ -1,6 +1,6 @@
 import type { AapDemoStatus } from '../status-parser';
 import type { PrerequisiteStatus } from '../prerequisites';
-import { safeExternalUrl, unwrapDashboardMessage } from '../dashboard-protocol';
+import { isDashboardCopyResultMessage, safeExternalUrl, unwrapDashboardMessage } from '../dashboard-protocol';
 import { acquireDesktopApi, type DesktopApi } from './desktop-api';
 import { getAddonTogglePresentation, renderableAddons } from './addon-ui';
 import { handleCliMissing } from './cli-ui';
@@ -109,6 +109,18 @@ const pahTokenCancel = document.querySelector<HTMLButtonElement>('#pah-token-can
 const pahTokenSave = document.querySelector<HTMLButtonElement>('#pah-token-save');
 const pahTokenLink = document.querySelector<HTMLAnchorElement>('#pah-token-link');
 let idleState = true;
+let copyRequestSequence = 0;
+interface PendingCopyRequest {
+  requestId: string;
+  resolve: (copied: boolean) => void;
+}
+
+const pendingCopyRequests: PendingCopyRequest[] = [];
+
+function removePendingCopyRequest(requestId: string): void {
+  const index = pendingCopyRequests.findIndex(request => request.requestId === requestId);
+  if (index >= 0) pendingCopyRequests.splice(index, 1);
+}
 
 function clear(element: Element | null): void {
   if (element) element.replaceChildren();
@@ -212,8 +224,6 @@ function postAction(action: string, idleStateValue?: boolean): void {
 
 function addExternalLink(link: HTMLAnchorElement, url: string): void {
   const safeUrl = safeExternalUrl(url);
-  // Keep untrusted route data out of the DOM URL sink; navigation is delegated
-  // to the extension host after protocol validation.
   link.href = '#';
   link.addEventListener('click', event => {
     event.preventDefault();
@@ -229,7 +239,22 @@ if (pahTokenLink) {
 }
 
 async function copyValue(button: HTMLButtonElement, value: string): Promise<void> {
-  const copied = await copyText(value);
+  let copied = await copyText(value);
+  if (!copied && desktopApi) {
+    const requestId = `copy-${++copyRequestSequence}`;
+    copied = await new Promise<boolean>(resolve => {
+      const timeout = window.setTimeout(() => {
+        removePendingCopyRequest(requestId);
+        resolve(false);
+      }, 2_000);
+      pendingCopyRequests.push({ requestId, resolve: hostCopied => {
+        window.clearTimeout(timeout);
+        removePendingCopyRequest(requestId);
+        resolve(hostCopied);
+      } });
+      postToHost({ type: 'copy-text', requestId, text: value });
+    });
+  }
   button.textContent = copied ? 'Copied' : 'Copy failed';
   window.setTimeout(() => { button.textContent = 'Copy'; }, copied ? 1200 : 1800);
 }
@@ -248,9 +273,14 @@ function renderRoutes(status: AapDemoStatus): void {
     link.textContent = route;
     const copy = document.createElement('button');
     copy.className = 'small';
+    copy.type = 'button';
     copy.textContent = 'Copy';
     copy.setAttribute('aria-label', `Copy ${route}`);
-    copy.addEventListener('click', () => { void copyValue(copy, route); });
+    copy.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      void copyValue(copy, route);
+    });
     row.append(link, copy);
     routes.append(row);
   }
@@ -275,6 +305,7 @@ function renderCredentials(status: AapDemoStatus): void {
     password.setAttribute('aria-label', `${credential.namespace} password`);
     const reveal = document.createElement('button');
     reveal.className = 'small';
+    reveal.type = 'button';
     reveal.textContent = 'Show';
     reveal.addEventListener('click', () => {
       const visible = password.type === 'text';
@@ -283,9 +314,14 @@ function renderCredentials(status: AapDemoStatus): void {
     });
     const copy = document.createElement('button');
     copy.className = 'small';
+    copy.type = 'button';
     copy.textContent = 'Copy';
     copy.setAttribute('aria-label', `Copy ${credential.namespace} password`);
-    copy.addEventListener('click', () => { void copyValue(copy, credential.password); });
+    copy.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      void copyValue(copy, credential.password);
+    });
     const value = document.createElement('span');
     value.className = 'credential-value';
     value.append(password, reveal, copy);
@@ -515,7 +551,16 @@ checkRuntime?.addEventListener('click', () => {
 });
 
 window.addEventListener('message', event => {
-  const message = unwrapDashboardMessage(event.data) as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardExtensionMessage | DashboardRuntimeRequiredMessage | DashboardRuntimeInstallUnavailableMessage | DashboardRuntimeTerminalOpenedMessage | DashboardTrustCaTerminalOpenedMessage | DashboardExtensionSetupCompleteMessage | DashboardPahTokenRequestMessage | DashboardCommandMessage | DashboardCliMessage;
+  const unwrappedMessage = unwrapDashboardMessage(event.data);
+  if (isDashboardCopyResultMessage(unwrappedMessage)) {
+    const pendingCopy = pendingCopyRequests.find(request => request.requestId === unwrappedMessage.requestId);
+    if (pendingCopy) {
+      removePendingCopyRequest(unwrappedMessage.requestId);
+      pendingCopy.resolve(unwrappedMessage.copied);
+    }
+    return;
+  }
+  const message = unwrappedMessage as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardExtensionMessage | DashboardRuntimeRequiredMessage | DashboardRuntimeInstallUnavailableMessage | DashboardRuntimeTerminalOpenedMessage | DashboardTrustCaTerminalOpenedMessage | DashboardExtensionSetupCompleteMessage | DashboardPahTokenRequestMessage | DashboardCommandMessage | DashboardCliMessage;
   if (!message || typeof message !== 'object' || typeof message.type !== 'string') return;
   if (message.type === 'pah-token-request') {
     showPahTokenDialog();

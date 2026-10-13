@@ -24,10 +24,17 @@ export type DashboardMessage =
   | { type: 'install-runtime' }
   | { type: 'check-runtime' }
   | { type: 'open-crc-extension' }
+  | { type: 'copy-text'; requestId: string; text: string }
   | { type: 'pah-token-response'; token?: string }
   | { type: 'run'; action: AapDemoAction; idleState?: boolean }
   | { type: 'addon'; action: AddonAction; addon: string; llmProvider?: AoLlmProvider }
   | { type: 'open-url'; url: string };
+
+export type DashboardCopyResultMessage = {
+  type: 'copy-result';
+  requestId: string;
+  copied: boolean;
+};
 
 export function safeExternalUrl(url: unknown): string | undefined {
   if (typeof url !== 'string') return undefined;
@@ -39,6 +46,16 @@ export function safeExternalUrl(url: unknown): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+export function isDashboardCopyResultMessage(message: unknown): message is DashboardCopyResultMessage {
+  if (typeof message !== 'object' || message === null) return false;
+  const candidate = message as Record<string, unknown>;
+  return Object.keys(candidate).length === 3
+    && candidate.type === 'copy-result'
+    && typeof candidate.requestId === 'string'
+    && /^copy-\d+$/.test(candidate.requestId)
+    && typeof candidate.copied === 'boolean';
 }
 
 export function unwrapDashboardMessage(message: unknown): unknown {
@@ -83,6 +100,11 @@ export function isDashboardMessage(message: unknown): message is DashboardMessag
   if (candidate.type === 'install-runtime') return true;
   if (candidate.type === 'check-runtime') return true;
   if (candidate.type === 'open-crc-extension') return true;
+  if (candidate.type === 'copy-text') {
+    return typeof candidate.requestId === 'string'
+      && candidate.requestId.length > 0
+      && typeof candidate.text === 'string';
+  }
   if (candidate.type === 'pah-token-response') {
     return candidate.token === undefined || typeof candidate.token === 'string';
   }
