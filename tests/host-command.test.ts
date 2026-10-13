@@ -41,8 +41,8 @@ describe('resolveHostCommand', () => {
   });
 
   it('falls back to the command name when no executable is visible', () => {
-    expect(resolveHostCommand('git', '', {}, 'linux')).toEqual({
-      command: 'git',
+    expect(resolveHostCommand('aap-demo-test-command-not-installed', '', {}, 'linux')).toEqual({
+      command: 'aap-demo-test-command-not-installed',
       argsPrefix: [],
     });
   });
