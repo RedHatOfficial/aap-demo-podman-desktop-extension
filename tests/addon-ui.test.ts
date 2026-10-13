@@ -351,7 +351,7 @@ describe('getAddonTogglePresentation', () => {
 
   it('copies credentials with a browser clipboard fallback', () => {
     expect(dashboardSource).toContain("import { copyText } from './clipboard'");
-    expect(dashboardSource).toContain('const copied = await copyText(value)');
+    expect(dashboardSource).toContain('let copied = await copyText(value)');
     expect(dashboardSource).toContain('void copyValue(copy, credential.password)');
     expect(dashboardSource).toContain("copied ? 'Copied' : 'Copy failed'");
   });

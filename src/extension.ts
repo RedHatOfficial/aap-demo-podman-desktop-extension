@@ -716,6 +716,15 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
               'Could not open the Extensions catalog. Open the Extensions catalog and search for OpenShift Local.',
             );
           }
+        } else if (message.type === 'copy-text') {
+          let copied = false;
+          try {
+            await extensionApi.env.clipboard.writeText(message.text);
+            copied = true;
+          } catch (error) {
+            console.warn('[aap-demo] Could not copy text to the system clipboard', error);
+          }
+          await postDashboardMessage({ type: 'copy-result', requestId: message.requestId, copied });
         } else if (message.type === 'addon') {
           await runAddon(message.action, message.addon, message.llmProvider);
         } else if (message.type === 'open-url') {
