@@ -298,6 +298,12 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     }
   };
 
+  // Keep status polling with the extension lifetime, not the dashboard panel,
+  // so the status bar stays current on every supported host OS.
+  const statusPoll = setInterval(() => void runAction('status'), 30_000);
+  extensionContext.subscriptions.push({ dispose: () => clearInterval(statusPoll) });
+  void runAction('status');
+
   const runCliMaintenance = async (
     mode: 'install' | 'update',
     options: { reuseExistingSource?: boolean } = {},
@@ -650,6 +656,8 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   const openDashboard = extensionApi.commands.registerCommand('aap-demo.openDashboard', async () => {
     if (panel) {
       panel.reveal();
+      // A revealed panel may have been hidden while the cluster changed.
+      void runAction('status');
       return;
     }
 
@@ -724,12 +732,10 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     });
     panel.webview.html = await renderWebviewHtml(panel, extensionContext);
     initializationTimer = setTimeout(() => void initializeDashboard(), 2_000);
-    const statusPoll = setInterval(() => void runAction('status'), 30_000);
     extensionContext.subscriptions.push(
       messageSubscription,
       panel.onDidDispose(() => {
         if (initializationTimer) clearTimeout(initializationTimer);
-        clearInterval(statusPoll);
         pahTokenResolver?.(undefined);
         pahTokenResolver = undefined;
         panel = undefined;

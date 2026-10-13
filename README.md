@@ -140,5 +140,9 @@ When enabling AO with OpenAI, the API key is passed to the host-side CLI
 through standard input rather than process arguments. A key already saved in
 the configured AO key file is reused without another prompt.
 
+The AAP Demo status item continues refreshing while the dashboard is hidden or
+you navigate to another Podman Desktop page. Reopen the dashboard to see the
+latest details.
+
 The extension does not install CRC or accept Podman Desktop prompts on your
 behalf.
