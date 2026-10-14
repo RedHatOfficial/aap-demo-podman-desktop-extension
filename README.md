@@ -64,6 +64,7 @@ Use add-ons to turn on optional capabilities after AAP is deployed.
   provider.
 - **MCP server** exposes the local AAP instance through an MCP endpoint for
   compatible clients.
+- **portal (Helm)** deploys the Self-Service Portal through the Helm path.
 - **portal operator (amd64 only)** enables the portal operator path. This add-on
   is only intended for amd64 local environments.
 
