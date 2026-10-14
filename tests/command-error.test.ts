@@ -20,6 +20,21 @@ describe('formatCommandError', () => {
     expect(formatCommandError(new Error('not found'))).toBe('not found');
   });
 
+  it('explains how to install skopeo when sudo cannot prompt', () => {
+    const error = new CommandExecutionError('Command exited unsuccessfully: aap-demo', {
+      exitCode: 1,
+      signal: null,
+      stdout: '\u001b[31mskopeo: command not found on Ubuntu\u001b[0m',
+      stderr: 'sudo: a terminal is required to read the password',
+    });
+
+    const message = formatCommandError(error);
+    expect(message).toContain('sudo apt-get update && sudo apt-get install skopeo');
+    expect(message).toContain('command -v skopeo');
+    expect(message).toContain('retry enabling apme-eap');
+    expect(message).toContain('Diagnostics');
+  });
+
   it('adds actionable guidance for CRC Hyper-V memory allocation failures', () => {
     const error = new CommandExecutionError('Command exited unsuccessfully: aap-demo', {
       exitCode: 1,

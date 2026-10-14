@@ -25,6 +25,44 @@ function extractCaPath(output: string): string | undefined {
   return output.slice(valueStart, valueEnd).trim();
 }
 
+function packageInstallCommands(normalized: string): string[] {
+  if (normalized.includes('apt-get') || normalized.includes('ubuntu') || normalized.includes('debian')) {
+    return ['sudo apt-get update && sudo apt-get install skopeo'];
+  }
+  if (normalized.includes('zypper') || normalized.includes('opensuse') || normalized.includes('suse')) {
+    return ['sudo zypper install skopeo'];
+  }
+  if (normalized.includes('dnf') || normalized.includes('fedora') || normalized.includes('rhel')) {
+    return ['sudo dnf install skopeo'];
+  }
+  return [
+    'RHEL/Fedora: sudo dnf install skopeo',
+    'Debian/Ubuntu: sudo apt-get update && sudo apt-get install skopeo',
+    'openSUSE: sudo zypper install skopeo',
+  ];
+}
+
+function skopeoInstallationGuidance(output: string): string | undefined {
+  const normalized = output.toLowerCase();
+  if (
+    (!normalized.includes('skopeo not found') && !normalized.includes('skopeo: command not found'))
+    || !normalized.includes('sudo')
+    || (!normalized.includes('terminal') && !normalized.includes('password'))
+  ) {
+    return undefined;
+  }
+
+  return [
+    'The APME EAP add-on needs skopeo, but Podman Desktop could not install it because sudo requires an interactive terminal.',
+    'Open a terminal on the host and run:',
+    '',
+    ...packageInstallCommands(normalized),
+    'command -v skopeo',
+    '',
+    'Then retry enabling apme-eap from the dashboard.',
+  ].join('\n');
+}
+
 function crcMemoryFailureGuidance(output: string): string | undefined {
   const memoryMatch = output.match(/unable to allocate\s+(\d+)\s+MB of RAM/i);
   if (!memoryMatch || !/0x800705AA/i.test(output)) return undefined;
@@ -147,6 +185,10 @@ export function formatCommandError(error: unknown): string {
       .map(value => cleanTerminalOutput(value).trim())
       .filter(Boolean);
     const commandOutput = output.join('\n');
+    const skopeoGuidance = skopeoInstallationGuidance(commandOutput);
+    if (skopeoGuidance) {
+      return [skopeoGuidance, 'Diagnostics:', error.message, commandOutput].filter(Boolean).join('\n');
+    }
     const daemonGuidance = crcDaemonGuidance(commandOutput);
     const crcSshGuidance = crcSshUnavailableGuidance(commandOutput);
     const storageGuidance = deployTrustAndExistingStorageGuidance(commandOutput);
