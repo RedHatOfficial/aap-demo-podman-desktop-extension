@@ -29,8 +29,17 @@ describe('getAddonTogglePresentation', () => {
     });
   });
 
-  it('labels the portal operator add-on as amd64 only without changing its command name', () => {
+  it('labels the portal add-on as the Helm path without changing its command name', () => {
     expect(getAddonTogglePresentation('portal', 'disabled')).toEqual({
+      className: 'addon-toggle disabled',
+      action: 'enable',
+      label: 'portal (Helm)',
+      ariaLabel: 'Enable portal (Helm)',
+    });
+  });
+
+  it('labels the portal operator add-on as amd64 only without changing its command name', () => {
+    expect(getAddonTogglePresentation('portal-operator', 'disabled')).toEqual({
       className: 'addon-toggle disabled',
       action: 'enable',
       label: 'portal operator (amd64 only)',
@@ -306,6 +315,7 @@ describe('getAddonTogglePresentation', () => {
     expect(readme).toContain('AO with Ollama');
     expect(readme).toContain('AO no AI');
     expect(readme).toContain('MCP server');
+    expect(readme).toContain('portal (Helm)');
     expect(readme).toContain('portal operator (amd64 only)');
   });
 

@@ -19,7 +19,9 @@ export function renderableAddons<T extends { name: string }>(addons: T[]): T[] {
 }
 
 function addonDisplayName(name: string): string {
-  return name === 'portal' ? 'portal operator (amd64 only)' : name;
+  if (name === 'portal') return 'portal (Helm)';
+  if (name === 'portal-operator') return 'portal operator (amd64 only)';
+  return name;
 }
 
 export function getAddonTogglePresentation(
