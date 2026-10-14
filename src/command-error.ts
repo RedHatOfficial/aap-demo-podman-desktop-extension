@@ -11,6 +11,20 @@ function safeCaPathArgument(value: string): string {
     : shellQuote(value);
 }
 
+function extractCaPath(output: string): string | undefined {
+  const prefix = 'Ingress CA saved to ';
+  const suffix = ' but automatic trust import failed';
+  const normalized = output.toLowerCase();
+  const pathStart = normalized.indexOf(prefix.toLowerCase());
+  if (pathStart === -1) return undefined;
+
+  const valueStart = pathStart + prefix.length;
+  const valueEnd = normalized.indexOf(suffix, valueStart);
+  if (valueEnd === -1) return undefined;
+
+  return output.slice(valueStart, valueEnd).trim();
+}
+
 function crcMemoryFailureGuidance(output: string): string | undefined {
   const memoryMatch = output.match(/unable to allocate\s+(\d+)\s+MB of RAM/i);
   if (!memoryMatch || !/0x800705AA/i.test(output)) return undefined;
@@ -92,8 +106,7 @@ function deployTrustAndExistingStorageGuidance(output: string): string | undefin
     return undefined;
   }
 
-  const caPath = output.match(/Ingress CA saved to\s+(.+?)\s+but automatic trust import failed/i)?.[1]?.trim()
-    ?? '~/.aap-demo/crc-ingress-ca.crt';
+  const caPath = extractCaPath(output) ?? '~/.aap-demo/crc-ingress-ca.crt';
   const caArgument = safeCaPathArgument(caPath);
 
   return [

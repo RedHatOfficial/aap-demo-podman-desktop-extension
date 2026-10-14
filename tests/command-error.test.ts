@@ -126,6 +126,23 @@ describe('formatCommandError', () => {
     expect(message).not.toContain('Command exited unsuccessfully: flatpak-spawn');
   });
 
+  it('quotes a CA path containing spaces in the manual trust command', () => {
+    const error = new CommandExecutionError('Command exited unsuccessfully: flatpak-spawn', {
+      exitCode: 1,
+      signal: null,
+      stderr: '',
+      stdout: [
+        'Could not add CA to system trust store (sudo may be required)',
+        'Ingress CA saved to /home/test user/.aap-demo/crc ingress ca.crt but automatic trust import failed',
+        'Error from server (AlreadyExists): persistentvolumeclaims "postgres-15-aap-postgres-15-0" already exists',
+      ].join('\n'),
+    });
+
+    expect(formatCommandError(error)).toContain(
+      "sudo cp '/home/test user/.aap-demo/crc ingress ca.crt' /etc/pki/ca-trust/source/anchors/crc-ingress-ca.crt",
+    );
+  });
+
   it('explains that repair requires a cluster before applying SCC changes', () => {
     const error = new CommandExecutionError('Command exited unsuccessfully: flatpak-spawn', {
       exitCode: 1,
