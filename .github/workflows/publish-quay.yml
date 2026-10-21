@@ -31,6 +31,8 @@ jobs:
           images: quay.io/aapdemo/podman-desktop
           tags: |
             type=ref,event=branch
+            # Publish a date-based release tag from the default branch.
+            type=raw,value={{date 'YYYY.MM.DD'}},enable={{is_default_branch}}
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push image
