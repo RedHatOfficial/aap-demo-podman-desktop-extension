@@ -122,6 +122,9 @@ The `Publish image to Quay` workflow publishes the OCI image to Quay:
 quay.io/aapdemo/podman-desktop:latest
 ```
 
+Publishes from `main` also receive a date-based CalVer tag in `YYYY.MM.DD`
+format.
+
 In Podman Desktop, open **Extensions → Install custom...**, enter that image
 name, and install it. The Quay repository must be public, or Podman must be
 authenticated to Quay before installation. Use
