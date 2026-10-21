@@ -43,6 +43,10 @@ function windowsCommandQuote(value: string): string {
   return `"${escaped}"`;
 }
 
+export function windowsCommandArguments(command: string, args: readonly string[] = []): string[] {
+  return ['/d', '/c', ...[command, ...args].map(windowsCommandQuote)];
+}
+
 export class CommandRunner {
   run(
     command: string,
@@ -70,12 +74,7 @@ export class CommandRunner {
       ) {
         commandToSpawn = process.env.ComSpec ?? 'cmd.exe';
         spawnOptions.windowsVerbatimArguments = true;
-        argsToSpawn = [
-          '/d',
-          '/s',
-          '/c',
-          `"${[command, ...args].map(windowsCommandQuote).join(' ')}"`,
-        ];
+        argsToSpawn = windowsCommandArguments(command, args);
       } else if (spawnOptions.shell) {
         return reject(
           new CommandExecutionError('Shell execution is not supported for dynamic commands', {
