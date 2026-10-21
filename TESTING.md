@@ -119,7 +119,7 @@ the extension still calls the host `aap-demo` and CRC executables at runtime.
 The `Publish image to Quay` workflow publishes the OCI image to Quay:
 
 ```text
-quay.io/aapdemo/podman-desktop:latest
+quay.io/cferman/aap-demo-podman-desktop-extension:latest
 ```
 
 In Podman Desktop, open **Extensions → Install custom...**, enter that image

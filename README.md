@@ -1,6 +1,6 @@
 # AAP Demo
 
-[![Quay status](https://quay.io/repository/aapdemo/podman-desktop/status)](https://quay.io/repository/aapdemo/podman-desktop/status)
+[![Quay status](https://quay.io/repository/cferman/aap-demo-podman-desktop-extension/status)](https://quay.io/repository/cferman/aap-demo-podman-desktop-extension/status)
 
 Run and manage a local Ansible Automation Platform demo environment from
 Podman Desktop. The extension wraps the `aap-demo` CLI with a dashboard for
@@ -13,7 +13,7 @@ In Podman Desktop, open **Extensions → Install custom...**, select **OCI
 Image**, and enter:
 
 ```text
-quay.io/aapdemo/podman-desktop:latest
+quay.io/cferman/aap-demo-podman-desktop-extension:latest
 ```
 
 Select **Install**. Before creating a cluster, complete the requirements below.
