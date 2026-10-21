@@ -196,6 +196,15 @@ describe('AapDemoService', () => {
     expect(executor.calls[0]?.options?.env?.AAP_DEMO_SKIP_CACHE).toBe('true');
   });
 
+  it('does not apply the image-cache bypass to read-only status checks', async () => {
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor, 'aap-demo', { skipCache: true });
+
+    await service.run('status');
+
+    expect(executor.calls[0]?.options?.env?.AAP_DEMO_SKIP_CACHE).toBeUndefined();
+  });
+
   it('passes the augmented executable search path to the CLI', async () => {
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor, 'aap-demo', {

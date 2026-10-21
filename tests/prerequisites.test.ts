@@ -146,6 +146,16 @@ describe('checkPrerequisites', () => {
     });
   });
 
+  it('rejects fractional memory allocations', () => {
+    expect(checkPrerequisites({
+      cliPath: 'missing-cli',
+      crcPath: 'missing-crc',
+      cpus: 8,
+      pullSecretPath: '/tmp/missing-pull-secret',
+      memory: 16_384.5,
+    }, '/bin').memory.valid).toBe(false);
+  });
+
   it('treats a working Flatpak host bridge as CLI availability', () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-prerequisites-flatpak-'));
     const flatpakSpawn = path.join(directory, 'flatpak-spawn');

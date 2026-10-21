@@ -1,5 +1,5 @@
 import type { CommandRunnerOptions, CommandResult } from './command-runner';
-import { resolveHostCommand } from './host-command';
+import { forwardHostEnvironment, resolveHostCommand } from './host-command';
 
 export interface CrcCommandExecutor {
   run(
@@ -31,6 +31,10 @@ export async function applyCrcResourceSettings(
     settings.pathValue,
     settings.environment ?? process.env,
   );
+  if (settings.environment?.FLATPAK_ID && !command.argsPrefix.includes('--host')) {
+    throw new Error('Cannot configure CRC from Flatpak: flatpak-spawn is unavailable.');
+  }
+  const commandArgsPrefix = forwardHostEnvironment(command.argsPrefix, environment, ['PATH']);
 
   for (const [setting, value] of [
     ['cpus', settings.cpus],
@@ -39,7 +43,7 @@ export async function applyCrcResourceSettings(
     if (value === undefined) continue;
     await executor.run(
       command.command,
-      [...command.argsPrefix, 'config', 'set', setting, String(value)],
+      [...commandArgsPrefix, 'config', 'set', setting, String(value)],
       { env: environment },
     );
   }

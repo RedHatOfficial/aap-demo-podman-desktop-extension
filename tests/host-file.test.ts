@@ -3,9 +3,18 @@ import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { CommandResult } from '../src/command-runner';
-import { hasHostFile, saveHostFile } from '../src/host-file';
+import { hasHostFile, readHostFile, saveHostFile, windowsFileAclArgs } from '../src/host-file';
 
 describe('hasHostFile', () => {
+  it('builds a Windows ACL that removes inherited access and grants the current user', () => {
+    expect(windowsFileAclArgs('C:\\Users\\demo\\secret', 'demo')).toEqual([
+      'C:\\Users\\demo\\secret',
+      '/inheritance:r',
+      '/grant:r',
+      'demo:F',
+    ]);
+  });
+
   it('checks a file on the Flatpak host', async () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-flatpak-'));
     const flatpakSpawn = path.join(directory, 'flatpak-spawn');
@@ -53,6 +62,29 @@ describe('hasHostFile', () => {
       '/tmp/bin',
       { FLATPAK_ID: 'io.podman_desktop.PodmanDesktop' },
     )).resolves.toBe(false);
+  });
+
+  it('reads a file from the Flatpak host without falling back to the sandbox', async () => {
+    const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-flatpak-read-'));
+    const flatpakSpawn = path.join(directory, 'flatpak-spawn');
+    writeFileSync(flatpakSpawn, '#!/bin/sh\n');
+    chmodSync(flatpakSpawn, 0o755);
+    const calls: Array<{ command: string; args: readonly string[] }> = [];
+    const executor = {
+      async run(command: string, args: readonly string[]): Promise<CommandResult> {
+        calls.push({ command, args });
+        return { exitCode: 0, stdout: '{"auths":{}}', stderr: '' };
+      },
+    };
+
+    await expect(readHostFile(
+      executor,
+      '/home/test/.aap-demo/pull-secret.txt',
+      directory,
+      { FLATPAK_ID: 'io.podman_desktop.PodmanDesktop' },
+    )).resolves.toBe('{"auths":{}}');
+    expect(calls[0]?.args.join(' ')).toContain('cat -- "$1"');
+    rmSync(directory, { recursive: true, force: true });
   });
 
   it('does not fall back to the sandbox when flatpak-spawn is unavailable', async () => {

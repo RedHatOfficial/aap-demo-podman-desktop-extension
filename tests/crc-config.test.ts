@@ -1,3 +1,6 @@
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { CommandResult, CommandRunnerOptions } from '../src/command-runner';
 import { applyCrcResourceSettings, type CrcCommandExecutor } from '../src/crc-config';
@@ -38,5 +41,44 @@ describe('applyCrcResourceSettings', () => {
       PATH: '/usr/local/bin:/usr/bin',
       QUIET: 'true',
     });
+  });
+
+  it('forwards the augmented PATH through the Flatpak host bridge', async () => {
+    const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-crc-flatpak-'));
+    const flatpakSpawn = path.join(directory, 'flatpak-spawn');
+    writeFileSync(flatpakSpawn, '#!/bin/sh\n');
+    chmodSync(flatpakSpawn, 0o755);
+    const executor = new RecordingExecutor();
+
+    try {
+      await applyCrcResourceSettings(executor, '/home/test/.crc/bin/crc', {
+        cpus: 8,
+        environment: { FLATPAK_ID: 'io.podman_desktop.PodmanDesktop' },
+        pathValue: directory,
+      });
+      expect(executor.calls[0]?.args).toEqual([
+        `--env=PATH=${directory}`,
+        '--host',
+        '/home/test/.crc/bin/crc',
+        'config',
+        'set',
+        'cpus',
+        '8',
+      ]);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('fails clearly when Flatpak host execution is unavailable', async () => {
+    await expect(applyCrcResourceSettings(
+      new RecordingExecutor(),
+      'crc',
+      {
+        cpus: 8,
+        environment: { FLATPAK_ID: 'io.podman_desktop.PodmanDesktop' },
+        pathValue: '/tmp/no-flatpak-spawn',
+      },
+    )).rejects.toThrow('flatpak-spawn');
   });
 });

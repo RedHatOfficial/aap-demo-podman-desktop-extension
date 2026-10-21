@@ -18,6 +18,7 @@ LABEL org.opencontainers.image.title="AAP Demo Podman Desktop extension" \
 
 COPY --from=build /extension-source/package.json /extension/package.json
 COPY --from=build /extension-source/README.md /extension/README.md
+COPY --from=build /extension-source/RELEASE_NOTES.md /extension/RELEASE_NOTES.md
 COPY icon.png /extension/icon.png
 COPY scripts/run-install.ps1 /extension/scripts/run-install.ps1
 COPY --from=build /extension-source/dist /extension/dist

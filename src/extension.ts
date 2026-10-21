@@ -21,7 +21,7 @@ import { isDashboardMessage, type AoLlmProvider } from './dashboard-protocol';
 import { augmentPath, resolveConfiguredExecutable, resolveExecutablePath } from './executable-path';
 import { openExternalUrl } from './external-open';
 import { forwardHostEnvironment, resolveHostCommand } from './host-command';
-import { hasHostFile, saveHostFile } from './host-file';
+import { hasHostFile, readHostFile, saveHostFile } from './host-file';
 import { isLocalExtensionCheckout } from './extension-updater';
 import { ExtensionSourceService, MissingRuntimeError } from './extension-source-service';
 import { resolveExtensionInstallLocation } from './extension-source';
@@ -30,7 +30,9 @@ import {
   launchRuntimeInstall,
 } from './runtime-installer';
 import { launchTrustCaInTerminal } from './trust-ca-terminal';
-import { checkPrerequisites } from './prerequisites';
+import { checkPrerequisites, pullSecretCandidates } from './prerequisites';
+import { isValidPullSecret } from './pull-secret';
+import { shouldApplyCrcResourceSettings } from './lifecycle';
 import {
   AAP_DEMO_REPOSITORY_URL,
   installCliCommand,
@@ -45,7 +47,10 @@ import {
   containsMissingSubscriptionWarning,
   missingSubscriptionWarningMessage,
 } from './subscription-warning';
-import { formatSubscriptionCredentials } from './subscription-credentials';
+import {
+  formatSubscriptionCredentials,
+  hasUsableSubscriptionCredentials,
+} from './subscription-credentials';
 import { cleanTerminalOutput } from './terminal-output';
 
 type NavigationWithExtensionsCatalog = typeof extensionApi.navigation & {
@@ -139,6 +144,13 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     '.aap-demo',
     'redhat-subscription-credentials',
   );
+  const findValidPullSecret = async (): Promise<string | undefined> => {
+    for (const candidate of pullSecretCandidates(settings.pullSecretPath)) {
+      const contents = await readHostFile(runner, candidate, settings.pathValue, process.env);
+      if (contents && isValidPullSecret(contents)) return candidate;
+    }
+    return undefined;
+  };
   const resolveCliPath = (): string => process.env.FLATPAK_ID
     ? configuredCliPath
     : resolveConfiguredExecutable(configuredCliPath, settings.pathValue);
@@ -205,7 +217,9 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         password: true,
         ignoreFocusOut: true,
         placeHolder: 'Pull secret JSON',
-        validateInput: value => value.trim() ? undefined : 'A pull secret is required.',
+        validateInput: value => isValidPullSecret(value.trim())
+          ? undefined
+          : 'Paste valid pull-secret JSON containing an auths object.',
       });
     }
     return new Promise(resolve => {
@@ -214,9 +228,22 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     });
   };
   const offerSubscriptionCredentials = async (): Promise<void> => {
-    if (await hasHostFile(runner, subscriptionCredentialsFile, settings.pathValue, process.env)) return;
-
-    await extensionApi.window.showWarningMessage(missingSubscriptionWarningMessage);
+    const existingCredentials = await readHostFile(
+      runner,
+      subscriptionCredentialsFile,
+      settings.pathValue,
+      process.env,
+    );
+    if (existingCredentials && hasUsableSubscriptionCredentials(existingCredentials)) {
+      const replace = await extensionApi.window.showWarningMessage(
+        missingSubscriptionWarningMessage,
+        'Replace credentials',
+        'Keep existing',
+      );
+      if (replace !== 'Replace credentials') return;
+    } else {
+      await extensionApi.window.showWarningMessage(missingSubscriptionWarningMessage);
+    }
 
     const username = await extensionApi.window.showInputBox({
       title: 'Red Hat subscription credentials',
@@ -252,17 +279,23 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       await extensionApi.window.showWarningMessage(`Could not save Red Hat subscription credentials: ${message}`);
     }
   };
+  const getPrerequisites = async () => {
+    const resolvedPullSecretPath = await findValidPullSecret();
+    return checkPrerequisites({
+      cliPath,
+      crcExtensionAvailable: isOpenShiftLocalExtensionAvailable(),
+      crcPath,
+      cliVersion: currentCliVersion,
+      installLocation: installLocationSetting,
+      pullSecretExists: Boolean(resolvedPullSecretPath),
+      pullSecretResolvedPath: resolvedPullSecretPath,
+      ...settings,
+    }, settings.pathValue);
+  };
   const refreshPrerequisites = async (): Promise<void> => {
     await postDashboardMessage({
       type: 'prerequisites',
-      prerequisites: checkPrerequisites({
-        cliPath,
-        crcExtensionAvailable: isOpenShiftLocalExtensionAvailable(),
-        crcPath,
-        cliVersion: currentCliVersion,
-        installLocation: installLocationSetting,
-        ...settings,
-      }, settings.pathValue),
+      prerequisites: await getPrerequisites(),
     });
   };
   const statusBar = extensionApi.window.createStatusBarItem(extensionApi.StatusBarAlignLeft, 100);
@@ -333,16 +366,17 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     }
 
     if (action === 'deploy') {
-      const prerequisites = checkPrerequisites({
-        cliPath,
-        crcExtensionAvailable: isOpenShiftLocalExtensionAvailable(),
-        crcPath,
-        installLocation: installLocationSetting,
-        ...settings,
-      }, settings.pathValue);
+      const prerequisites = await getPrerequisites();
       if (!prerequisites.pullSecret.exists) {
         const enteredPullSecret = await requestPullSecret();
         if (enteredPullSecret === undefined) {
+          await runAction('status');
+          return;
+        }
+        if (!isValidPullSecret(enteredPullSecret.trim())) {
+          await extensionApi.window.showWarningMessage(
+            'The Red Hat pull secret must be valid JSON containing an auths object.',
+          );
           await runAction('status');
           return;
         }
@@ -393,10 +427,16 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
           void offerSubscriptionCredentials();
         }
       };
-      // CRC rejects resource changes while its VM is running. Create and Start
-      // are the safe lifecycle points to synchronize the Podman Desktop
-      // settings with CRC; Deploy must leave an existing VM untouched.
-      if (action === 'create' || action === 'start') {
+      let clusterState: Parameters<typeof shouldApplyCrcResourceSettings>[1] = 'unknown';
+      if (action === 'deploy') {
+        try {
+          const statusResult = await service.run('status');
+          clusterState = parseStatusOutput(statusResult.stdout).cluster.state;
+        } catch {
+          clusterState = 'unknown';
+        }
+      }
+      if (shouldApplyCrcResourceSettings(action, clusterState)) {
         await applyCrcResourceSettings(runner, crcPath, {
           cpus: settings.cpus,
           environment: process.env,
@@ -852,6 +892,13 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         } else if (message.type === 'request-pull-secret') {
           const enteredPullSecret = await requestPullSecret();
           if (enteredPullSecret === undefined) {
+            await refreshPrerequisites();
+            return;
+          }
+          if (!isValidPullSecret(enteredPullSecret.trim())) {
+            await extensionApi.window.showWarningMessage(
+              'The Red Hat pull secret must be valid JSON containing an auths object.',
+            );
             await refreshPrerequisites();
             return;
           }

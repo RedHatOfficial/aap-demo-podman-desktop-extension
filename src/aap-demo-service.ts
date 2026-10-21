@@ -7,6 +7,15 @@ import { forwardHostEnvironment, resolveHostCommand } from './host-command';
 export type AapDemoAction = 'create' | 'start' | 'deploy' | 'stop' | 'destroy' | 'status' | 'idle' | 'diagnose' | 'repair' | 'trust-ca';
 export type AddonAction = 'enable' | 'disable';
 
+const CACHE_BYPASS_ACTIONS = new Set<AapDemoAction>([
+  'create',
+  'start',
+  'deploy',
+  'stop',
+  'destroy',
+  'idle',
+]);
+
 export interface AapDemoSettings {
   cpus?: number;
   environment?: NodeJS.ProcessEnv;
@@ -50,6 +59,7 @@ export class AapDemoService {
     const optionsWithSettings = this.withSettings(
       options,
       action !== 'trust-ca' && action !== 'repair',
+      CACHE_BYPASS_ACTIONS.has(action),
     );
     const command = this.resolveCliCommand(optionsWithSettings?.env);
 
@@ -65,7 +75,7 @@ export class AapDemoService {
     addon: string,
     options?: CommandRunnerOptions,
   ): Promise<CommandResult> {
-    const optionsWithSettings = this.withSettings(options, true);
+    const optionsWithSettings = this.withSettings(options, true, true);
     const command = this.resolveCliCommand(optionsWithSettings?.env);
     const addonArgs = [action, addon];
     if (command.argsPrefix.includes('--host') && optionsWithSettings?.env?.OPENAI_API_KEY) {
@@ -138,6 +148,7 @@ export class AapDemoService {
   private withSettings(
     options?: CommandRunnerOptions,
     skipInteractiveTrustSetup = true,
+    skipCache = false,
   ): CommandRunnerOptions | undefined {
     const configuredEnvironment: NodeJS.ProcessEnv = {
       ...(options?.env ?? process.env),
@@ -157,7 +168,7 @@ export class AapDemoService {
     if (this.settings.memory) {
       configuredEnvironment.CRC_MEMORY = String(this.settings.memory);
     }
-    if (this.settings.skipCache) {
+    if (this.settings.skipCache && skipCache) {
       configuredEnvironment.AAP_DEMO_SKIP_CACHE = 'true';
     }
     if (this.settings.pathValue) {
