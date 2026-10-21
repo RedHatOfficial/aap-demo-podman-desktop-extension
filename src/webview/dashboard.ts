@@ -59,6 +59,15 @@ interface DashboardPahTokenRequestMessage {
   type: 'pah-token-request';
 }
 
+interface DashboardPullSecretRequestMessage {
+  type: 'pull-secret-request';
+}
+
+interface DashboardDeployPrerequisitesMessage {
+  type: 'deploy-prerequisites';
+  message: string;
+}
+
 interface DashboardCommandMessage {
   type: 'command-result' | 'addon-result' | 'command-output' | 'command-error';
   action?: string;
@@ -95,6 +104,7 @@ const installCli = document.querySelector<HTMLButtonElement>('#install-cli');
 const updateCli = document.querySelector<HTMLButtonElement>('#update-cli');
 const setupExtension = document.querySelector<HTMLButtonElement>('#setup-extension');
 const updateExtension = document.querySelector<HTMLButtonElement>('#update-extension');
+const pullSecretSetup = document.querySelector<HTMLButtonElement>('#pull-secret-setup');
 const runtimeHelp = document.querySelector<HTMLDivElement>('#extension-runtime-help');
 const runtimeMessage = document.querySelector<HTMLParagraphElement>('#extension-runtime-message');
 const installRuntime = document.querySelector<HTMLButtonElement>('#install-runtime');
@@ -108,6 +118,15 @@ const pahTokenError = document.querySelector<HTMLParagraphElement>('#pah-token-e
 const pahTokenCancel = document.querySelector<HTMLButtonElement>('#pah-token-cancel');
 const pahTokenSave = document.querySelector<HTMLButtonElement>('#pah-token-save');
 const pahTokenLink = document.querySelector<HTMLAnchorElement>('#pah-token-link');
+const pullSecretDialog = document.querySelector<HTMLDivElement>('#pull-secret-dialog');
+const pullSecretInput = document.querySelector<HTMLTextAreaElement>('#pull-secret-input');
+const pullSecretError = document.querySelector<HTMLParagraphElement>('#pull-secret-error');
+const pullSecretCancel = document.querySelector<HTMLButtonElement>('#pull-secret-cancel');
+const pullSecretSave = document.querySelector<HTMLButtonElement>('#pull-secret-save');
+const pullSecretLink = document.querySelector<HTMLAnchorElement>('#pull-secret-link');
+const deployPrerequisitesDialog = document.querySelector<HTMLDivElement>('#deploy-prerequisites-dialog');
+const deployPrerequisitesMessage = document.querySelector<HTMLParagraphElement>('#deploy-prerequisites-message');
+const deployPrerequisitesClose = document.querySelector<HTMLButtonElement>('#deploy-prerequisites-close');
 let idleState = true;
 let copyRequestSequence = 0;
 interface PendingCopyRequest {
@@ -205,6 +224,30 @@ function showPahTokenDialog(): void {
   pahTokenInput.focus();
 }
 
+function closePullSecretDialog(pullSecret?: string): void {
+  if (pullSecretDialog) pullSecretDialog.hidden = true;
+  if (pullSecretError) pullSecretError.textContent = '';
+  if (pullSecretInput) pullSecretInput.value = '';
+  postToHost({ type: 'pull-secret-response', ...(pullSecret === undefined ? {} : { pullSecret }) });
+}
+
+function showPullSecretDialog(): void {
+  if (!pullSecretDialog || !pullSecretInput) return;
+  pullSecretDialog.hidden = false;
+  pullSecretInput.focus();
+}
+
+function closeDeployPrerequisitesDialog(): void {
+  if (deployPrerequisitesDialog) deployPrerequisitesDialog.hidden = true;
+}
+
+function showDeployPrerequisitesDialog(message: string): void {
+  if (!deployPrerequisitesDialog || !deployPrerequisitesMessage) return;
+  deployPrerequisitesMessage.textContent = message;
+  deployPrerequisitesDialog.hidden = false;
+  deployPrerequisitesClose?.focus();
+}
+
 pahTokenCancel?.addEventListener('click', () => closePahTokenDialog());
 pahTokenSave?.addEventListener('click', () => {
   const token = pahTokenInput?.value.trim() ?? '';
@@ -215,6 +258,19 @@ pahTokenSave?.addEventListener('click', () => {
   }
   closePahTokenDialog(token);
 });
+
+pullSecretCancel?.addEventListener('click', () => closePullSecretDialog());
+pullSecretSave?.addEventListener('click', () => {
+  const pullSecret = pullSecretInput?.value.trim() ?? '';
+  if (!pullSecret) {
+    if (pullSecretError) pullSecretError.textContent = 'A pull secret is required.';
+    pullSecretInput?.focus();
+    return;
+  }
+  closePullSecretDialog(pullSecret);
+});
+
+deployPrerequisitesClose?.addEventListener('click', closeDeployPrerequisitesDialog);
 
 function postAction(action: string, idleStateValue?: boolean): void {
   const label = action === 'trust-ca' ? 'Fix SSL' : action;
@@ -236,6 +292,9 @@ if (runtimeManualGuide) {
 }
 if (pahTokenLink) {
   addExternalLink(pahTokenLink, 'https://console.redhat.com/ansible/automation-hub/token');
+}
+if (pullSecretLink) {
+  addExternalLink(pullSecretLink, 'https://console.redhat.com/openshift/install/pull-secret');
 }
 
 async function copyValue(button: HTMLButtonElement, value: string): Promise<void> {
@@ -411,7 +470,7 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
     {
       label: 'aap-demo CLI',
       valid: prerequisites.cli.available,
-      detail: prerequisites.cli.path ?? 'Not installed',
+      detail: `${prerequisites.cli.path ?? 'Not installed'}${prerequisites.cli.version ? ` · ${prerequisites.cli.version}` : ''}`,
       // Command output is collapsed by default, so keep the recovery path visible here.
       helpText: prerequisites.cli.available
         ? undefined
@@ -498,6 +557,11 @@ function renderPrerequisites(prerequisites: PrerequisiteStatus): void {
     updateCli.disabled = false;
     updateCli.title = 'Pull the latest aap-demo checkout and run install.sh';
   }
+  if (pullSecretSetup) {
+    pullSecretSetup.hidden = prerequisites.pullSecret.exists;
+    pullSecretSetup.disabled = false;
+    pullSecretSetup.title = 'Download and save a Red Hat pull secret for AAP deployment';
+  }
 }
 
 for (const button of document.querySelectorAll<HTMLButtonElement>('[data-action]')) {
@@ -536,6 +600,11 @@ updateExtension?.addEventListener('click', () => {
   postToHost({ type: 'update-extension' });
 });
 
+pullSecretSetup?.addEventListener('click', () => {
+  pullSecretSetup.disabled = true;
+  postToHost({ type: 'request-pull-secret' });
+});
+
 installRuntime?.addEventListener('click', () => {
   if (runtimeMessage) {
     runtimeMessage.textContent = 'Opening a terminal to install the required software. Complete the install there, then return and choose Check again.';
@@ -560,10 +629,18 @@ window.addEventListener('message', event => {
     }
     return;
   }
-  const message = unwrappedMessage as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardExtensionMessage | DashboardRuntimeRequiredMessage | DashboardRuntimeInstallUnavailableMessage | DashboardRuntimeTerminalOpenedMessage | DashboardTrustCaTerminalOpenedMessage | DashboardExtensionSetupCompleteMessage | DashboardPahTokenRequestMessage | DashboardCommandMessage | DashboardCliMessage;
+  const message = unwrappedMessage as DashboardStatusMessage | DashboardPrerequisitesMessage | DashboardExtensionMessage | DashboardRuntimeRequiredMessage | DashboardRuntimeInstallUnavailableMessage | DashboardRuntimeTerminalOpenedMessage | DashboardTrustCaTerminalOpenedMessage | DashboardExtensionSetupCompleteMessage | DashboardPahTokenRequestMessage | DashboardPullSecretRequestMessage | DashboardDeployPrerequisitesMessage | DashboardCommandMessage | DashboardCliMessage;
   if (!message || typeof message !== 'object' || typeof message.type !== 'string') return;
   if (message.type === 'pah-token-request') {
     showPahTokenDialog();
+    return;
+  }
+  if (message.type === 'pull-secret-request') {
+    showPullSecretDialog();
+    return;
+  }
+  if (message.type === 'deploy-prerequisites') {
+    showDeployPrerequisitesDialog(message.message);
     return;
   }
   if (message.type === 'cli-missing') {

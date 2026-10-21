@@ -40,7 +40,7 @@
       },
       {
         "command": "aap-demo.start",
-        "title": "AAP Demo: Start Cluster"
+        "title": "AAP Demo: Start VM"
       },
       {
         "command": "aap-demo.deploy",
@@ -48,7 +48,7 @@
       },
       {
         "command": "aap-demo.stop",
-        "title": "AAP Demo: Stop Cluster"
+        "title": "AAP Demo: Stop VM"
       },
       {
         "command": "aap-demo.destroy",

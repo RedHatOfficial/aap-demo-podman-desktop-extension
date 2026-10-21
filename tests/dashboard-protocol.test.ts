@@ -45,6 +45,16 @@ describe('isDashboardMessage', () => {
     expect(isDashboardMessage({ type: 'open-url', url: 'https://example.test/path' })).toBe(true);
   });
 
+  it('accepts pull secret responses from the dashboard', () => {
+    expect(isDashboardMessage({ type: 'pull-secret-response', pullSecret: '{"auths":{}}' })).toBe(true);
+    expect(isDashboardMessage({ type: 'pull-secret-response' })).toBe(true);
+    expect(isDashboardMessage({ type: 'pull-secret-response', pullSecret: 42 })).toBe(false);
+  });
+
+  it('accepts a dashboard request to add a pull secret', () => {
+    expect(isDashboardMessage({ type: 'request-pull-secret' })).toBe(true);
+  });
+
   it('accepts the fixed OpenShift Local install handoff request', () => {
     expect(isDashboardMessage({ type: 'open-crc-extension' })).toBe(true);
   });

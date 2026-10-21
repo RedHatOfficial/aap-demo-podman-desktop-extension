@@ -16,6 +16,7 @@ import { getCliCheckoutAction } from './cli-checkout';
 import { CommandRunner, type CommandRunnerOptions } from './command-runner';
 import { detectCliVersion } from './cli-version';
 import { canInvokeCli, missingCliMessage, shouldAutomaticallyInstallCli } from './cli-readiness';
+import { applyCrcResourceSettings } from './crc-config';
 import { isDashboardMessage, type AoLlmProvider } from './dashboard-protocol';
 import { augmentPath, resolveConfiguredExecutable, resolveExecutablePath } from './executable-path';
 import { openExternalUrl } from './external-open';
@@ -40,6 +41,11 @@ import {
 } from './install-script';
 import { parseStatusOutput } from './status-parser';
 import { formatStatusBarText } from './status-bar';
+import {
+  containsMissingSubscriptionWarning,
+  missingSubscriptionWarningMessage,
+} from './subscription-warning';
+import { formatSubscriptionCredentials } from './subscription-credentials';
 import { cleanTerminalOutput } from './terminal-output';
 
 type NavigationWithExtensionsCatalog = typeof extensionApi.navigation & {
@@ -121,7 +127,18 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     pullSecretPath: configuration.get('pullSecretPath', ''),
     memory: configuration.get('memory', 24_576),
     pathValue: augmentPath(),
+    skipCache: true,
   };
+  const pullSecretFile = settings.pullSecretPath?.trim() || path.join(
+    os.homedir(),
+    '.aap-demo',
+    'pull-secret.txt',
+  );
+  const subscriptionCredentialsFile = process.env.REDHAT_SUBSCRIPTION_CREDENTIALS_FILE?.trim() || path.join(
+    os.homedir(),
+    '.aap-demo',
+    'redhat-subscription-credentials',
+  );
   const resolveCliPath = (): string => process.env.FLATPAK_ID
     ? configuredCliPath
     : resolveConfiguredExecutable(configuredCliPath, settings.pathValue);
@@ -137,6 +154,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   const cliVersion = cliAvailable
     ? await detectCliVersion(runner, cliPath, settings.pathValue, process.env)
     : 'unknown';
+  let currentCliVersion = cliVersion;
   const cliTool = extensionApi.cli.createCliTool({
     name: 'aap-demo',
     displayName: 'AAP Demo CLI',
@@ -153,6 +171,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   }
   let panel: WebviewPanel | undefined;
   let pahTokenResolver: ((token: string | undefined) => void) | undefined;
+  let pullSecretResolver: ((pullSecret: string | undefined) => void) | undefined;
   const postDashboardMessage = async (message: unknown): Promise<boolean> => {
     const currentPanel = panel;
     if (!currentPanel) return false;
@@ -178,6 +197,61 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       void postDashboardMessage({ type: 'pah-token-request' });
     });
   };
+  const requestPullSecret = async (): Promise<string | undefined> => {
+    if (!panel) {
+      return extensionApi.window.showInputBox({
+        title: 'Red Hat pull secret',
+        prompt: `Paste the pull secret JSON. It will be saved securely to ${pullSecretFile}.`,
+        password: true,
+        ignoreFocusOut: true,
+        placeHolder: 'Pull secret JSON',
+        validateInput: value => value.trim() ? undefined : 'A pull secret is required.',
+      });
+    }
+    return new Promise(resolve => {
+      pullSecretResolver = resolve;
+      void postDashboardMessage({ type: 'pull-secret-request' });
+    });
+  };
+  const offerSubscriptionCredentials = async (): Promise<void> => {
+    if (await hasHostFile(runner, subscriptionCredentialsFile, settings.pathValue, process.env)) return;
+
+    await extensionApi.window.showWarningMessage(missingSubscriptionWarningMessage);
+
+    const username = await extensionApi.window.showInputBox({
+      title: 'Red Hat subscription credentials',
+      prompt: 'Enter your Red Hat account username or email. It will be saved securely for subscription attachment.',
+      ignoreFocusOut: true,
+      placeHolder: 'username@example.com',
+      validateInput: value => value.trim() ? undefined : 'A Red Hat username is required.',
+    });
+    if (username === undefined) return;
+
+    const password = await extensionApi.window.showInputBox({
+      title: 'Red Hat subscription credentials',
+      prompt: 'Enter your Red Hat account password. It will be saved securely and never shown in command output.',
+      password: true,
+      ignoreFocusOut: true,
+      validateInput: value => value ? undefined : 'A Red Hat password is required.',
+    });
+    if (password === undefined) return;
+
+    try {
+      await saveHostFile(
+        runner,
+        subscriptionCredentialsFile,
+        settings.pathValue,
+        process.env,
+        formatSubscriptionCredentials(username, password),
+      );
+      await extensionApi.window.showInformationMessage(
+        'Red Hat subscription credentials saved securely. Run Deploy AAP again to attach the subscription.',
+      );
+    } catch (error) {
+      const message = formatCommandError(error);
+      await extensionApi.window.showWarningMessage(`Could not save Red Hat subscription credentials: ${message}`);
+    }
+  };
   const refreshPrerequisites = async (): Promise<void> => {
     await postDashboardMessage({
       type: 'prerequisites',
@@ -185,6 +259,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         cliPath,
         crcExtensionAvailable: isOpenShiftLocalExtensionAvailable(),
         crcPath,
+        cliVersion: currentCliVersion,
         installLocation: installLocationSetting,
         ...settings,
       }, settings.pathValue),
@@ -257,22 +332,96 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       return;
     }
 
+    if (action === 'deploy') {
+      const prerequisites = checkPrerequisites({
+        cliPath,
+        crcExtensionAvailable: isOpenShiftLocalExtensionAvailable(),
+        crcPath,
+        installLocation: installLocationSetting,
+        ...settings,
+      }, settings.pathValue);
+      if (!prerequisites.pullSecret.exists) {
+        const enteredPullSecret = await requestPullSecret();
+        if (enteredPullSecret === undefined) {
+          await runAction('status');
+          return;
+        }
+        try {
+          await saveHostFile(
+            runner,
+            pullSecretFile,
+            settings.pathValue,
+            process.env,
+            enteredPullSecret.trim(),
+          );
+        } catch (error) {
+          const message = formatCommandError(error);
+          await postDashboardMessage({ type: 'command-error', action, message });
+          await extensionApi.window.showWarningMessage(`Could not save the Red Hat pull secret: ${message}`);
+          await runAction('status');
+          return;
+        }
+      }
+      if (!prerequisites.cpus.valid || !prerequisites.memory.valid) {
+        const resourceDetails = [
+          !prerequisites.cpus.valid
+            ? `CPUs: ${prerequisites.cpus.value} (minimum ${prerequisites.cpus.minimum}); set aap-demo.cpus.`
+            : undefined,
+          !prerequisites.memory.valid
+            ? `Memory: ${prerequisites.memory.value} MiB (minimum ${prerequisites.memory.minimum} MiB); set aap-demo.memory.`
+            : undefined,
+        ].filter((detail): detail is string => Boolean(detail));
+        const resourceMessage = `AAP deployment cannot continue. ${resourceDetails.join(' ')}`;
+        const settingsMessage = `${resourceMessage} Open Podman Desktop Settings → Extensions → AAP Demo, update the settings, then refresh status and try Deploy AAP again.`;
+        if (panel) {
+          await postDashboardMessage({ type: 'deploy-prerequisites', message: resourceMessage });
+        } else {
+          await extensionApi.window.showWarningMessage(settingsMessage);
+        }
+        return;
+      }
+    }
+
     try {
+      let commandOutput = '';
+      let subscriptionWarningShown = false;
+      const inspectSubscriptionOutput = (chunk: string): void => {
+        if (action !== 'deploy' || subscriptionWarningShown) return;
+        commandOutput = `${commandOutput}${chunk}`.slice(-8_000);
+        if (containsMissingSubscriptionWarning(commandOutput)) {
+          subscriptionWarningShown = true;
+          void offerSubscriptionCredentials();
+        }
+      };
+      // CRC rejects resource changes while its VM is running. Create and Start
+      // are the safe lifecycle points to synchronize the Podman Desktop
+      // settings with CRC; Deploy must leave an existing VM untouched.
+      if (action === 'create' || action === 'start') {
+        await applyCrcResourceSettings(runner, crcPath, {
+          cpus: settings.cpus,
+          environment: process.env,
+          memory: settings.memory,
+          pathValue: settings.pathValue,
+        });
+      }
       const result = await service.run(action, idleState, {
         onStdout: chunk => {
           console.log(`[aap-demo] ${chunk.trimEnd()}`);
+          inspectSubscriptionOutput(chunk);
           if (action !== 'status') {
             void postDashboardMessage({ type: 'command-output', stream: 'stdout', text: cleanTerminalOutput(chunk) });
           }
         },
         onStderr: chunk => {
           console.warn(`[aap-demo] ${chunk.trimEnd()}`);
+          inspectSubscriptionOutput(chunk);
           void postDashboardMessage({ type: 'command-output', stream: 'stderr', text: cleanTerminalOutput(chunk) });
         },
       });
 
       if (action === 'status') {
         const status = parseStatusOutput(result.stdout);
+        if (status.toolVersion) currentCliVersion = status.toolVersion;
         statusBar.text = formatStatusBarText(status);
         statusBar.tooltip = `Open the AAP Demo dashboard (${status.cluster.state})`;
         await postDashboardMessage({
@@ -685,6 +834,12 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         resolveToken?.(message.token);
         return;
       }
+      if (isDashboardMessage(message) && message.type === 'pull-secret-response') {
+        const resolvePullSecret = pullSecretResolver;
+        pullSecretResolver = undefined;
+        resolvePullSecret?.(message.pullSecret);
+        return;
+      }
       if (isDashboardMessage(message)) {
         if (message.type === 'ready') {
           void initializeDashboard();
@@ -694,6 +849,26 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
           await runUpdate();
         } else if (message.type === 'update-extension') {
           await runExtensionUpdate();
+        } else if (message.type === 'request-pull-secret') {
+          const enteredPullSecret = await requestPullSecret();
+          if (enteredPullSecret === undefined) {
+            await refreshPrerequisites();
+            return;
+          }
+          try {
+            await saveHostFile(
+              runner,
+              pullSecretFile,
+              settings.pathValue,
+              process.env,
+              enteredPullSecret.trim(),
+            );
+          } catch (error) {
+            const messageText = formatCommandError(error);
+            await postDashboardMessage({ type: 'command-error', message: messageText });
+            await extensionApi.window.showWarningMessage(`Could not save the Red Hat pull secret: ${messageText}`);
+          }
+          await refreshPrerequisites();
         } else if (message.type === 'setup-extension') {
           await runExtensionSetup();
         } else if (message.type === 'install-runtime') {
@@ -736,6 +911,8 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
           }
         } else if (message.type === 'pah-token-response') {
           return;
+        } else if (message.type === 'pull-secret-response') {
+          return;
         } else {
           await runAction(message.action, message.idleState);
         }
@@ -749,6 +926,8 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         if (initializationTimer) clearTimeout(initializationTimer);
         pahTokenResolver?.(undefined);
         pahTokenResolver = undefined;
+        pullSecretResolver?.(undefined);
+        pullSecretResolver = undefined;
         panel = undefined;
       }),
     );

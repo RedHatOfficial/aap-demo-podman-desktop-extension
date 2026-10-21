@@ -11,6 +11,7 @@ export interface AapDemoSettings {
   cpus?: number;
   environment?: NodeJS.ProcessEnv;
   pullSecretPath?: string;
+  skipCache?: boolean;
   memory?: number;
   pathValue?: string;
 }
@@ -122,6 +123,8 @@ export class AapDemoService {
       'PULL_SECRET_PATH',
       'CRC_CPUS',
       'CRC_MEMORY',
+      'AAP_DEMO_SKIP_CACHE',
+      'REDHAT_SUBSCRIPTION_CREDENTIALS_FILE',
       'PATH',
       'AO_LLM_PROVIDER',
       'AO_LLM_MODEL',
@@ -153,6 +156,9 @@ export class AapDemoService {
     }
     if (this.settings.memory) {
       configuredEnvironment.CRC_MEMORY = String(this.settings.memory);
+    }
+    if (this.settings.skipCache) {
+      configuredEnvironment.AAP_DEMO_SKIP_CACHE = 'true';
     }
     if (this.settings.pathValue) {
       configuredEnvironment.PATH = this.settings.pathValue;

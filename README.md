@@ -120,6 +120,8 @@ also run **AAP Demo: Install aap-demo CLI** from the F1 Command Palette.
 
 Select **Update aap-demo** in the Status box to update the CLI.
 
+See the [release notes](RELEASE_NOTES.md) for recent changes and improvements.
+
 For the OCI extension image, disabling and re-enabling the extension only
 restarts the installed image; it does not guarantee a fresh pull of a changed
 tag. To install a newly published image, uninstall the extension from

@@ -30,6 +30,7 @@
       .actions { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; margin: 14px 0 20px; }
       .lifecycle-actions { align-items: flex-start; column-gap: 22px; row-gap: 14px; }
       .action-group { display: flex; flex: 0 1 auto; flex-wrap: wrap; min-width: 0; gap: 8px; }
+       .middle-actions [data-action="start"] { margin-left: 18px; }
       .addon-actions { margin: 0; }
       .addon-control { display: flex; align-items: center; gap: 8px; }
       .ao-provider-actions { flex-wrap: wrap; }
@@ -101,6 +102,7 @@
           <button class="small prerequisite-action" id="update-cli" hidden>Update aap-demo</button>
           <button class="small primary prerequisite-action" id="setup-extension" hidden>Set up local extension updates</button>
           <button class="small prerequisite-action" id="update-extension" hidden>Update extension</button>
+          <button class="small primary prerequisite-action" id="pull-secret-setup" hidden>Add pull secret</button>
           <div class="extension-runtime-help" id="extension-runtime-help" hidden>
             <p id="extension-runtime-message"></p>
             <div class="extension-runtime-actions">
@@ -112,12 +114,10 @@
         </div>
       </div>
       <div class="actions lifecycle-actions">
-        <div class="action-group primary-actions">
-          <button class="primary" data-action="start">Start</button>
-          <button class="danger" data-action="stop">Stop</button>
-        </div>
         <div class="action-group middle-actions">
           <button class="primary" data-action="deploy">Deploy AAP</button>
+          <button class="primary" data-action="start">Start VM</button>
+          <button class="danger" data-action="stop">Stop VM</button>
           <button class="primary" data-action="diagnose">Diagnose</button>
           <button class="primary" data-action="repair" title="Repair common cluster issues after a crash">Repair</button>
           <button class="primary" data-action="trust-ca" id="fix-ssl" title="Import and verify the active cluster's ingress certificate trust" hidden>Fix SSL</button>
@@ -162,6 +162,31 @@
           <div class="modal-actions">
             <button id="pah-token-cancel">Cancel</button>
             <button class="primary" id="pah-token-save">Save token</button>
+          </div>
+        </section>
+      </div>
+      <div class="modal-backdrop" id="pull-secret-dialog" hidden>
+        <section class="modal" role="dialog" aria-modal="true" aria-labelledby="pull-secret-title">
+          <h2 id="pull-secret-title">Red Hat pull secret</h2>
+          <p>The pull secret lets OpenShift Local authenticate to Red Hat registries and download the container images required to deploy Ansible Automation Platform. It is not your Red Hat password.</p>
+          <p>1. Log in with your Red Hat account.<br />2. Click the Download pull secret button.<br />3. Copy the pull secret JSON and paste it below.</p>
+          <p>Use the Red Hat page below to download the pull secret. Podman Desktop may ask you to confirm opening the Red Hat sign-in page.</p>
+          <p><a id="pull-secret-link" href="https://console.redhat.com/openshift/install/pull-secret" target="_blank" rel="noreferrer">Open the Red Hat pull secret page</a></p>
+          <textarea id="pull-secret-input" aria-label="Red Hat pull secret" spellcheck="false" autocomplete="off" wrap="soft"></textarea>
+          <p class="modal-error" id="pull-secret-error" role="alert"></p>
+          <div class="modal-actions">
+            <button id="pull-secret-cancel">Cancel</button>
+            <button class="primary" id="pull-secret-save">Save pull secret</button>
+          </div>
+        </section>
+      </div>
+      <div class="modal-backdrop" id="deploy-prerequisites-dialog" hidden>
+        <section class="modal" role="dialog" aria-modal="true" aria-labelledby="deploy-prerequisites-title">
+          <h2 id="deploy-prerequisites-title">Resources needed for AAP deployment</h2>
+          <p id="deploy-prerequisites-message"></p>
+          <p>Open Podman Desktop Settings → Extensions → AAP Demo and update the CPU and memory settings. If the VM is already running, click <strong>Stop VM</strong> and then <strong>Start VM</strong> to apply the new values. Then refresh status and try <strong>Deploy AAP</strong> again.</p>
+          <div class="modal-actions">
+            <button class="primary" id="deploy-prerequisites-close">Close</button>
           </div>
         </section>
       </div>

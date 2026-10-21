@@ -26,6 +26,8 @@ export type DashboardMessage =
   | { type: 'open-crc-extension' }
   | { type: 'copy-text'; requestId: string; text: string }
   | { type: 'pah-token-response'; token?: string }
+  | { type: 'pull-secret-response'; pullSecret?: string }
+  | { type: 'request-pull-secret' }
   | { type: 'run'; action: AapDemoAction; idleState?: boolean }
   | { type: 'addon'; action: AddonAction; addon: string; llmProvider?: AoLlmProvider }
   | { type: 'open-url'; url: string };
@@ -108,6 +110,10 @@ export function isDashboardMessage(message: unknown): message is DashboardMessag
   if (candidate.type === 'pah-token-response') {
     return candidate.token === undefined || typeof candidate.token === 'string';
   }
+  if (candidate.type === 'pull-secret-response') {
+    return candidate.pullSecret === undefined || typeof candidate.pullSecret === 'string';
+  }
+  if (candidate.type === 'request-pull-secret') return true;
   if (candidate.type === 'run') {
     return supportedActions.has(candidate.action as AapDemoAction);
   }

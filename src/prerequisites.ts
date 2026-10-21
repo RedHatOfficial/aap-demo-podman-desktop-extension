@@ -13,13 +13,14 @@ export interface PrerequisiteSettings {
   cpus?: number;
   crcExtensionAvailable?: boolean;
   crcPath: string;
+  cliVersion?: string;
   installLocation?: string;
   pullSecretPath?: string;
   memory?: number;
 }
 
 export interface PrerequisiteStatus {
-  cli: { available: boolean; path?: string };
+  cli: { available: boolean; path?: string; version?: string };
   cpus: { value: number; valid: boolean; minimum: number };
   crc: { available: boolean; path?: string };
   installScript: { available: boolean; path?: string };
@@ -85,8 +86,16 @@ export function checkPrerequisites(
     minimum: MINIMUM_MEMORY,
   };
 
+  const cli = cliPath
+    ? {
+      available: true,
+      path: cliPath,
+      ...(settings.cliVersion ? { version: settings.cliVersion } : {}),
+    }
+    : { available: false };
+
   return {
-    cli: cliPath ? { available: true, path: cliPath } : { available: false },
+    cli,
     cpus: cpuStatus,
     crc: crcPath
       ? { available: true, path: crcPath }

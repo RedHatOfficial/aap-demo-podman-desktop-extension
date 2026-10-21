@@ -187,6 +187,15 @@ describe('AapDemoService', () => {
     });
   });
 
+  it('skips the local image cache when requested by the host integration', async () => {
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor, 'aap-demo', { skipCache: true });
+
+    await service.run('deploy');
+
+    expect(executor.calls[0]?.options?.env?.AAP_DEMO_SKIP_CACHE).toBe('true');
+  });
+
   it('passes the augmented executable search path to the CLI', async () => {
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor, 'aap-demo', {

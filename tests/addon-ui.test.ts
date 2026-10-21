@@ -97,6 +97,21 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardHtml).not.toContain('<section class="card" id="prerequisites">');
   });
 
+  it('labels lifecycle controls as VM actions', () => {
+    expect(dashboardHtml).toContain('data-action="start">Start VM</button>');
+    expect(dashboardHtml).toContain('data-action="stop">Stop VM</button>');
+    expect(packageJson).toContain('"title": "AAP Demo: Start VM"');
+    expect(packageJson).toContain('"title": "AAP Demo: Stop VM"');
+
+    const lifecycleHtml = dashboardHtml.slice(dashboardHtml.indexOf('<div class="actions lifecycle-actions">'));
+    const deployPosition = lifecycleHtml.indexOf('data-action="deploy"');
+    const startPosition = lifecycleHtml.indexOf('data-action="start"');
+    const stopPosition = lifecycleHtml.indexOf('data-action="stop"');
+    expect(deployPosition).toBeGreaterThan(-1);
+    expect(startPosition).toBeGreaterThan(deployPosition);
+    expect(stopPosition).toBeGreaterThan(startPosition);
+  });
+
   it('offers the install script when the aap-demo CLI is unavailable', () => {
     expect(dashboardHtml).toContain('id="install-cli"');
     expect(dashboardHtml).toContain('Install aap-demo');
@@ -104,6 +119,31 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardHtml).toContain('Update aap-demo');
     expect(dashboardHtml).toContain('id="update-extension"');
     expect(dashboardHtml).toContain('Update extension');
+  });
+
+  it('offers pull-secret setup beside extension updates when the secret is missing', () => {
+    expect(dashboardHtml).toContain('id="pull-secret-setup"');
+    expect(dashboardHtml).toContain('Add pull secret');
+    expect(dashboardSource).toContain("postToHost({ type: 'request-pull-secret' })");
+    expect(dashboardSource).toContain('pullSecretSetup.hidden = prerequisites.pullSecret.exists');
+    expect(extensionSource).toContain("message.type === 'request-pull-secret'");
+  });
+
+  it('shows the CLI version beside the aap-demo CLI prerequisite', () => {
+    expect(dashboardSource).toContain('prerequisites.cli.version');
+    expect(dashboardSource).toContain('aap-demo CLI');
+    expect(extensionSource).toContain('cliVersion: currentCliVersion');
+  });
+
+  it('blocks deployment with guidance when CPU or memory prerequisites are invalid', () => {
+    expect(extensionSource).toContain('!prerequisites.cpus.valid');
+    expect(extensionSource).toContain('!prerequisites.memory.valid');
+    expect(extensionSource).toContain("type: 'deploy-prerequisites'");
+    expect(extensionSource).toContain('aap-demo.cpus');
+    expect(extensionSource).toContain('aap-demo.memory');
+    expect(dashboardHtml).toContain('id="deploy-prerequisites-dialog"');
+    expect(dashboardHtml).toContain('id="deploy-prerequisites-message"');
+    expect(dashboardSource).toContain("message.type === 'deploy-prerequisites'");
   });
 
   it('shows CLI recovery guidance directly in the prerequisite list', () => {
@@ -237,9 +277,8 @@ describe('getAddonTogglePresentation', () => {
     expect(prerequisiteRefresh).toContain('settings.pathValue');
   });
 
-  it('groups start and stop before the middle lifecycle actions', () => {
+  it('groups lifecycle actions before destroy', () => {
     expect(dashboardHtml).toContain('<div class="actions lifecycle-actions">');
-    expect(dashboardHtml).toContain('<div class="action-group primary-actions">');
     expect(dashboardHtml).toContain('<div class="action-group middle-actions">');
     expect(dashboardHtml).toContain('<div class="action-group destroy-actions">');
   });
@@ -255,21 +294,22 @@ describe('getAddonTogglePresentation', () => {
     expect(extensionSource).not.toContain('open-extension-info');
   });
 
-  it('orders lifecycle actions as start, stop, middle actions, then destroy', () => {
+  it('orders lifecycle actions as deploy, VM controls, diagnostics, then destroy', () => {
     const actionOrder = [
+      'data-action="deploy"',
       'data-action="start"',
       'data-action="stop"',
-      'data-action="deploy"',
       'data-action="diagnose"',
       'data-action="repair"',
       'id="idle-toggle"',
       'data-action="destroy"',
-    ].map(marker => dashboardHtml.indexOf(marker));
+    ].map(marker => dashboardHtml.slice(dashboardHtml.indexOf('<div class="actions lifecycle-actions">')).indexOf(marker));
 
     expect(actionOrder.every(index => index >= 0)).toBe(true);
     expect(actionOrder).toEqual([...actionOrder].sort((left, right) => left - right));
     expect(dashboardHtml).toContain('column-gap: 22px');
     expect(dashboardHtml).toContain('row-gap: 14px');
+    expect(dashboardHtml).toContain('.middle-actions [data-action="start"] { margin-left: 18px; }');
   });
 
   it('includes a hidden Fix SSL action for untrusted ingress certificates', () => {
@@ -389,5 +429,21 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardHtml).toContain('id="pah-token-input"');
     expect(dashboardSource).toContain('pah-token-response');
     expect(dashboardSource).toContain('pahTokenInput');
+  });
+
+  it('prompts for a missing pull secret before deploying AAP', () => {
+    expect(extensionSource).toContain("action === 'deploy'");
+    expect(extensionSource).toContain('checkPrerequisites');
+    expect(extensionSource).toContain("type: 'pull-secret-request'");
+    expect(extensionSource).toContain('pullSecretFile');
+    expect(extensionSource).toContain('enteredPullSecret.trim()');
+    expect(extensionSource).toContain("type === 'pull-secret-response'");
+    expect(dashboardHtml).toContain('https://console.redhat.com/openshift/install/pull-secret');
+    expect(dashboardHtml).toContain('The pull secret lets OpenShift Local authenticate to Red Hat registries');
+    expect(dashboardHtml).toContain('Click the Download pull secret button');
+    expect(dashboardHtml).toContain('id="pull-secret-dialog"');
+    expect(dashboardHtml).toContain('id="pull-secret-input"');
+    expect(dashboardSource).toContain('pull-secret-response');
+    expect(dashboardSource).toContain('pullSecretInput');
   });
 });

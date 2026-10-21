@@ -56,6 +56,25 @@ describe('checkPrerequisites', () => {
     });
   });
 
+  it('includes the detected CLI version with the available CLI prerequisite', () => {
+    withTemporaryExecutable((executable, directory) => {
+      expect(checkPrerequisites(
+        {
+          cliPath: executable,
+          crcPath: executable,
+          cpus: 8,
+          pullSecretPath: executable,
+          cliVersion: 'aap-demo 0.4.0 (abc1234)',
+        },
+        directory,
+      ).cli).toEqual({
+        available: true,
+        path: executable,
+        version: 'aap-demo 0.4.0 (abc1234)',
+      });
+    });
+  });
+
   it('accepts the enabled OpenShift Local extension when the CRC command is not visible', () => {
     withTemporaryExecutable((executable, directory) => {
       expect(checkPrerequisites(
