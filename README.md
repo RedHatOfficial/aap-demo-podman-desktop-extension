@@ -11,7 +11,7 @@ In Podman Desktop, open **Extensions → Install custom...**, select **OCI
 Image**, and enter:
 
 ```text
-quay.io/cferman/aap-demo-podman-desktop-extension:latest
+quay.io/aapdemo/podmandesktop:latest
 ```
 
 Select **Install**. Before creating a cluster, complete the requirements below.
