@@ -15,7 +15,9 @@ export interface PrerequisiteSettings {
   crcPath: string;
   cliVersion?: string;
   installLocation?: string;
+  pullSecretExists?: boolean;
   pullSecretPath?: string;
+  pullSecretResolvedPath?: string;
   memory?: number;
 }
 
@@ -29,11 +31,35 @@ export interface PrerequisiteStatus {
   ready: boolean;
 }
 
-function findPullSecret(configuredPath?: string): {
+export function pullSecretCandidates(configuredPath?: string): string[] {
+  if (configuredPath?.trim()) return [configuredPath.trim()];
+
+  return [
+    path.join(os.homedir(), '.aap-demo', 'pull-secret.txt'),
+    path.join(os.homedir(), '.aap-demo', 'pull-secret.json'),
+    path.join(os.homedir(), '.aap-demo', 'pull-secret'),
+  ];
+}
+
+function findPullSecret(
+  configuredPath?: string,
+  existsOverride?: boolean,
+  resolvedPath?: string,
+): {
   configured: boolean;
   exists: boolean;
   path?: string;
 } {
+  if (existsOverride !== undefined) {
+    const pathValue = resolvedPath ?? configuredPath?.trim();
+    return {
+      configured: Boolean(pathValue),
+      exists: existsOverride,
+      ...(pathValue ? { path: pathValue } : {}),
+    };
+  }
+
+  const candidates = pullSecretCandidates(configuredPath);
   if (configuredPath?.trim()) {
     const resolvedPath = configuredPath.trim();
     return {
@@ -42,12 +68,6 @@ function findPullSecret(configuredPath?: string): {
       path: resolvedPath,
     };
   }
-
-  const candidates = [
-    path.join(os.homedir(), '.aap-demo', 'pull-secret.txt'),
-    path.join(os.homedir(), '.aap-demo', 'pull-secret.json'),
-    path.join(os.homedir(), '.aap-demo', 'pull-secret'),
-  ];
   const existingPath = candidates.find(candidate => existsSync(candidate));
   return existingPath
     ? { configured: true, exists: true, path: existingPath }
@@ -72,7 +92,11 @@ export function checkPrerequisites(
     resolveInstallLocation(settings.installLocation),
     platform,
   );
-  const pullSecret = findPullSecret(settings.pullSecretPath);
+  const pullSecret = findPullSecret(
+    settings.pullSecretPath,
+    settings.pullSecretExists,
+    settings.pullSecretResolvedPath,
+  );
   const cpus = settings.cpus ?? 8;
   const cpuStatus = {
     value: cpus,
@@ -82,7 +106,7 @@ export function checkPrerequisites(
   const memory = settings.memory ?? 24_576;
   const memoryStatus = {
     value: memory,
-    valid: Number.isFinite(memory) && memory >= MINIMUM_MEMORY,
+    valid: Number.isInteger(memory) && memory >= MINIMUM_MEMORY,
     minimum: MINIMUM_MEMORY,
   };
 

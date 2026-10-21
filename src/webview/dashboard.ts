@@ -1,5 +1,6 @@
 import type { AapDemoStatus } from '../status-parser';
 import type { PrerequisiteStatus } from '../prerequisites';
+import { isValidPullSecret } from '../pull-secret';
 import { isDashboardCopyResultMessage, safeExternalUrl, unwrapDashboardMessage } from '../dashboard-protocol';
 import { acquireDesktopApi, type DesktopApi } from './desktop-api';
 import { getAddonTogglePresentation, renderableAddons } from './addon-ui';
@@ -262,8 +263,10 @@ pahTokenSave?.addEventListener('click', () => {
 pullSecretCancel?.addEventListener('click', () => closePullSecretDialog());
 pullSecretSave?.addEventListener('click', () => {
   const pullSecret = pullSecretInput?.value.trim() ?? '';
-  if (!pullSecret) {
-    if (pullSecretError) pullSecretError.textContent = 'A pull secret is required.';
+  if (!isValidPullSecret(pullSecret)) {
+    if (pullSecretError) {
+      pullSecretError.textContent = 'Paste valid pull-secret JSON containing an auths object.';
+    }
     pullSecretInput?.focus();
     return;
   }

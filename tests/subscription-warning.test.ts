@@ -20,6 +20,15 @@ describe('containsMissingSubscriptionWarning', () => {
     ].join('\n'))).toBe(false);
   });
 
+  it('detects warnings when output contains ANSI codes and line wrapping', () => {
+    expect(containsMissingSubscriptionWarning([
+      '\u001b[31mNo valid subscription found - attempting automatic attachment...\u001b[0m',
+      'Skipping Red Hat subscription configuration',
+      '(set REDHAT_SUBSCRIPTION_USERNAME and',
+      'REDHAT_SUBSCRIPTION_PASSWORD to enable)',
+    ].join('\n'))).toBe(true);
+  });
+
   it('explains that credentials will be requested next', () => {
     expect(missingSubscriptionWarningMessage).toContain('next prompts');
   });

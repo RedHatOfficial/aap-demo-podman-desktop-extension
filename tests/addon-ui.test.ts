@@ -270,7 +270,7 @@ describe('getAddonTogglePresentation', () => {
 
   it('checks prerequisites with the same augmented PATH used for commands', () => {
     const prerequisiteRefresh = extensionSource.slice(
-      extensionSource.indexOf('const refreshPrerequisites'),
+      extensionSource.indexOf('const getPrerequisites'),
       extensionSource.indexOf('const statusBar'),
     );
 
@@ -332,6 +332,12 @@ describe('getAddonTogglePresentation', () => {
   it('packages the README shown in extension details', () => {
     expect(containerfile).toContain(
       'COPY --from=build /extension-source/README.md /extension/README.md',
+    );
+  });
+
+  it('packages the release notes linked from the README', () => {
+    expect(containerfile).toContain(
+      'COPY --from=build /extension-source/RELEASE_NOTES.md /extension/RELEASE_NOTES.md',
     );
   });
 
