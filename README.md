@@ -16,6 +16,9 @@ Image**, and enter:
 quay.io/aapdemo/podman-desktop:latest
 ```
 
+Images published from `main` also receive a Calendar Versioning tag in
+`YYYY.MM.DD` format.
+
 Select **Install**. Before creating a cluster, complete the requirements below.
 
 For local development, do not enter a `localhost/...` image in **Install
