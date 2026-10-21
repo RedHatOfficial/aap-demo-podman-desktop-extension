@@ -28,7 +28,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: quay.io/cferman/aap-demo-podman-desktop-extension
+          images: quay.io/aapdemo/podman-desktop
           tags: |
             type=ref,event=branch
             type=raw,value=latest,enable={{is_default_branch}}
