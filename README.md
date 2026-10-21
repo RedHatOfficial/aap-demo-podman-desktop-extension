@@ -1,5 +1,7 @@
 # AAP Demo
 
+[![Quay status](https://quay.io/repository/aapdemo/podman-desktop/status)](https://quay.io/repository/aapdemo/podman-desktop/status)
+
 Run and manage a local Ansible Automation Platform demo environment from
 Podman Desktop. The extension wraps the `aap-demo` CLI with a dashboard for
 cluster lifecycle, prerequisites, routes, credentials, diagnostics, and optional
