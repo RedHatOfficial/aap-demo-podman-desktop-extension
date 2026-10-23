@@ -31,12 +31,19 @@ describe('resolveHostCommand', () => {
     });
   });
 
-  it('delegates commands to the host from Flatpak when flatpak-spawn is available', () => {
+  it('resolves host commands through a shell so forwarded PATH entries are honored', () => {
     const { directory, executable } = createExecutable('flatpak-spawn');
 
     expect(resolveHostCommand('git', directory, { FLATPAK_ID: 'io.podman_desktop.PodmanDesktop' }, 'linux')).toEqual({
       command: executable,
-      argsPrefix: ['--host', 'git'],
+      argsPrefix: [
+        '--host',
+        '/bin/sh',
+        '-c',
+        'exec "$@"',
+        'aap-demo-host-command',
+        'git',
+      ],
     });
   });
 

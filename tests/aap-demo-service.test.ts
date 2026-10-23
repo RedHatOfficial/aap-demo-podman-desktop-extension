@@ -242,6 +242,35 @@ describe('AapDemoService', () => {
     });
   });
 
+  it('resolves a bare CLI name through the host shell in Flatpak', async () => {
+    const { directory, executable } = createExecutable('flatpak-spawn');
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor, 'aap-demo', {
+      pathValue: directory,
+      environment: { FLATPAK_ID: 'io.podman_desktop.PodmanDesktop' },
+    });
+
+    await service.run('status');
+
+    expect(executor.calls[0]).toMatchObject({
+      command: executable,
+      args: [
+        '--env=QUIET=true',
+        '--env=AAP_DEMO_TRUST_CA=false',
+        '--env=PYTHONIOENCODING=utf-8',
+        '--env=PYTHONUTF8=1',
+        '--env=PATH=' + directory,
+        '--host',
+        '/bin/sh',
+        '-c',
+        'exec "$@"',
+        'aap-demo-host-command',
+        'aap-demo',
+        'status',
+      ],
+    });
+  });
+
   it('forwards the selected AO provider through the Flatpak host bridge', async () => {
     const { directory, executable } = createExecutable('flatpak-spawn');
     const executor = new RecordingExecutor();

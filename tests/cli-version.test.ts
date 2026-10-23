@@ -95,4 +95,34 @@ describe('detectCliVersion', () => {
       args: ['--host', '/home/test/.local/bin/aap-demo', '--version'],
     }]);
   });
+
+  it('forwards PATH when resolving a bare CLI name through the Flatpak host shell', async () => {
+    const { directory, executable } = createExecutable('flatpak-spawn');
+    const executor = new VersionExecutor({
+      exitCode: 0,
+      stdout: 'aap-demo 1.0.48\n',
+      stderr: '',
+    });
+
+    await expect(detectCliVersion(
+      executor,
+      'aap-demo',
+      directory,
+      { FLATPAK_ID: 'io.podman_desktop.PodmanDesktop' },
+    )).resolves.toBe('1.0.48');
+
+    expect(executor.calls).toEqual([{
+      command: executable,
+      args: [
+        `--env=PATH=${directory}`,
+        '--host',
+        '/bin/sh',
+        '-c',
+        'exec "$@"',
+        'aap-demo-host-command',
+        'aap-demo',
+        '--version',
+      ],
+    }]);
+  });
 });
