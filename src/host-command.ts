@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import { resolveExecutablePath } from './executable-path';
 
 export interface HostCommand {
@@ -33,7 +34,21 @@ export function resolveHostCommand(
   if (platform !== 'win32' && environment.FLATPAK_ID) {
     const flatpakSpawn = resolveExecutablePath('flatpak-spawn', pathValue);
     if (flatpakSpawn) {
-      return { command: flatpakSpawn, argsPrefix: ['--host', command] };
+      // The portal resolves argv[0] before the forwarded PATH is applied. Use
+      // a host shell for command names so user-installed executables resolve.
+      return {
+        command: flatpakSpawn,
+        argsPrefix: path.isAbsolute(command)
+          ? ['--host', command]
+          : [
+              '--host',
+              '/bin/sh',
+              '-c',
+              'exec "$@"',
+              'aap-demo-host-command',
+              command,
+            ],
+      };
     }
   }
 
