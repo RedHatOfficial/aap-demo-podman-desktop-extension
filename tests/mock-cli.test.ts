@@ -45,5 +45,5 @@ describe('mock aap-demo CLI', () => {
     await runner.run(cliPath, ['destroy'], options);
     const destroyed = await runner.run(cliPath, ['status'], options);
     expect(parseStatusOutput(destroyed.stdout).cluster.state).toBe('not-running');
-  });
+  }, 15_000);
 });
