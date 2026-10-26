@@ -55,13 +55,23 @@ describe('CommandRunner', () => {
     );
   });
 
-  it('passes Windows shim arguments as separately quoted command arguments', () => {
-    expect(windowsCommandArguments('C:\\Program Files\\aap-demo.cmd', ['status', 'two words'])).toEqual([
-      '/d',
-      '/c',
-      '"C:\\Program Files\\aap-demo.cmd"',
-      '"status"',
-      '"two words"',
+  it('passes Windows shim commands and their arguments through the PowerShell shim', () => {
+    expect(
+      windowsCommandArguments(
+        'C:\\Program Files\\aap-demo.cmd',
+        ['status', 'two words'],
+        'C:\\extension\\scripts\\run-cmd-shim.ps1',
+      ),
+    ).toEqual([
+      '-NoProfile',
+      '-NonInteractive',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-File',
+      'C:\\extension\\scripts\\run-cmd-shim.ps1',
+      'C:\\Program Files\\aap-demo.cmd',
+      'status',
+      'two words',
     ]);
   });
 
