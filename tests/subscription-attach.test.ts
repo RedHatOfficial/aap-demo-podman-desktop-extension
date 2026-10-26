@@ -93,4 +93,34 @@ describe('attachRedHatSubscription', () => {
       },
     })).rejects.toThrow('No attachable Red Hat Ansible Automation Platform subscription was returned.');
   });
+
+  it('accepts a wrapped subscriptions response from the controller API', async () => {
+    const result = await attachRedHatSubscription({
+      controller,
+      subscription,
+      requestJson: async (_controller, _method, path) => {
+        if (path === '/api/controller/v2/config/') return { license_info: {} };
+        if (path === '/api/controller/v2/config/subscriptions/') {
+          return {
+            results: [
+              {
+                subscription_id: 'wrapped-sub-1',
+                subscription_name: 'Wrapped subscription',
+              },
+            ],
+          };
+        }
+        return {
+          subscription_id: 'wrapped-sub-1',
+          subscription_name: 'Wrapped subscription',
+          valid_key: true,
+        };
+      },
+    });
+
+    expect(result).toEqual({
+      status: 'attached',
+      subscriptionName: 'Wrapped subscription',
+    });
+  });
 });

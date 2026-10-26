@@ -230,7 +230,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       void postDashboardMessage({ type: 'pull-secret-request' });
     });
   };
-  const offerSubscriptionCredentials = async (options: { replaceExisting?: boolean } = {}): Promise<void> => {
+  const offerSubscriptionCredentials = async (options: { replaceExisting?: boolean } = {}): Promise<boolean> => {
     const existingCredentials = await readHostFile(
       runner,
       subscriptionCredentialsFile,
@@ -243,7 +243,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         'Replace credentials',
         'Keep existing',
       );
-      if (replace !== 'Replace credentials') return;
+      if (replace !== 'Replace credentials') return true;
     } else {
       await extensionApi.window.showWarningMessage(missingSubscriptionWarningMessage);
     }
@@ -255,7 +255,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       placeHolder: 'username@example.com',
       validateInput: value => value.trim() ? undefined : 'A Red Hat username is required.',
     });
-    if (username === undefined) return;
+    if (username === undefined) return false;
 
     const password = await extensionApi.window.showInputBox({
       title: 'Red Hat subscription credentials',
@@ -264,7 +264,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       ignoreFocusOut: true,
       validateInput: value => value ? undefined : 'A Red Hat password is required.',
     });
-    if (password === undefined) return;
+    if (password === undefined) return false;
 
     try {
       await saveHostFile(
@@ -277,22 +277,24 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       await extensionApi.window.showInformationMessage(
         'Red Hat subscription credentials saved securely. Deploy AAP will attach the subscription.',
       );
+      return true;
     } catch (error) {
       const message = formatCommandError(error);
       await extensionApi.window.showWarningMessage(`Could not save Red Hat subscription credentials: ${message}`);
+      return false;
     }
   };
-  const ensureWindowsSubscriptionCredentials = async (): Promise<void> => {
-    if (process.platform !== 'win32') return;
+  const ensureWindowsSubscriptionCredentials = async (): Promise<boolean> => {
+    if (process.platform !== 'win32') return true;
     const existingCredentials = await readHostFile(
       runner,
       subscriptionCredentialsFile,
       settings.pathValue,
       process.env,
     );
-    if (existingCredentials && hasUsableSubscriptionCredentials(existingCredentials)) return;
+    if (existingCredentials && hasUsableSubscriptionCredentials(existingCredentials)) return true;
 
-    await offerSubscriptionCredentials();
+    return offerSubscriptionCredentials();
   };
   const attachWindowsSubscription = async (statusOutput?: string): Promise<string | undefined> => {
     if (process.platform !== 'win32') return undefined;
@@ -305,7 +307,9 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     const subscriptionCredentials = savedCredentials
       ? parseSubscriptionCredentials(savedCredentials)
       : undefined;
-    if (!subscriptionCredentials) return undefined;
+    if (!subscriptionCredentials) {
+      throw new Error('Red Hat subscription credentials are missing or incomplete.');
+    }
 
     let status = parseStatusOutput(statusOutput ?? '');
     if (!status.routes[0] || !status.credentials[0]) {
@@ -314,7 +318,9 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     const controllerUrl = status.routes[0];
     const controllerCredentials = status.credentials.find(credential => credential.username === 'admin')
       ?? status.credentials[0];
-    if (!controllerUrl || !controllerCredentials) return undefined;
+    if (!controllerUrl || !controllerCredentials) {
+      throw new Error('AAP route or admin credentials were not found in aap-demo status output.');
+    }
 
     const result = await attachRedHatSubscription({
       controller: {
@@ -446,7 +452,14 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
           return;
         }
       }
-      await ensureWindowsSubscriptionCredentials();
+      const subscriptionCredentialsReady = await ensureWindowsSubscriptionCredentials();
+      if (!subscriptionCredentialsReady) {
+        const message = 'Deployment canceled because Red Hat subscription credentials were not saved.';
+        await postDashboardMessage({ type: 'command-error', action, message });
+        await extensionApi.window.showWarningMessage(message);
+        await runAction('status');
+        return;
+      }
       if (!prerequisites.cpus.valid || !prerequisites.memory.valid) {
         const resourceDetails = [
           !prerequisites.cpus.valid

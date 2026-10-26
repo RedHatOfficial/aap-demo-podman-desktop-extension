@@ -49,8 +49,12 @@ function subscriptionLabel(subscription: RedHatSubscription | undefined): string
 }
 
 function selectSubscription(response: unknown): RedHatSubscription | undefined {
-  if (!Array.isArray(response)) return undefined;
-  return response.find((subscription): subscription is RedHatSubscription => {
+  const subscriptions = Array.isArray(response)
+    ? response
+    : response && typeof response === 'object' && 'results' in response && Array.isArray(response.results)
+      ? response.results
+      : [];
+  return subscriptions.find((subscription): subscription is RedHatSubscription => {
     return Boolean(
       subscription
       && typeof subscription === 'object'
