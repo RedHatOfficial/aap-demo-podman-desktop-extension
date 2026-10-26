@@ -44,7 +44,8 @@ function windowsCommandQuote(value: string): string {
 }
 
 export function windowsCommandArguments(command: string, args: readonly string[] = []): string[] {
-  return ['/d', '/c', ...[command, ...args].map(windowsCommandQuote)];
+  const commandLine = [command, ...args].map(windowsCommandQuote).join(' ');
+  return ['/d', '/s', '/c', `"${commandLine}"`];
 }
 
 export class CommandRunner {
