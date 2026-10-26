@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 import type { CommandResult, CommandRunnerOptions } from '../src/command-runner';
 import { applyCrcResourceSettings, type CrcCommandExecutor } from '../src/crc-config';
 
+const linuxIt = process.platform === 'linux' ? it : it.skip;
+
 class RecordingExecutor implements CrcCommandExecutor {
   public readonly calls: Array<{
     command: string;
@@ -43,7 +45,7 @@ describe('applyCrcResourceSettings', () => {
     });
   });
 
-  it('forwards the augmented PATH through the Flatpak host bridge', async () => {
+  linuxIt('forwards the augmented PATH through the Flatpak host bridge', async () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-crc-flatpak-'));
     const flatpakSpawn = path.join(directory, 'flatpak-spawn');
     writeFileSync(flatpakSpawn, '#!/bin/sh\n');
@@ -70,7 +72,7 @@ describe('applyCrcResourceSettings', () => {
     }
   });
 
-  it('fails clearly when Flatpak host execution is unavailable', async () => {
+  linuxIt('fails clearly when Flatpak host execution is unavailable', async () => {
     await expect(applyCrcResourceSettings(
       new RecordingExecutor(),
       'crc',

@@ -50,7 +50,9 @@ import {
 import {
   formatSubscriptionCredentials,
   hasUsableSubscriptionCredentials,
+  parseSubscriptionCredentials,
 } from './subscription-credentials';
+import { attachRedHatSubscription } from './subscription-attach';
 import { cleanTerminalOutput } from './terminal-output';
 
 type NavigationWithExtensionsCatalog = typeof extensionApi.navigation & {
@@ -144,6 +146,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     '.aap-demo',
     'redhat-subscription-credentials',
   );
+  settings.subscriptionCredentialsFile = subscriptionCredentialsFile;
   const findValidPullSecret = async (): Promise<string | undefined> => {
     for (const candidate of pullSecretCandidates(settings.pullSecretPath)) {
       const contents = await readHostFile(runner, candidate, settings.pathValue, process.env);
@@ -227,14 +230,14 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       void postDashboardMessage({ type: 'pull-secret-request' });
     });
   };
-  const offerSubscriptionCredentials = async (): Promise<void> => {
+  const offerSubscriptionCredentials = async (options: { replaceExisting?: boolean } = {}): Promise<void> => {
     const existingCredentials = await readHostFile(
       runner,
       subscriptionCredentialsFile,
       settings.pathValue,
       process.env,
     );
-    if (existingCredentials && hasUsableSubscriptionCredentials(existingCredentials)) {
+    if (!options.replaceExisting && existingCredentials && hasUsableSubscriptionCredentials(existingCredentials)) {
       const replace = await extensionApi.window.showWarningMessage(
         missingSubscriptionWarningMessage,
         'Replace credentials',
@@ -272,12 +275,59 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         formatSubscriptionCredentials(username, password),
       );
       await extensionApi.window.showInformationMessage(
-        'Red Hat subscription credentials saved securely. Run Deploy AAP again to attach the subscription.',
+        'Red Hat subscription credentials saved securely. Deploy AAP will attach the subscription.',
       );
     } catch (error) {
       const message = formatCommandError(error);
       await extensionApi.window.showWarningMessage(`Could not save Red Hat subscription credentials: ${message}`);
     }
+  };
+  const ensureWindowsSubscriptionCredentials = async (): Promise<void> => {
+    if (process.platform !== 'win32') return;
+    const existingCredentials = await readHostFile(
+      runner,
+      subscriptionCredentialsFile,
+      settings.pathValue,
+      process.env,
+    );
+    if (existingCredentials && hasUsableSubscriptionCredentials(existingCredentials)) return;
+
+    await offerSubscriptionCredentials();
+  };
+  const attachWindowsSubscription = async (statusOutput?: string): Promise<string | undefined> => {
+    if (process.platform !== 'win32') return undefined;
+    const savedCredentials = await readHostFile(
+      runner,
+      subscriptionCredentialsFile,
+      settings.pathValue,
+      process.env,
+    );
+    const subscriptionCredentials = savedCredentials
+      ? parseSubscriptionCredentials(savedCredentials)
+      : undefined;
+    if (!subscriptionCredentials) return undefined;
+
+    let status = parseStatusOutput(statusOutput ?? '');
+    if (!status.routes[0] || !status.credentials[0]) {
+      status = parseStatusOutput((await service.run('status')).stdout);
+    }
+    const controllerUrl = status.routes[0];
+    const controllerCredentials = status.credentials.find(credential => credential.username === 'admin')
+      ?? status.credentials[0];
+    if (!controllerUrl || !controllerCredentials) return undefined;
+
+    const result = await attachRedHatSubscription({
+      controller: {
+        url: controllerUrl,
+        username: controllerCredentials.username,
+        password: controllerCredentials.password,
+      },
+      subscription: subscriptionCredentials,
+    });
+    const suffix = result.subscriptionName ? ` (${result.subscriptionName})` : '';
+    return result.status === 'already-attached'
+      ? `Red Hat subscription is already attached${suffix}.`
+      : `Red Hat subscription attached${suffix}.`;
   };
   const getPrerequisites = async () => {
     const resolvedPullSecretPath = await findValidPullSecret();
@@ -396,6 +446,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
           return;
         }
       }
+      await ensureWindowsSubscriptionCredentials();
       if (!prerequisites.cpus.valid || !prerequisites.memory.valid) {
         const resourceDetails = [
           !prerequisites.cpus.valid
@@ -478,7 +529,30 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         stdout: result.stdout,
         stderr: result.stderr,
       });
-      await extensionApi.window.showInformationMessage(`AAP Demo ${actionLabel} completed.`);
+      let completionMessage = `AAP Demo ${actionLabel} completed.`;
+      if (action === 'deploy') {
+        try {
+          const subscriptionMessage = await attachWindowsSubscription(result.stdout);
+          if (subscriptionMessage) {
+            completionMessage = `${completionMessage} ${subscriptionMessage}`;
+            await postDashboardMessage({
+              type: 'command-output',
+              stream: 'stdout',
+              text: `${subscriptionMessage}\n`,
+            });
+          }
+        } catch (error) {
+          const message = formatCommandError(error);
+          await postDashboardMessage({
+            type: 'command-output',
+            stream: 'stderr',
+            text: `Red Hat subscription attachment failed: ${message}\n`,
+          });
+          await extensionApi.window.showWarningMessage(`Red Hat subscription attachment failed: ${message}`);
+          await offerSubscriptionCredentials({ replaceExisting: true });
+        }
+      }
+      await extensionApi.window.showInformationMessage(completionMessage);
       void runAction('status');
     } catch (error) {
       const message = formatAapDemoActionError(action, formatCommandError(error), process.platform, cliPath);

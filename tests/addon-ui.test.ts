@@ -452,4 +452,19 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardSource).toContain('pull-secret-response');
     expect(dashboardSource).toContain('pullSecretInput');
   });
+
+  it('prompts for missing subscription credentials before Windows deploys', () => {
+    expect(extensionSource).toContain('ensureWindowsSubscriptionCredentials');
+    expect(extensionSource).toContain("process.platform !== 'win32'");
+    expect(extensionSource).toContain('await ensureWindowsSubscriptionCredentials()');
+  });
+
+  it('prompts to replace saved Red Hat credentials when subscription attachment fails', () => {
+    const attachFailureBlock = extensionSource.slice(
+      extensionSource.indexOf("Red Hat subscription attachment failed"),
+      extensionSource.indexOf("await extensionApi.window.showInformationMessage(completionMessage);"),
+    );
+
+    expect(attachFailureBlock).toContain('await offerSubscriptionCredentials({ replaceExisting: true })');
+  });
 });

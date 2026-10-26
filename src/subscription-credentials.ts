@@ -10,8 +10,23 @@ export function formatSubscriptionCredentials(username: string, password: string
   ].join('\n');
 }
 
-export function hasUsableSubscriptionCredentials(contents: string): boolean {
+export interface SubscriptionCredentials {
+  username: string;
+  password: string;
+}
+
+export function parseSubscriptionCredentials(contents: string): SubscriptionCredentials | undefined {
   const username = contents.match(/^username:\s*'((?:''|[^'])*)'\s*$/m)?.[1];
   const password = contents.match(/^password:\s*'((?:''|[^'])*)'\s*$/m)?.[1];
-  return Boolean(username?.replaceAll("''", "'").trim() && password?.replaceAll("''", "'").trim());
+  const parsedUsername = username?.replaceAll("''", "'").trim();
+  const parsedPassword = password?.replaceAll("''", "'");
+  if (!parsedUsername || !parsedPassword?.trim()) return undefined;
+  return {
+    username: parsedUsername,
+    password: parsedPassword,
+  };
+}
+
+export function hasUsableSubscriptionCredentials(contents: string): boolean {
+  return Boolean(parseSubscriptionCredentials(contents));
 }

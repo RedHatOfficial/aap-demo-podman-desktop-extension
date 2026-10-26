@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { forwardHostEnvironment, resolveHostCommand } from '../src/host-command';
 
 const temporaryRoots: string[] = [];
+const linuxIt = process.platform === 'linux' ? it : it.skip;
 
 function createExecutable(name: string): { directory: string; executable: string } {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-host-command-'));
@@ -31,7 +32,7 @@ describe('resolveHostCommand', () => {
     });
   });
 
-  it('resolves host commands through a shell so forwarded PATH entries are honored', () => {
+  linuxIt('resolves host commands through a shell so forwarded PATH entries are honored', () => {
     const { directory, executable } = createExecutable('flatpak-spawn');
 
     expect(resolveHostCommand('git', directory, { FLATPAK_ID: 'io.podman_desktop.PodmanDesktop' }, 'linux')).toEqual({
