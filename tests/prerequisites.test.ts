@@ -4,6 +4,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { checkPrerequisites } from '../src/prerequisites';
 
+const linuxIt = process.platform === 'linux' ? it : it.skip;
+
 function withTemporaryExecutable<T>(callback: (executable: string, directory: string) => T): T {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-prereq-'));
   const executable = path.join(directory, 'tool');
@@ -156,7 +158,7 @@ describe('checkPrerequisites', () => {
     }, '/bin').memory.valid).toBe(false);
   });
 
-  it('treats a working Flatpak host bridge as CLI availability', () => {
+  linuxIt('treats a working Flatpak host bridge as CLI availability', () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-prerequisites-flatpak-'));
     const flatpakSpawn = path.join(directory, 'flatpak-spawn');
     writeFileSync(flatpakSpawn, '#!/bin/sh\n');

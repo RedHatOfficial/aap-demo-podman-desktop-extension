@@ -5,8 +5,10 @@ import * as path from 'node:path';
 import type { CommandResult } from '../src/command-runner';
 import { hasHostOpenAiKey } from '../src/ao-key';
 
+const linuxIt = process.platform === 'linux' ? it : it.skip;
+
 describe('hasHostOpenAiKey', () => {
-  it('checks the configured key file on the Flatpak host', async () => {
+  linuxIt('checks the configured key file on the Flatpak host', async () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-ao-key-'));
     const flatpakSpawn = path.join(directory, 'flatpak-spawn');
     writeFileSync(flatpakSpawn, '#!/bin/sh\n');

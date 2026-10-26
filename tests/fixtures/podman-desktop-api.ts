@@ -12,12 +12,18 @@ export const mockPodmanDesktopState = {
     dispose: vi.fn(),
   },
   warningMessages: [] as string[],
+  warningResponses: [] as Array<string | undefined>,
+  informationMessages: [] as string[],
+  inputBoxResponses: [] as Array<string | undefined>,
 };
 
 export function resetMockPodmanDesktopApi(configuration: Record<string, unknown> = {}): void {
   mockPodmanDesktopState.configuration = configuration;
   mockPodmanDesktopState.commandHandlers.clear();
   mockPodmanDesktopState.warningMessages.length = 0;
+  mockPodmanDesktopState.warningResponses.length = 0;
+  mockPodmanDesktopState.informationMessages.length = 0;
+  mockPodmanDesktopState.inputBoxResponses.length = 0;
   Object.assign(mockPodmanDesktopState.statusBar, {
     text: '',
     tooltip: '',
@@ -60,10 +66,13 @@ export const window = {
   createStatusBarItem: vi.fn(() => mockPodmanDesktopState.statusBar),
   showWarningMessage: vi.fn(async (message: string) => {
     mockPodmanDesktopState.warningMessages.push(message);
+    return mockPodmanDesktopState.warningResponses.shift();
+  }),
+  showInformationMessage: vi.fn(async (message: string) => {
+    mockPodmanDesktopState.informationMessages.push(message);
     return undefined;
   }),
-  showInformationMessage: vi.fn(async () => undefined),
-  showInputBox: vi.fn(async () => undefined),
+  showInputBox: vi.fn(async () => mockPodmanDesktopState.inputBoxResponses.shift()),
   createWebviewPanel: vi.fn(),
 };
 

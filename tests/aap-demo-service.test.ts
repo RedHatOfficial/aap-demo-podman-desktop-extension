@@ -6,6 +6,7 @@ import type { CommandResult, CommandRunnerOptions } from '../src/command-runner'
 import { AapDemoService, type CommandExecutor } from '../src/aap-demo-service';
 
 const temporaryRoots: string[] = [];
+const linuxIt = process.platform === 'linux' ? it : it.skip;
 
 function createExecutable(name: string): { directory: string; executable: string } {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-service-'));
@@ -187,6 +188,18 @@ describe('AapDemoService', () => {
     });
   });
 
+  it('passes the configured Red Hat subscription credentials file to the CLI', async () => {
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor, 'aap-demo', {
+      subscriptionCredentialsFile: '/tmp/redhat-subscription-credentials',
+    });
+
+    await service.run('deploy');
+
+    expect(executor.calls[0]?.options?.env?.REDHAT_SUBSCRIPTION_CREDENTIALS_FILE)
+      .toBe('/tmp/redhat-subscription-credentials');
+  });
+
   it('skips the local image cache when requested by the host integration', async () => {
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor, 'aap-demo', { skipCache: true });
@@ -216,7 +229,7 @@ describe('AapDemoService', () => {
     expect(executor.calls[0]?.options?.env?.PATH).toBe('/usr/bin:/bin:/usr/local/bin');
   });
 
-  it('runs the CLI through the host when Podman Desktop is sandboxed as a Flatpak', async () => {
+  linuxIt('runs the CLI through the host when Podman Desktop is sandboxed as a Flatpak', async () => {
     const { directory, executable } = createExecutable('flatpak-spawn');
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor, '/home/test/.local/bin/aap-demo', {
@@ -242,7 +255,7 @@ describe('AapDemoService', () => {
     });
   });
 
-  it('resolves a bare CLI name through the host shell in Flatpak', async () => {
+  linuxIt('resolves a bare CLI name through the host shell in Flatpak', async () => {
     const { directory, executable } = createExecutable('flatpak-spawn');
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor, 'aap-demo', {
@@ -271,7 +284,7 @@ describe('AapDemoService', () => {
     });
   });
 
-  it('forwards the selected AO provider through the Flatpak host bridge', async () => {
+  linuxIt('forwards the selected AO provider through the Flatpak host bridge', async () => {
     const { directory, executable } = createExecutable('flatpak-spawn');
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor, '/home/test/.local/bin/aap-demo', {
@@ -299,7 +312,7 @@ describe('AapDemoService', () => {
     });
   });
 
-  it('passes the AO API key through standard input instead of process arguments', async () => {
+  linuxIt('passes the AO API key through standard input instead of process arguments', async () => {
     const { directory, executable } = createExecutable('flatpak-spawn');
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor, '/home/test/.local/bin/aap-demo', {

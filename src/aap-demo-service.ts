@@ -23,6 +23,7 @@ export interface AapDemoSettings {
   skipCache?: boolean;
   memory?: number;
   pathValue?: string;
+  subscriptionCredentialsFile?: string;
 }
 
 export interface CommandExecutor {
@@ -131,10 +132,10 @@ export class AapDemoService {
       'PYTHONIOENCODING',
       'PYTHONUTF8',
       'PULL_SECRET_PATH',
+      'REDHAT_SUBSCRIPTION_CREDENTIALS_FILE',
       'CRC_CPUS',
       'CRC_MEMORY',
       'AAP_DEMO_SKIP_CACHE',
-      'REDHAT_SUBSCRIPTION_CREDENTIALS_FILE',
       'PATH',
       'AO_LLM_PROVIDER',
       'AO_LLM_MODEL',
@@ -161,6 +162,9 @@ export class AapDemoService {
     }
     if (this.settings.pullSecretPath) {
       configuredEnvironment.PULL_SECRET_PATH = this.settings.pullSecretPath;
+    }
+    if (this.settings.subscriptionCredentialsFile) {
+      configuredEnvironment.REDHAT_SUBSCRIPTION_CREDENTIALS_FILE = this.settings.subscriptionCredentialsFile;
     }
     if (this.settings.cpus) {
       configuredEnvironment.CRC_CPUS = String(this.settings.cpus);
