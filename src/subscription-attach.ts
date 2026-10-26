@@ -84,7 +84,7 @@ export function requestControllerJson(
       url,
       {
         method,
-        rejectUnauthorized: false,
+        rejectUnauthorized: true,
         headers: {
           Accept: 'application/json',
           Authorization: `Basic ${authorization}`,
