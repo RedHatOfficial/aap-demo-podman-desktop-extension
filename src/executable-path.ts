@@ -86,8 +86,8 @@ function executableCandidates(
   if (path.extname(command)) return [command];
 
   return [
-    command,
     ...windowsExecutableExtensions(options.pathExt).map(extension => `${command}${extension}`),
+    command,
   ];
 }
 

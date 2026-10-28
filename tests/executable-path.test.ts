@@ -67,6 +67,22 @@ describe('resolveExecutablePath', () => {
     })).toBe(executable);
   });
 
+  it('prefers a Windows launcher when extensionless and .cmd files share a path', () => {
+    const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-windows-path-'));
+    temporaryRoots.push(directory);
+    const extensionless = path.join(directory, 'aap-demo');
+    const windowsLauncher = path.join(directory, 'aap-demo.cmd');
+    writeFileSync(extensionless, '#!/bin/sh\n');
+    writeFileSync(windowsLauncher, '@echo off\r\n');
+    chmodSync(extensionless, 0o755);
+    chmodSync(windowsLauncher, 0o755);
+
+    expect(resolveConfiguredExecutable(extensionless, '', {
+      pathExt: '.COM;.EXE;.BAT;.CMD',
+      platform: 'win32',
+    })).toBe(windowsLauncher);
+  });
+
   it('returns undefined when the executable cannot be found', () => {
     const { directory } = createExecutable('aap-demo-test');
     temporaryRoots.push(directory);
