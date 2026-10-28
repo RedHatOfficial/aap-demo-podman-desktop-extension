@@ -7,6 +7,7 @@ import type { CommandResult, CommandRunnerOptions } from '../src/command-runner'
 import { canInvokeCli, missingCliMessage, shouldAutomaticallyInstallCli } from '../src/cli-readiness';
 
 const temporaryRoots: string[] = [];
+const linuxIt = process.platform === 'linux' ? it : it.skip;
 
 function createExecutable(name: string): { directory: string; executable: string } {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-cli-readiness-'));
@@ -54,7 +55,7 @@ describe('missingCliMessage', () => {
 });
 
 describe('canInvokeCli', () => {
-  it('checks that the configured CLI exists on the host through Flatpak', async () => {
+  linuxIt('checks that the configured CLI exists on the host through Flatpak', async () => {
     const { directory, executable } = createExecutable('flatpak-spawn');
     const executor = new RecordingExecutor();
 
@@ -80,7 +81,7 @@ describe('canInvokeCli', () => {
     }]);
   });
 
-  it('treats a missing host CLI as unavailable when the Flatpak bridge is present', async () => {
+  linuxIt('treats a missing host CLI as unavailable when the Flatpak bridge is present', async () => {
     const { directory } = createExecutable('flatpak-spawn');
     const executor = new RecordingExecutor(true);
 
@@ -110,7 +111,7 @@ describe('canInvokeCli', () => {
 });
 
 describe('shouldAutomaticallyInstallCli', () => {
-  it('repairs the default CLI in Flatpak when the install script exists', () => {
+  linuxIt('repairs the default CLI in Flatpak when the install script exists', () => {
     expect(shouldAutomaticallyInstallCli({
       action: 'status',
       configuredPath: 'aap-demo',

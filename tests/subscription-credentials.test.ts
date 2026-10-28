@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   formatSubscriptionCredentials,
   hasUsableSubscriptionCredentials,
+  parseSubscriptionCredentials,
 } from '../src/subscription-credentials';
 
 describe('formatSubscriptionCredentials', () => {
@@ -15,6 +16,15 @@ describe('formatSubscriptionCredentials', () => {
     expect(hasUsableSubscriptionCredentials(
       "username: 'user@example.com'\npassword: 'secret'\n",
     )).toBe(true);
+  });
+
+  it('parses safely quoted credential values', () => {
+    expect(parseSubscriptionCredentials(
+      "username: 'user@example.com'\npassword: 'p''ass:word'\n",
+    )).toEqual({
+      username: 'user@example.com',
+      password: "p'ass:word",
+    });
   });
 
   it('rejects malformed or incomplete credential files', () => {

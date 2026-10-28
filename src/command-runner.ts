@@ -1,5 +1,6 @@
 import { spawn, type SpawnOptionsWithoutStdio } from 'node:child_process';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export interface CommandResult {
   exitCode: number;
@@ -35,16 +36,50 @@ export class CommandExecutionError extends Error {
   }
 }
 
-function windowsCommandQuote(value: string): string {
+function validateWindowsCommandArgument(value: string): void {
   if (/[\u0000-\u001f%!]/.test(value)) {
     throw new Error('Windows command arguments cannot contain control characters, % or !.');
   }
-  const escaped = value.replace(/[&|<>()^]/g, '^$&').replaceAll('"', '\\"');
-  return `"${escaped}"`;
 }
 
-export function windowsCommandArguments(command: string, args: readonly string[] = []): string[] {
-  return ['/d', '/c', ...[command, ...args].map(windowsCommandQuote)];
+const windowsCommandShimScript = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'scripts',
+  'run-cmd-shim.ps1',
+);
+
+export function windowsCommandArguments(
+  command: string,
+  args: readonly string[] = [],
+  shimScript = windowsCommandShimScript,
+): string[] {
+  for (const value of [command, ...args]) validateWindowsCommandArgument(value);
+  return [
+    '-NoProfile',
+    '-NonInteractive',
+    '-ExecutionPolicy',
+    'Bypass',
+    '-File',
+    shimScript,
+    command,
+    ...args,
+  ];
+}
+
+function mergeWindowsShellEnvironment(
+  environment: NodeJS.ProcessEnv | undefined,
+): NodeJS.ProcessEnv {
+  if (!environment) return process.env;
+  const merged: NodeJS.ProcessEnv = { ...process.env };
+  for (const [key, value] of Object.entries(environment)) {
+    const existingKey = Object.keys(merged).find(candidate => (
+      candidate.toLowerCase() === key.toLowerCase()
+    ));
+    if (existingKey && existingKey !== key) delete merged[existingKey];
+    merged[key] = value;
+  }
+  return merged;
 }
 
 export class CommandRunner {
@@ -72,9 +107,9 @@ export class CommandRunner {
         process.platform === 'win32'
         && ['.bat', '.cmd'].includes(path.extname(command).toLowerCase())
       ) {
-        commandToSpawn = process.env.ComSpec ?? 'cmd.exe';
-        spawnOptions.windowsVerbatimArguments = true;
+        commandToSpawn = 'powershell.exe';
         argsToSpawn = windowsCommandArguments(command, args);
+        spawnOptions.env = mergeWindowsShellEnvironment(spawnOptions.env);
       } else if (spawnOptions.shell) {
         return reject(
           new CommandExecutionError('Shell execution is not supported for dynamic commands', {
