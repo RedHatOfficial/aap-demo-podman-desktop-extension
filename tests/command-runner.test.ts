@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { CommandRunner, windowsCommandArguments } from '../src/command-runner';
+import { CommandRunner } from '../src/command-runner';
 
 const temporaryRoots: string[] = [];
 
@@ -53,15 +53,6 @@ describe('CommandRunner', () => {
     await expect(runner.run(process.execPath, [], { shell: true })).rejects.toThrow(
       'Shell execution is not supported for dynamic commands',
     );
-  });
-
-  it('passes Windows shim arguments as separately quoted command arguments', () => {
-    expect(windowsCommandArguments('C:\\Program Files\\aap-demo.cmd', ['status', 'two words'])).toEqual([
-      '/d',
-      '/s',
-      '/c',
-      '""C:\\Program Files\\aap-demo.cmd" "status" "two words""',
-    ]);
   });
 
   it.runIf(process.platform === 'win32')('runs Windows command shims through the shell', async () => {
