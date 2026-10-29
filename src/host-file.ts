@@ -1,5 +1,6 @@
 import { chmodSync, lstatSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import type { CommandExecutor } from './aap-demo-service';
 import { resolveHostCommand } from './host-command';
@@ -94,7 +95,9 @@ export async function saveHostFile(
       writeFileSync(temporaryPath, contents, { encoding: 'utf8', mode: 0o600 });
       chmodSync(temporaryPath, 0o600);
       if (process.platform === 'win32') {
-        const username = environment.USERNAME?.trim();
+        const username = environment.USERNAME?.trim()
+          || process.env.USERNAME?.trim()
+          || os.userInfo().username.trim();
         if (!username) throw new Error('Cannot secure the credential file: Windows username is unavailable.');
         const icacls = resolveHostCommand('icacls', pathValue, environment, 'win32');
         await executor.run(icacls.command, [

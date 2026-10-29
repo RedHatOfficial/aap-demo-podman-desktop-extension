@@ -47,6 +47,15 @@ describe('resolveHostCommand', () => {
     });
   });
 
+  it('honors a simulated Flatpak environment on Windows test hosts', () => {
+    const { directory, executable } = createExecutable('flatpak-spawn');
+
+    expect(resolveHostCommand('/bin/sh', directory, { FLATPAK_ID: 'io.podman_desktop.PodmanDesktop' }, 'win32')).toEqual({
+      command: executable,
+      argsPrefix: ['--host', '/bin/sh'],
+    });
+  });
+
   it('falls back to the command name when no executable is visible', () => {
     expect(resolveHostCommand('aap-demo-test-command-not-installed', '', {}, 'linux')).toEqual({
       command: 'aap-demo-test-command-not-installed',

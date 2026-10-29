@@ -31,7 +31,7 @@ export function resolveHostCommand(
   environment: NodeJS.ProcessEnv = process.env,
   platform: NodeJS.Platform = process.platform,
 ): HostCommand {
-  if (platform !== 'win32' && environment.FLATPAK_ID) {
+  if (environment.FLATPAK_ID) {
     const flatpakSpawn = resolveExecutablePath('flatpak-spawn', pathValue);
     if (flatpakSpawn) {
       // The portal resolves argv[0] before the forwarded PATH is applied. Use

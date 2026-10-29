@@ -44,7 +44,7 @@ function windowsCommandQuote(value: string): string {
 }
 
 export function windowsCommandArguments(command: string, args: readonly string[] = []): string[] {
-  return ['/d', '/c', ...[command, ...args].map(windowsCommandQuote)];
+  return ['/d', '/s', '/c', `"${[command, ...args].map(windowsCommandQuote).join(' ')}"`];
 }
 
 export class CommandRunner {

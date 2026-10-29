@@ -58,10 +58,9 @@ describe('CommandRunner', () => {
   it('passes Windows shim arguments as separately quoted command arguments', () => {
     expect(windowsCommandArguments('C:\\Program Files\\aap-demo.cmd', ['status', 'two words'])).toEqual([
       '/d',
+      '/s',
       '/c',
-      '"C:\\Program Files\\aap-demo.cmd"',
-      '"status"',
-      '"two words"',
+      '""C:\\Program Files\\aap-demo.cmd" "status" "two words""',
     ]);
   });
 
