@@ -7,6 +7,7 @@ import { detectCliVersion, parseCliVersion } from '../src/cli-version';
 import type { CommandExecutor } from '../src/aap-demo-service';
 
 const temporaryRoots: string[] = [];
+const linuxIt = process.platform === 'linux' ? it : it.skip;
 
 function createExecutable(name: string): { directory: string; executable: string } {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-version-'));
@@ -75,7 +76,7 @@ describe('detectCliVersion', () => {
     await expect(detectCliVersion(executor, 'aap-demo')).resolves.toBe('unknown');
   });
 
-  it('detects the CLI version through the host when Podman Desktop is sandboxed as a Flatpak', async () => {
+  linuxIt('detects the CLI version through the host when Podman Desktop is sandboxed as a Flatpak', async () => {
     const { directory, executable } = createExecutable('flatpak-spawn');
     const executor = new VersionExecutor({
       exitCode: 0,
@@ -96,7 +97,7 @@ describe('detectCliVersion', () => {
     }]);
   });
 
-  it('forwards PATH when resolving a bare CLI name through the Flatpak host shell', async () => {
+  linuxIt('forwards PATH when resolving a bare CLI name through the Flatpak host shell', async () => {
     const { directory, executable } = createExecutable('flatpak-spawn');
     const executor = new VersionExecutor({
       exitCode: 0,

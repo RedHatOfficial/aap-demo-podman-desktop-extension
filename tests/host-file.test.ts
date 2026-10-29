@@ -5,6 +5,8 @@ import * as path from 'node:path';
 import type { CommandResult } from '../src/command-runner';
 import { hasHostFile, readHostFile, saveHostFile, windowsFileAclArgs } from '../src/host-file';
 
+const linuxIt = process.platform === 'linux' ? it : it.skip;
+
 describe('hasHostFile', () => {
   it('builds a Windows ACL that removes inherited access and grants the current user', () => {
     expect(windowsFileAclArgs('C:\\Users\\demo\\secret', 'demo')).toEqual([
@@ -15,7 +17,7 @@ describe('hasHostFile', () => {
     ]);
   });
 
-  it('checks a file on the Flatpak host', async () => {
+  linuxIt('checks a file on the Flatpak host', async () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-flatpak-'));
     const flatpakSpawn = path.join(directory, 'flatpak-spawn');
     writeFileSync(flatpakSpawn, '#!/bin/sh\n');
@@ -49,7 +51,7 @@ describe('hasHostFile', () => {
     rmSync(directory, { recursive: true, force: true });
   });
 
-  it('returns false when the host file check fails', async () => {
+  linuxIt('returns false when the host file check fails', async () => {
     const executor = {
       async run(): Promise<CommandResult> {
         throw new Error('missing');
@@ -64,7 +66,7 @@ describe('hasHostFile', () => {
     )).resolves.toBe(false);
   });
 
-  it('reads a file from the Flatpak host without falling back to the sandbox', async () => {
+  linuxIt('reads a file from the Flatpak host without falling back to the sandbox', async () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-flatpak-read-'));
     const flatpakSpawn = path.join(directory, 'flatpak-spawn');
     writeFileSync(flatpakSpawn, '#!/bin/sh\n');
@@ -87,7 +89,7 @@ describe('hasHostFile', () => {
     rmSync(directory, { recursive: true, force: true });
   });
 
-  it('does not fall back to the sandbox when flatpak-spawn is unavailable', async () => {
+  linuxIt('does not fall back to the sandbox when flatpak-spawn is unavailable', async () => {
     const executor = {
       async run(): Promise<CommandResult> {
         throw new Error('should not run in the sandbox');
@@ -133,7 +135,7 @@ describe('hasHostFile', () => {
       { run: async () => ({ exitCode: 0, stdout: '', stderr: '' }) },
       tokenFile,
       '/tmp/bin',
-      {},
+      { USERNAME: 'demo' },
       'offline-token',
     );
 
@@ -142,7 +144,7 @@ describe('hasHostFile', () => {
     rmSync(directory, { recursive: true, force: true });
   });
 
-  it('saves a token through the Flatpak host using standard input', async () => {
+  linuxIt('saves a token through the Flatpak host using standard input', async () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-flatpak-'));
     const flatpakSpawn = path.join(directory, 'flatpak-spawn');
     writeFileSync(flatpakSpawn, '#!/bin/sh\n');

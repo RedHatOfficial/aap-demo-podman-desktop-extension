@@ -21,5 +21,6 @@ COPY --from=build /extension-source/README.md /extension/README.md
 COPY --from=build /extension-source/RELEASE_NOTES.md /extension/RELEASE_NOTES.md
 COPY icon.png /extension/icon.png
 COPY scripts/run-install.ps1 /extension/scripts/run-install.ps1
+COPY scripts/run-cmd-shim.ps1 /extension/scripts/run-cmd-shim.ps1
 COPY --from=build /extension-source/dist /extension/dist
 COPY --from=build /extension-source/media /extension/media
