@@ -421,7 +421,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       return;
     }
 
-    if (action === 'deploy') {
+    if (action === 'start' || action === 'deploy') {
       const prerequisites = await getPrerequisites();
       if (!prerequisites.pullSecret.exists) {
         const enteredPullSecret = await requestPullSecret();
