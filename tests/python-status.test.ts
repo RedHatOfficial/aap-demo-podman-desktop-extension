@@ -13,7 +13,6 @@ const runningStatus = JSON.stringify({
   credentials: [{ namespace: 'aap', username: 'admin', password: 'secret' }],
   addons: [{ name: 'portal', enabled: false }],
 });
-
 describe('parsePythonStatusOutput', () => {
   it('maps Python JSON status to the dashboard status model', () => {
     expect(parsePythonStatusOutput(runningStatus)).toMatchObject({
