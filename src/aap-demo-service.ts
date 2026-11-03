@@ -51,8 +51,6 @@ const PYTHON_ACTIONS = new Set<AapDemoAction>([
   'status',
 ]);
 
-const PYTHON_ADDONS = new Set(['fleet']);
-
 function createCliPathResolver(pathValue: CliPathResolver): () => string {
   return typeof pathValue === 'function'
     ? () => pathValue().trim() || 'aap-demo'
@@ -132,11 +130,11 @@ export class AapDemoService {
     addon: string,
     options?: CommandRunnerOptions,
   ): Promise<CommandResult> {
-    const backend: AapDemoBackend = PYTHON_ADDONS.has(addon) ? 'python' : 'legacy';
-    const optionsWithSettings = this.withSettings(options, backend, true, backend === 'legacy');
+    const backend: AapDemoBackend = 'legacy';
+    const optionsWithSettings = this.withSettings(options, backend, true, true);
     const command = this.resolveCliCommand(backend, optionsWithSettings?.env);
     const addonArgs = [action, addon];
-    const outputPrefix = backend === 'python' ? ['--output', 'basic', '--yes'] : [];
+    const outputPrefix: string[] = [];
     if (command.argsPrefix.includes('--host') && optionsWithSettings?.env?.OPENAI_API_KEY) {
       const { OPENAI_API_KEY, ...environment } = optionsWithSettings.env;
       const hostIndex = command.argsPrefix.indexOf('--host');

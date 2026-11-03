@@ -3,13 +3,11 @@
 ## Goal
 
 After `RedHatOfficial/aap-demo#264` lands, let the Podman Desktop extension use
-the Python `aap-demo` 2.0.0.dev2 CLI for the core cluster lifecycle and the
-Kubernetes-native Fleet addon, while keeping the existing Bash integration for
+the Python `aap-demo` 2.0.0.dev2 CLI for the core cluster lifecycle, while keeping the existing Bash integration for
 features that have not yet moved to Python.
 
 The intended user outcome is that the dashboard can create, deploy, start,
-stop, destroy, and inspect the Python-managed cluster, and enable or disable
-Python Fleet, without requiring the full extension migration to happen in the
+stop, destroy, and inspect the Python-managed cluster, without requiring the full extension migration to happen in the
 same change.
 
 ## Context and constraints
@@ -18,8 +16,8 @@ same change.
   remains `2.0.0.dev2`.
 - The installed Python command currently resolves as `aap-demo` and reports
   `aap-demo 2.0.0.dev2`.
-- The Python CLI exposes `create`, `deploy`, `start`, `stop`, `destroy`,
-  `status`, `enable fleet`, and `disable fleet`, among other commands.
+- The Python CLI exposes `create`, `deploy`, `start`, `stop`, `destroy`, and
+  `status`, among other commands.
 - Python status text remains close enough to the existing status contract to
   preserve the dashboard model, including `Tool`, `Built`, `Infra`, `Cluster`,
   `Kubeconfig`, `AAP Deployments`, `Credentials`, `Addons`, and `TLS` sections.
@@ -41,8 +39,6 @@ same change.
 - `stop`
 - `destroy`
 - `status` for the core dashboard status contract
-- `enable fleet`
-- `disable fleet`
 
 The extension will invoke these through a Python CLI backend and use the
 Python CLI's supported flags and environment variables. Destructive or
@@ -117,26 +113,15 @@ manifest semantics:
 - Keep automatic manifest application opt-in and preserve the CLI's safe
   behavior when no manifest or approval is available.
 
-### 3. Status and Fleet state
+### 3. Python status
 
 Python `status` becomes the source for core cluster, route, credential,
 kubeconfig, TLS, and version data. The existing parser will be extended or
 given a structured-data path so the dashboard does not depend on incidental
 Rich formatting.
 
-Python's status report does not expose Fleet as one of the normal status
-addons, so the extension will obtain Fleet's enabled state through a separate
-structured Python query against the Python config/state and merge a synthetic
-Fleet entry into the dashboard status. Existing legacy add-on state may be
-merged from the Bash status path when that path is available; failure to read
-legacy add-ons must not make Python core status unavailable.
-
-The existing Fleet control will become visible only for the Python Fleet
-capability. Its enable/disable requests will call `aap-demo enable fleet` and
-`aap-demo disable fleet`, stream output through the existing dashboard channel,
-and refresh both Python Fleet state and core status afterward. Python's
-`--no-import` behavior remains a CLI concern and is not silently selected by
-the extension.
+Legacy add-ons, including Fleet, remain on the existing path. A legacy status
+failure must not make Python core status unavailable.
 
 ### 4. Readiness and user guidance
 
@@ -170,3 +155,10 @@ The backend routing abstraction is intentionally the seam for the later full
 Python migration. Future work can move `idle`, `diagnose`, `repair`,
 `trust-ca`, and each legacy add-on by changing routing and capability metadata,
 without reworking the dashboard message protocol or command execution safety.
+
+## Scope update
+
+The initial implementation slice is limited to the Python core lifecycle and
+deploy/status integration. Fleet migration is deferred at the user's request;
+Fleet and other legacy add-ons remain on the existing path until a separate
+follow-up plan.

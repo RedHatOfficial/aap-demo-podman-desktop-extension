@@ -71,22 +71,6 @@ describe('AapDemoService', () => {
     });
   });
 
-  it('routes Fleet enable and disable to Python', async () => {
-    const executor = new RecordingExecutor();
-    const service = new AapDemoService(executor, {
-      legacy: '/opt/aap-demo-v1',
-      python: '/home/test/.local/bin/aap-demo',
-    });
-
-    await service.runAddon('enable', 'fleet');
-    await service.runAddon('disable', 'fleet');
-
-    expect(executor.calls.map(call => [call.command, call.args])).toEqual([
-      ['/home/test/.local/bin/aap-demo', ['--output', 'basic', '--yes', 'enable', 'fleet']],
-      ['/home/test/.local/bin/aap-demo', ['--output', 'basic', '--yes', 'disable', 'fleet']],
-    ]);
-  });
-
   it('runs Python structured queries with JSON output', async () => {
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor, {

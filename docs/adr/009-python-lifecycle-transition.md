@@ -9,8 +9,8 @@
 
 `aap-demo#264` moves the Python `aap-demo` CLI, version `2.0.0.dev2`, onto the
 upstream `main` branch. The Python command now provides the core cluster
-lifecycle (`create`, `deploy`, `start`, `stop`, `destroy`, and `status`) and a
-Kubernetes-native `fleet` addon. The Podman Desktop extension currently routes
+lifecycle (`create`, `deploy`, `start`, `stop`, `destroy`, and `status`). The
+Podman Desktop extension currently routes
 all actions through the older Bash-oriented command and assumes its install,
 state, output, and subscription-attachment behavior.
 
@@ -33,8 +33,6 @@ The Python backend owns:
 - `stop`
 - `destroy`
 - `status` for core dashboard state
-- `enable fleet`
-- `disable fleet`
 
 The existing Bash backend remains responsible for `idle`, `diagnose`, `repair`,
 `trust-ca`, and legacy add-ons until a later migration.
@@ -51,23 +49,19 @@ subscription-attachment flow after a Python deploy. Automatic manifest
 application remains opt-in.
 
 Python status supplies core cluster, route, credential, kubeconfig, TLS, and
-version data. Fleet state is queried separately through Python structured
-output and merged into the dashboard model because Fleet is not included in
-Python's normal status addon list. Legacy addon state may be merged when the
-Bash backend is available; a legacy status failure must not prevent Python
-core status from rendering.
+version data. Legacy addon state may be merged when the Bash backend is
+available; a legacy status failure must not prevent Python core status from
+rendering.
 
-The existing Fleet dashboard control will call Python `enable fleet` and
-`disable fleet`, stream command output through the existing message channel,
-and refresh core status and Fleet state after completion. The extension will
-not silently select `--no-import`; Python's default Fleet registration behavior
-remains authoritative.
+Scope update: Fleet migration is deferred from this implementation slice at
+the user's direction. Fleet and the remaining legacy add-ons continue using
+the existing path until a separate migration decision is made.
 
 ## Consequences
 
-The extension can manage the Python cluster lifecycle and Kubernetes-native
-Fleet immediately after the upstream cutover without blocking on migration of
-all legacy add-ons. Users must have the Python beta installed for those
+The extension can manage the Python cluster lifecycle immediately after the
+upstream cutover without blocking on migration of all legacy add-ons. Users
+must have the Python beta installed for those
 actions and must retain a usable legacy CLI path for Bash-only features.
 
 The extension carries two command resolvers and a small status aggregation

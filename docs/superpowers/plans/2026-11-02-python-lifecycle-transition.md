@@ -2,15 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Route the extension's core lifecycle and Kubernetes-native Fleet actions through `aap-demo` Python `2.0.0.dev2` while preserving Bash support for deferred features.
+**Goal:** Route the extension's core lifecycle, deploy, and status through `aap-demo` Python `2.0.0.dev2` while preserving Bash support for deferred features.
 
-**Architecture:** Add explicit legacy and Python CLI backends to the command service. Python owns `create`, `deploy`, `start`, `stop`, `destroy`, `status`, and Fleet enable/disable; Bash remains the backend for deferred actions and legacy add-ons. Normalize Python structured status and Fleet state into the existing dashboard model, and keep Python pull-secret/manifest handling separate from legacy subscription attachment.
+**Architecture:** Add explicit legacy and Python CLI backends to the command service. Python owns `create`, `deploy`, `start`, `stop`, `destroy`, and `status`; Bash remains the backend for deferred actions, Fleet, and legacy add-ons. Normalize Python structured status and keep Python pull-secret/manifest handling separate from legacy subscription attachment.
 
 **Tech Stack:** TypeScript, Podman Desktop API, Vitest, Vite, Node.js 24, existing Flatpak host bridge, Markdown documentation.
 
 **Spec:** `docs/superpowers/specs/2026-11-02-python-lifecycle-transition-design.md`
 
 ## Global Constraints
+
+Scope update: implement Python core lifecycle, deploy, and structured status in
+this slice. Defer Fleet routing/state/UI and leave Fleet on the existing path.
 
 - The Python package version remains exactly `2.0.0.dev2`.
 - Python owns `create`, `deploy`, `start`, `stop`, `destroy`, `status`, `enable fleet`, and `disable fleet`.
@@ -147,7 +150,7 @@ git add src/aap-demo-service.ts tests/aap-demo-service.test.ts
 git commit -m "feat: add Python and legacy CLI backends"
 ```
 
-### Task 2: Normalize Python status and Fleet state
+### Task 2: Normalize Python status
 
 **Files:**
 - Create: `src/python-status.ts`
@@ -157,7 +160,7 @@ git commit -m "feat: add Python and legacy CLI backends"
 
 **Interfaces:**
 - Consumes: Python `aap-demo status --output json` and `aap-demo config get addons.enabled --output json` stdout.
-- Produces: `parsePythonStatusOutput(output)` returning `AapDemoStatus`, and `parsePythonFleetState(output)` returning `{ state: 'enabled' | 'disabled' | 'unknown' }`.
+- Produces: `parsePythonStatusOutput(output)` returning `AapDemoStatus`.
 
 - [ ] **Step 1: Write failing structured-status tests**
 
@@ -193,17 +196,9 @@ it('maps Python not_created and stopped states to existing dashboard states', ()
   expect(parsePythonStatusOutput('{"cluster_state":"stopped"}').cluster.state).toBe('stopped');
 });
 
-it('reads Fleet enabled state from Python structured config output', () => {
-  expect(parsePythonFleetState('["fleet"]').state).toBe('enabled');
-  expect(parsePythonFleetState('[]').state).toBe('disabled');
-  expect(parsePythonFleetState('invalid').state).toBe('unknown');
-});
 ```
 
-Add an optional `fleet?: { state: 'enabled' | 'disabled' | 'unknown' }` field to
-`AapDemoStatus` so existing legacy status equality tests remain valid when no
-Python Fleet query has been merged. Add a Python parser test for the
-`--output json` TLS mapping.
+Add a Python parser test for the `--output json` TLS mapping.
 
 - [ ] **Step 2: Run the focused tests to verify they fail**
 
@@ -220,9 +215,7 @@ directly. Map Python addon `{name, enabled}` to the existing `{name, state}`
 shape, preserve routes/credentials, and combine Python TLS system/browser values
 using the existing trust-state rules.
 
-Implement `parsePythonFleetState()` so it accepts a JSON array of addon names or
-an object containing `addons.enabled`, and returns `{ state }` without throwing
-on malformed output. Keep the existing human-text parser for legacy status.
+Keep the existing human-text parser for legacy status.
 
 - [ ] **Step 4: Run the focused tests to verify they pass**
 
@@ -234,7 +227,7 @@ Expected: PASS, including existing ANSI/text parsing tests.
 
 ```bash
 git add src/python-status.ts src/status-parser.ts tests/python-status.test.ts tests/status-parser.test.ts
-git commit -m "feat: normalize Python status and Fleet state"
+git commit -m "feat: normalize Python status"
 ```
 
 ### Task 3: Support Python XDG pull-secret discovery and configuration
@@ -422,6 +415,9 @@ git commit -m "feat: route core actions through Python CLI"
 ```
 
 ### Task 5: Expose Python Fleet in the dashboard
+
+Deferred by current scope; do not execute this task in this branch. Fleet
+continues using the existing path until a separate migration plan is approved.
 
 **Files:**
 - Modify: `src/webview/addon-ui.ts`
