@@ -106,4 +106,3 @@ export function parsePythonStatusOutput(output: string): AapDemoStatus {
   if (ingressCaTrust) status.ingressCaTrust = ingressCaTrust;
   return status;
 }
-

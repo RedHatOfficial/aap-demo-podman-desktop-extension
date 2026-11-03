@@ -31,4 +31,3 @@ describe('parsePythonStatusOutput', () => {
     expect(parsePythonStatusOutput('{"cluster_state":"stopped"}').cluster.state).toBe('stopped');
   });
 });
-
