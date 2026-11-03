@@ -41,16 +41,90 @@ afterEach(() => {
 });
 
 describe('AapDemoService', () => {
+  it('routes Python lifecycle actions to the Python CLI with noninteractive basic output', async () => {
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor, {
+      legacy: '/opt/aap-demo-v1',
+      python: '/home/test/.local/bin/aap-demo',
+    });
+
+    await service.run('deploy');
+
+    expect(executor.calls[0]).toMatchObject({
+      command: '/home/test/.local/bin/aap-demo',
+      args: ['--output', 'basic', '--yes', 'deploy'],
+    });
+  });
+
+  it('routes deferred lifecycle actions to the legacy CLI', async () => {
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor, {
+      legacy: '/opt/aap-demo-v1',
+      python: '/home/test/.local/bin/aap-demo',
+    });
+
+    await service.run('diagnose');
+
+    expect(executor.calls[0]).toMatchObject({
+      command: '/opt/aap-demo-v1',
+      args: ['diagnose'],
+    });
+  });
+
+  it('routes Fleet enable and disable to Python', async () => {
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor, {
+      legacy: '/opt/aap-demo-v1',
+      python: '/home/test/.local/bin/aap-demo',
+    });
+
+    await service.runAddon('enable', 'fleet');
+    await service.runAddon('disable', 'fleet');
+
+    expect(executor.calls.map(call => [call.command, call.args])).toEqual([
+      ['/home/test/.local/bin/aap-demo', ['--output', 'basic', '--yes', 'enable', 'fleet']],
+      ['/home/test/.local/bin/aap-demo', ['--output', 'basic', '--yes', 'disable', 'fleet']],
+    ]);
+  });
+
+  it('runs Python structured queries with JSON output', async () => {
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor, {
+      legacy: '/opt/aap-demo-v1',
+      python: '/home/test/.local/bin/aap-demo',
+    });
+
+    await service.runPythonQuery(['config', 'get', 'addons.enabled']);
+
+    expect(executor.calls[0]).toMatchObject({
+      command: '/home/test/.local/bin/aap-demo',
+      args: ['--output', 'json', 'config', 'get', 'addons.enabled'],
+    });
+  });
+
   it.each([
-    ['create', ['create']],
-    ['start', ['start']],
-    ['deploy', ['deploy']],
-    ['stop', ['stop']],
-    ['destroy', ['destroy']],
-    ['status', ['status']],
+    ['create', ['--output', 'basic', '--yes', 'create']],
+    ['start', ['--output', 'basic', '--yes', 'start']],
+    ['deploy', ['--output', 'basic', '--yes', 'deploy']],
+    ['stop', ['--output', 'basic', '--yes', 'stop']],
+    ['destroy', ['--output', 'basic', '--yes', 'destroy']],
+    ['status', ['--output', 'json', 'status']],
+  ] as const)('runs the %s action through the Python CLI', async (action, args) => {
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor, '/custom/bin/aap-demo');
+
+    await service.run(action);
+
+    expect(executor.calls[0]).toMatchObject({
+      command: '/custom/bin/aap-demo',
+      args,
+    });
+  });
+
+  it.each([
     ['diagnose', ['diagnose']],
     ['trust-ca', ['trust-ca']],
-  ] as const)('runs the %s action through the configured CLI', async (action, args) => {
+  ] as const)('runs the deferred %s action through the legacy CLI', async (action, args) => {
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor, '/custom/bin/aap-demo');
 
@@ -97,8 +171,7 @@ describe('AapDemoService', () => {
 
     expect(executor.calls[0]).toMatchObject({
       command: 'aap-demo',
-      args: ['status'],
-      options: { env: { QUIET: 'true' } },
+      args: ['--output', 'json', 'status'],
     });
   });
 
@@ -117,11 +190,11 @@ describe('AapDemoService', () => {
     ]);
   });
 
-  it('always runs the CLI quietly for Podman Desktop', async () => {
+  it('keeps deferred legacy actions quiet for Podman Desktop', async () => {
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor);
 
-    await service.run('status');
+    await service.run('idle');
 
     expect(executor.calls[0]?.options?.env?.QUIET).toBe('true');
   });
@@ -181,7 +254,7 @@ describe('AapDemoService', () => {
     await service.run('create');
 
     expect(executor.calls[0]?.options?.env).toMatchObject({
-      PULL_SECRET_PATH: '/tmp/pull-secret.txt',
+      AAP_DEMO_PULL_SECRET: '/tmp/pull-secret.txt',
       CRC_CPUS: '8',
       CRC_MEMORY: '24576',
       AAP_DEMO_TRUST_CA: 'false',
@@ -194,7 +267,7 @@ describe('AapDemoService', () => {
       subscriptionCredentialsFile: '/tmp/redhat-subscription-credentials',
     });
 
-    await service.run('deploy');
+    await service.run('idle');
 
     expect(executor.calls[0]?.options?.env?.REDHAT_SUBSCRIPTION_CREDENTIALS_FILE)
       .toBe('/tmp/redhat-subscription-credentials');
@@ -204,7 +277,7 @@ describe('AapDemoService', () => {
     const executor = new RecordingExecutor();
     const service = new AapDemoService(executor, 'aap-demo', { skipCache: true });
 
-    await service.run('deploy');
+    await service.run('idle');
 
     expect(executor.calls[0]?.options?.env?.AAP_DEMO_SKIP_CACHE).toBe('true');
   });
@@ -242,16 +315,18 @@ describe('AapDemoService', () => {
     expect(executor.calls[0]).toMatchObject({
       command: executable,
       args: [
-        '--env=QUIET=true',
         '--env=AAP_DEMO_TRUST_CA=false',
         '--env=PYTHONIOENCODING=utf-8',
         '--env=PYTHONUTF8=1',
         '--env=PATH=' + directory,
         '--host',
         '/home/test/.local/bin/aap-demo',
+        '--output',
+        'basic',
+        '--yes',
         'deploy',
       ],
-      options: { env: expect.objectContaining({ QUIET: 'true' }) },
+      options: { env: expect.not.objectContaining({ QUIET: expect.anything() }) },
     });
   });
 
@@ -268,7 +343,6 @@ describe('AapDemoService', () => {
     expect(executor.calls[0]).toMatchObject({
       command: executable,
       args: [
-        '--env=QUIET=true',
         '--env=AAP_DEMO_TRUST_CA=false',
         '--env=PYTHONIOENCODING=utf-8',
         '--env=PYTHONUTF8=1',
@@ -279,6 +353,8 @@ describe('AapDemoService', () => {
         'exec "$@"',
         'aap-demo-host-command',
         'aap-demo',
+        '--output',
+        'json',
         'status',
       ],
     });

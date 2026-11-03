@@ -6,6 +6,7 @@ import { forwardHostEnvironment, resolveHostCommand } from './host-command';
 
 export type AapDemoAction = 'create' | 'start' | 'deploy' | 'stop' | 'destroy' | 'status' | 'idle' | 'diagnose' | 'repair' | 'trust-ca';
 export type AddonAction = 'enable' | 'disable';
+export type AapDemoBackend = 'legacy' | 'python';
 
 const CACHE_BYPASS_ACTIONS = new Set<AapDemoAction>([
   'create',
@@ -36,20 +37,56 @@ export interface CommandExecutor {
 
 export type CliPathResolver = string | (() => string);
 
+export interface AapDemoCliPaths {
+  legacy: CliPathResolver;
+  python: CliPathResolver;
+}
+
+const PYTHON_ACTIONS = new Set<AapDemoAction>([
+  'create',
+  'start',
+  'deploy',
+  'stop',
+  'destroy',
+  'status',
+]);
+
+const PYTHON_ADDONS = new Set(['fleet']);
+
+function createCliPathResolver(pathValue: CliPathResolver): () => string {
+  return typeof pathValue === 'function'
+    ? () => pathValue().trim() || 'aap-demo'
+    : () => pathValue.trim() || 'aap-demo';
+}
+
 export class AapDemoService {
-  private readonly cliPathResolver: () => string;
+  private readonly cliPathResolvers: Record<AapDemoBackend, () => string>;
 
   constructor(
     private readonly executor: CommandExecutor,
-    cliPath: CliPathResolver = 'aap-demo',
+    cliPath: CliPathResolver | AapDemoCliPaths = 'aap-demo',
     private readonly settings: AapDemoSettings = {},
   ) {
-    this.cliPathResolver = typeof cliPath === 'function'
-      ? () => cliPath().trim() || 'aap-demo'
-      : () => cliPath.trim() || 'aap-demo';
+    const paths: AapDemoCliPaths = typeof cliPath === 'object'
+      ? cliPath
+      : { legacy: cliPath, python: cliPath };
+    this.cliPathResolvers = {
+      legacy: createCliPathResolver(paths.legacy),
+      python: createCliPathResolver(paths.python),
+    };
   }
 
   run(
+    action: AapDemoAction,
+    idleState?: boolean,
+    options?: CommandRunnerOptions,
+  ): Promise<CommandResult> {
+    const backend = PYTHON_ACTIONS.has(action) ? 'python' : 'legacy';
+    return this.runWithBackend(backend, action, idleState, options);
+  }
+
+  runWithBackend(
+    backend: AapDemoBackend,
     action: AapDemoAction,
     idleState?: boolean,
     options?: CommandRunnerOptions,
@@ -59,14 +96,33 @@ export class AapDemoService {
       : [action];
     const optionsWithSettings = this.withSettings(
       options,
+      backend,
       action !== 'trust-ca' && action !== 'repair',
       CACHE_BYPASS_ACTIONS.has(action),
     );
-    const command = this.resolveCliCommand(optionsWithSettings?.env);
+    const command = this.resolveCliCommand(backend, optionsWithSettings?.env);
+    const outputPrefix = backend === 'python'
+      ? action === 'status'
+        ? ['--output', 'json']
+        : ['--output', 'basic', '--yes']
+      : [];
 
     return this.executor.run(
       command.command,
-      [...command.argsPrefix, ...args],
+      [...command.argsPrefix, ...outputPrefix, ...args],
+      optionsWithSettings,
+    );
+  }
+
+  runPythonQuery(
+    args: readonly string[],
+    options?: CommandRunnerOptions,
+  ): Promise<CommandResult> {
+    const optionsWithSettings = this.withSettings(options, 'python', true, false, false);
+    const command = this.resolveCliCommand('python', optionsWithSettings?.env);
+    return this.executor.run(
+      command.command,
+      [...command.argsPrefix, '--output', 'json', ...args],
       optionsWithSettings,
     );
   }
@@ -76,9 +132,11 @@ export class AapDemoService {
     addon: string,
     options?: CommandRunnerOptions,
   ): Promise<CommandResult> {
-    const optionsWithSettings = this.withSettings(options, true, true);
-    const command = this.resolveCliCommand(optionsWithSettings?.env);
+    const backend: AapDemoBackend = PYTHON_ADDONS.has(addon) ? 'python' : 'legacy';
+    const optionsWithSettings = this.withSettings(options, backend, true, backend === 'legacy');
+    const command = this.resolveCliCommand(backend, optionsWithSettings?.env);
     const addonArgs = [action, addon];
+    const outputPrefix = backend === 'python' ? ['--output', 'basic', '--yes'] : [];
     if (command.argsPrefix.includes('--host') && optionsWithSettings?.env?.OPENAI_API_KEY) {
       const { OPENAI_API_KEY, ...environment } = optionsWithSettings.env;
       const hostIndex = command.argsPrefix.indexOf('--host');
@@ -91,7 +149,8 @@ export class AapDemoService {
           '-c',
           'IFS= read -r OPENAI_API_KEY; export OPENAI_API_KEY; shift; exec "$@"',
           'aap-demo-openai-key',
-          this.cliPathResolver(),
+          this.cliPathResolvers[backend](),
+          ...outputPrefix,
           ...addonArgs,
         ],
         { ...optionsWithSettings, env: environment, input: `${OPENAI_API_KEY}\n` },
@@ -99,13 +158,16 @@ export class AapDemoService {
     }
     return this.executor.run(
       command.command,
-      [...command.argsPrefix, ...addonArgs],
+      [...command.argsPrefix, ...outputPrefix, ...addonArgs],
       optionsWithSettings,
     );
   }
 
-  private resolveCliCommand(env?: NodeJS.ProcessEnv): ReturnType<typeof resolveHostCommand> {
-    const cliPath = this.cliPathResolver();
+  private resolveCliCommand(
+    backend: AapDemoBackend,
+    env?: NodeJS.ProcessEnv,
+  ): ReturnType<typeof resolveHostCommand> {
+    const cliPath = this.cliPathResolvers[backend]();
     const environment = this.settings.environment ?? process.env;
     if (!environment.FLATPAK_ID) {
       return { command: cliPath, argsPrefix: [] };
@@ -132,6 +194,7 @@ export class AapDemoService {
       'PYTHONIOENCODING',
       'PYTHONUTF8',
       'PULL_SECRET_PATH',
+      'AAP_DEMO_PULL_SECRET',
       'REDHAT_SUBSCRIPTION_CREDENTIALS_FILE',
       'CRC_CPUS',
       'CRC_MEMORY',
@@ -148,22 +211,24 @@ export class AapDemoService {
 
   private withSettings(
     options?: CommandRunnerOptions,
+    backend: AapDemoBackend = 'legacy',
     skipInteractiveTrustSetup = true,
     skipCache = false,
+    quiet = backend === 'legacy',
   ): CommandRunnerOptions | undefined {
     const configuredEnvironment: NodeJS.ProcessEnv = {
       ...(options?.env ?? process.env),
       PYTHONIOENCODING: 'utf-8',
       PYTHONUTF8: '1',
-      QUIET: 'true',
     };
+    if (quiet) configuredEnvironment.QUIET = 'true';
     if (skipInteractiveTrustSetup) {
       configuredEnvironment.AAP_DEMO_TRUST_CA = 'false';
     }
     if (this.settings.pullSecretPath) {
-      configuredEnvironment.PULL_SECRET_PATH = this.settings.pullSecretPath;
+      configuredEnvironment[backend === 'python' ? 'AAP_DEMO_PULL_SECRET' : 'PULL_SECRET_PATH'] = this.settings.pullSecretPath;
     }
-    if (this.settings.subscriptionCredentialsFile) {
+    if (backend === 'legacy' && this.settings.subscriptionCredentialsFile) {
       configuredEnvironment.REDHAT_SUBSCRIPTION_CREDENTIALS_FILE = this.settings.subscriptionCredentialsFile;
     }
     if (this.settings.cpus) {
@@ -172,7 +237,7 @@ export class AapDemoService {
     if (this.settings.memory) {
       configuredEnvironment.CRC_MEMORY = String(this.settings.memory);
     }
-    if (this.settings.skipCache && skipCache) {
+    if (backend === 'legacy' && this.settings.skipCache && skipCache) {
       configuredEnvironment.AAP_DEMO_SKIP_CACHE = 'true';
     }
     if (this.settings.pathValue) {
