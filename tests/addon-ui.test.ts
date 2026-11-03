@@ -380,6 +380,13 @@ describe('getAddonTogglePresentation', () => {
     expect(installLocation.description).toContain('CLI data under ~/.aap-demo');
   });
 
+  it('declares a separate Python CLI path for core lifecycle commands', () => {
+    const manifest = JSON.parse(packageJson);
+    const pythonCliPath = manifest.contributes.configuration.properties['aap-demo.pythonCliPath'];
+    expect(pythonCliPath.default).toBe('aap-demo');
+    expect(pythonCliPath.description).toContain('core lifecycle');
+  });
+
   it('sets the OpenShift Local CPU minimum to eight in Podman Desktop settings', () => {
     const manifest = JSON.parse(packageJson);
     expect(manifest.contributes.configuration.properties['aap-demo.cpus'].minimum).toBe(8);
@@ -453,18 +460,13 @@ describe('getAddonTogglePresentation', () => {
     expect(dashboardSource).toContain('pullSecretInput');
   });
 
-  it('prompts for missing subscription credentials before Windows deploys', () => {
-    expect(extensionSource).toContain('ensureWindowsSubscriptionCredentials');
-    expect(extensionSource).toContain("process.platform !== 'win32'");
-    expect(extensionSource).toContain('await ensureWindowsSubscriptionCredentials()');
+  it('does not prompt for legacy subscription credentials before Python deploys', () => {
+    expect(extensionSource).not.toContain('ensureWindowsSubscriptionCredentials');
+    expect(extensionSource).not.toContain('attachWindowsSubscription');
   });
 
-  it('prompts to replace saved Red Hat credentials when subscription attachment fails', () => {
-    const attachFailureBlock = extensionSource.slice(
-      extensionSource.indexOf("Red Hat subscription attachment failed"),
-      extensionSource.indexOf("await extensionApi.window.showInformationMessage(completionMessage);"),
-    );
-
-    expect(attachFailureBlock).toContain('await offerSubscriptionCredentials({ replaceExisting: true })');
+  it('does not attach legacy Red Hat credentials after Python deploy', () => {
+    expect(extensionSource).not.toContain('Red Hat subscription attachment failed');
+    expect(extensionSource).not.toContain('offerSubscriptionCredentials');
   });
 });

@@ -20,14 +20,14 @@ function createCliExecutable(root: string): { executable: string; logFile: strin
     ? [
       '@echo off',
       `echo %1>>"${logFile}"`,
-      'if "%1"=="status" echo Cluster: stopped',
+      'if "%3"=="status" echo {"cluster_state":"stopped","routes":[],"credentials":[],"addons":[]}',
       'exit /b 0',
       '',
     ].join('\r\n')
     : [
       '#!/bin/sh',
-      `printf '%s\\n' "$1" >> '${logFile}'`,
-      'if [ "$1" = "status" ]; then printf "%s\\n" "Cluster: stopped"; fi',
+      `printf '%s\\n' "$*" >> '${logFile}'`,
+      'if [ "$3" = "status" ]; then printf "%s\\n" "{\\"cluster_state\\":\\"stopped\\",\\"routes\\":[],\\"credentials\\":[],\\"addons\\":[]}"; fi',
       '',
     ].join('\n');
   writeFileSync(executable, script);
@@ -58,6 +58,7 @@ describe('extension activation', () => {
     const configuredCliPath = path.join(root, 'missing-aap-demo');
     mockPodmanDesktopState.configuration = {
       cliPath: configuredCliPath,
+      pythonCliPath: configuredCliPath,
       crcPath: path.join(root, 'missing-crc'),
       openDashboardOnStartup: false,
     };
@@ -83,6 +84,7 @@ describe('extension activation', () => {
     const { executable, logFile } = createCliExecutable(root);
     mockPodmanDesktopState.configuration = {
       cliPath: executable,
+      pythonCliPath: executable,
       crcPath: path.join(root, 'missing-crc'),
       openDashboardOnStartup: false,
       pullSecretPath: path.join(root, 'missing-pull-secret.txt'),
@@ -118,6 +120,7 @@ describe('extension activation', () => {
     process.env.REDHAT_SUBSCRIPTION_CREDENTIALS_FILE = subscriptionCredentialsFile;
     mockPodmanDesktopState.configuration = {
       cliPath: configuredCliPath,
+      pythonCliPath: configuredCliPath,
       pullSecretPath,
       crcPath: path.join(root, 'missing-crc'),
       openDashboardOnStartup: false,

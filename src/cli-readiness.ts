@@ -16,10 +16,13 @@ export function shouldAutomaticallyInstallCli(options: {
     && !options.repairAlreadyAttempted;
 }
 
-export function missingCliMessage(configuredPath: string): string {
+export function missingCliMessage(
+  configuredPath: string,
+  settingName = 'aap-demo.cliPath',
+): string {
   return [
     `The aap-demo CLI could not be found at "${configuredPath}".`,
-    'Open the AAP Demo dashboard and select Install aap-demo, or set aap-demo.cliPath to the installed executable.',
+    `Open the AAP Demo dashboard and select Install aap-demo, or set ${settingName} to the installed executable.`,
   ].join(' ');
 }
 

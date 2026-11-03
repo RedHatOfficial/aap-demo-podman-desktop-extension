@@ -97,6 +97,11 @@
           "default": "aap-demo",
           "description": "Path to the aap-demo executable."
         },
+        "aap-demo.pythonCliPath": {
+          "type": "string",
+          "default": "aap-demo",
+          "description": "Path to the Python aap-demo executable used for the core lifecycle, deploy, and status commands."
+        },
         "aap-demo.installLocation": {
           "type": "string",
           "default": "~/.aap-demo/aap-demo",
