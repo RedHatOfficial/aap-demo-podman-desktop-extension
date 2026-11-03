@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { checkPrerequisites } from '../src/prerequisites';
+import { checkPrerequisites, pullSecretCandidates } from '../src/prerequisites';
 
 const linuxIt = process.platform === 'linux' ? it : it.skip;
 
@@ -19,6 +19,26 @@ function withTemporaryExecutable<T>(callback: (executable: string, directory: st
 }
 
 describe('checkPrerequisites', () => {
+  it('checks Python XDG config, state, and legacy pull-secret locations in order', () => {
+    expect(pullSecretCandidates('', {
+      XDG_CONFIG_HOME: '/home/test/.config',
+      XDG_STATE_HOME: '/home/test/.local/state',
+    }, '/home/test')).toEqual([
+      '/home/test/.config/aap-demo/pull-secret.txt',
+      '/home/test/.config/aap-demo/pull-secret.json',
+      '/home/test/.local/state/aap-demo/pull-secret.txt',
+      '/home/test/.local/state/aap-demo/pull-secret.json',
+      '/home/test/.aap-demo/pull-secret.txt',
+      '/home/test/.aap-demo/pull-secret.json',
+      '/home/test/.aap-demo/pull-secret',
+    ]);
+  });
+
+  it('uses an explicit pull-secret path without adding fallback candidates', () => {
+    expect(pullSecretCandidates('/tmp/pull-secret.json', {}, '/home/test'))
+      .toEqual(['/tmp/pull-secret.json']);
+  });
+
   it('rejects a CRC CPU allocation below the eight-CPU minimum', () => {
     const status = withTemporaryExecutable((executable, directory) => checkPrerequisites(
         {

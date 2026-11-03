@@ -136,11 +136,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     pathValue: augmentPath(),
     skipCache: true,
   };
-  const pullSecretFile = settings.pullSecretPath?.trim() || path.join(
-    os.homedir(),
-    '.aap-demo',
-    'pull-secret.txt',
-  );
+  const pullSecretFile = settings.pullSecretPath?.trim() || pullSecretCandidates('', process.env, os.homedir())[0];
   const subscriptionCredentialsFile = process.env.REDHAT_SUBSCRIPTION_CREDENTIALS_FILE?.trim() || path.join(
     os.homedir(),
     '.aap-demo',
@@ -148,7 +144,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   );
   settings.subscriptionCredentialsFile = subscriptionCredentialsFile;
   const findValidPullSecret = async (): Promise<string | undefined> => {
-    for (const candidate of pullSecretCandidates(settings.pullSecretPath)) {
+    for (const candidate of pullSecretCandidates(settings.pullSecretPath, process.env, os.homedir())) {
       const contents = await readHostFile(runner, candidate, settings.pathValue, process.env);
       if (contents && isValidPullSecret(contents)) return candidate;
     }
