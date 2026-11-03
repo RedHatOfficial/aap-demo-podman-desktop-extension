@@ -41,8 +41,12 @@ dashboard, then refresh AAP Demo's prerequisites. AAP Demo does not install CRC
 or accept Podman Desktop prompts on your behalf. See the
 [OpenShift Local installation guide](https://podman-desktop.io/docs/openshift/openshift-local).
 
-You also need a Red Hat pull secret. AAP Demo looks for a pull secret under
-`~/.aap-demo` by default. To use another file, set `aap-demo.pullSecretPath`.
+You also need a Red Hat pull secret. Python-backed lifecycle commands check
+these locations in order: `$XDG_CONFIG_HOME/aap-demo/pull-secret.txt` or
+`.json`, `$XDG_STATE_HOME/aap-demo/pull-secret.txt` or `.json`, then the
+legacy `~/.aap-demo` locations. If the XDG variables are unset, they default
+to `~/.config` and `~/.local/state`. To use another file, set
+`aap-demo.pullSecretPath`.
 
 CRC needs at least **8 CPUs** and **16 GiB of memory**. AAP Demo defaults to
 **8 CPUs** and **24 GiB**; configure `aap-demo.cpus` and `aap-demo.memory` if
@@ -54,8 +58,10 @@ Open the dashboard by clicking the **AAP Demo** item at the bottom of Podman
 Desktop, or press **F1** and run **AAP Demo: Open Dashboard**.
 
 Use it to create, start, deploy, stop, destroy, diagnose, repair, and inspect
-the cluster. Add-ons are listed alphabetically; green means enabled and gray
-means disabled.
+the cluster. Core lifecycle, deploy, and status actions use the Python
+`aap-demo` CLI; `idle`, diagnostics, repair, Fleet, and legacy add-ons remain
+on the existing Bash CLI during this transition. Add-ons are listed
+alphabetically; green means enabled and gray means disabled.
 
 ## Add-ons
 
@@ -118,12 +124,21 @@ development and is not required for catalog-distributed installations.
 
 ## Install the aap-demo CLI
 
-If the CLI is missing, click **Install aap-demo** in the **Status** box. You can
-also run **AAP Demo: Install aap-demo CLI** from the F1 Command Palette.
+The Python lifecycle requires `aap-demo==2.0.0.dev2`. Install it with your
+preferred Python tool, for example:
+
+```bash
+pipx install 'aap-demo==2.0.0.dev2'
+```
+
+Set `aap-demo.pythonCliPath` if the executable is not on the extension's PATH.
+The **Install aap-demo** dashboard action continues to manage the legacy Bash
+CLI used by deferred commands and add-ons; it does not install Python packages.
 
 ## Updating
 
-Select **Update aap-demo** in the Status box to update the CLI.
+Select **Update aap-demo** in the Status box to update the legacy Bash CLI.
+Update the Python package with the Python tool that installed it.
 
 See the [release notes](RELEASE_NOTES.md) for recent changes and improvements.
 

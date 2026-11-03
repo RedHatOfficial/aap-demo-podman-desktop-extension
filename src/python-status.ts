@@ -78,7 +78,7 @@ export function parsePythonStatusOutput(output: string): AapDemoStatus {
       if (!isRecord(addon)) return [];
       const name = stringValue(addon.name);
       if (!name) return [];
-      const state = addon.enabled === true
+      const state: AapDemoStatus['addons'][number]['state'] = addon.enabled === true
         ? 'enabled'
         : addon.enabled === false
           ? 'disabled'
