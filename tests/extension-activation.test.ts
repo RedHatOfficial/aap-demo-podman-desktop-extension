@@ -104,7 +104,7 @@ describe('extension activation', () => {
     expect(readFileSync(logFile, 'utf8')).not.toContain('start');
   });
 
-  it.runIf(process.platform === 'win32')('cancels Windows deploy when subscription credentials are not saved', async () => {
+  it.runIf(process.platform === 'win32')('runs Python deploy without legacy subscription prompting', async () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-extension-activation-'));
     temporaryRoots.push(root);
     const configuredCliPath = path.join(root, 'aap-demo.cmd');
@@ -131,7 +131,7 @@ describe('extension activation', () => {
         return { exitCode: 0, stdout: 'aap-demo 1.0.48\n', stderr: '' };
       }
       if (args.includes('status')) {
-        return { exitCode: 0, stdout: 'Cluster: running\n', stderr: '' };
+        return { exitCode: 0, stdout: '{"cluster_state":"running","routes":[],"credentials":[],"addons":[]}\n', stderr: '' };
       }
       if (args.includes('deploy')) {
         return { exitCode: 0, stdout: 'deploy should not run\n', stderr: '' };
@@ -147,9 +147,9 @@ describe('extension activation', () => {
 
     await mockPodmanDesktopState.commandHandlers.get('aap-demo.deploy')?.();
 
-    expect(runSpy.mock.calls.some(([, args = []]) => args.includes('deploy'))).toBe(false);
-    expect(mockPodmanDesktopState.warningMessages).toEqual(expect.arrayContaining([
-      expect.stringContaining('Deployment canceled because Red Hat subscription credentials were not saved.'),
-    ]));
+    expect(runSpy.mock.calls.some(([, args = []]) => args.includes('deploy'))).toBe(true);
+    expect(window.showInputBox).not.toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Red Hat subscription credentials',
+    }));
   });
 });

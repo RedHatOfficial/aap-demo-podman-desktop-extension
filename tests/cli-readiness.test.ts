@@ -52,6 +52,14 @@ describe('missingCliMessage', () => {
   it('preserves a custom configured path for troubleshooting', () => {
     expect(missingCliMessage('/custom/aap-demo')).toContain('/custom/aap-demo');
   });
+
+  it('gives Python-specific beta installation guidance', () => {
+    const message = missingCliMessage('aap-demo', 'aap-demo.pythonCliPath', 'python');
+
+    expect(message).toContain('2.0.0.dev2');
+    expect(message).toContain('pipx');
+    expect(message).toContain('aap-demo.pythonCliPath');
+  });
 });
 
 describe('canInvokeCli', () => {

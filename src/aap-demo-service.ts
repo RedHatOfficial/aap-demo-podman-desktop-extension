@@ -21,6 +21,7 @@ export interface AapDemoSettings {
   cpus?: number;
   environment?: NodeJS.ProcessEnv;
   pullSecretPath?: string;
+  pythonPullSecretPath?: string;
   skipCache?: boolean;
   memory?: number;
   pathValue?: string;
@@ -219,12 +220,21 @@ export class AapDemoService {
       PYTHONIOENCODING: 'utf-8',
       PYTHONUTF8: '1',
     };
+    if (backend === 'python') {
+      delete configuredEnvironment.QUIET;
+      delete configuredEnvironment.PULL_SECRET_PATH;
+      delete configuredEnvironment.REDHAT_SUBSCRIPTION_CREDENTIALS_FILE;
+      delete configuredEnvironment.AAP_DEMO_SKIP_CACHE;
+    }
     if (quiet) configuredEnvironment.QUIET = 'true';
     if (skipInteractiveTrustSetup) {
       configuredEnvironment.AAP_DEMO_TRUST_CA = 'false';
     }
-    if (this.settings.pullSecretPath) {
-      configuredEnvironment[backend === 'python' ? 'AAP_DEMO_PULL_SECRET' : 'PULL_SECRET_PATH'] = this.settings.pullSecretPath;
+    const pullSecretPath = backend === 'python'
+      ? this.settings.pythonPullSecretPath ?? this.settings.pullSecretPath
+      : this.settings.pullSecretPath;
+    if (pullSecretPath) {
+      configuredEnvironment[backend === 'python' ? 'AAP_DEMO_PULL_SECRET' : 'PULL_SECRET_PATH'] = pullSecretPath;
     }
     if (backend === 'legacy' && this.settings.subscriptionCredentialsFile) {
       configuredEnvironment.REDHAT_SUBSCRIPTION_CREDENTIALS_FILE = this.settings.subscriptionCredentialsFile;

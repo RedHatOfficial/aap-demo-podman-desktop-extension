@@ -132,7 +132,10 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   const findValidPullSecret = async (): Promise<string | undefined> => {
     for (const candidate of pullSecretCandidates(settings.pullSecretPath, process.env, os.homedir())) {
       const contents = await readHostFile(runner, candidate, settings.pathValue, process.env);
-      if (contents && isValidPullSecret(contents)) return candidate;
+      if (contents && isValidPullSecret(contents)) {
+        settings.pythonPullSecretPath = candidate;
+        return candidate;
+      }
     }
     return undefined;
   };
@@ -283,6 +286,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       const message = missingCliMessage(
         actionConfiguredCliPath,
         usesPython ? 'aap-demo.pythonCliPath' : 'aap-demo.cliPath',
+        usesPython ? 'python' : 'legacy',
       );
       statusBar.text = 'AAP Demo: CLI missing';
       statusBar.tooltip = message;
@@ -336,6 +340,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
             process.env,
             enteredPullSecret.trim(),
           );
+          settings.pythonPullSecretPath = pullSecretFile;
         } catch (error) {
           const message = formatCommandError(error);
           await postDashboardMessage({ type: 'command-error', action, message });
@@ -399,6 +404,18 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         const status = usesPython
           ? parsePythonStatusOutput(result.stdout)
           : parseStatusOutput(result.stdout);
+        if (usesPython) {
+          try {
+            const legacyStatus = parseStatusOutput((await service.runWithBackend('legacy', 'status')).stdout);
+            const pythonAddonNames = new Set(status.addons.map(addon => addon.name));
+            status.addons = [
+              ...status.addons,
+              ...legacyStatus.addons.filter(addon => !pythonAddonNames.has(addon.name)),
+            ];
+          } catch {
+            // Python core status remains authoritative when the legacy backend is unavailable.
+          }
+        }
         if (status.toolVersion) currentCliVersion = status.toolVersion;
         statusBar.text = formatStatusBarText(status);
         statusBar.tooltip = `Open the AAP Demo dashboard (${status.cluster.state})`;
@@ -849,6 +866,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
               process.env,
               enteredPullSecret.trim(),
             );
+            settings.pythonPullSecretPath = pullSecretFile;
           } catch (error) {
             const messageText = formatCommandError(error);
             await postDashboardMessage({ type: 'command-error', message: messageText });

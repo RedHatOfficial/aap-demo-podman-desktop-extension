@@ -79,8 +79,8 @@ the same executable. The service will retain the existing Bash resolver and add
 a Python resolver/configuration, with action routing owned in one place:
 
 ```text
-Python: create, deploy, start, stop, destroy, status, fleet enable/disable
-Bash:   idle, diagnose, repair, trust-ca, legacy add-ons
+Python: create, deploy, start, stop, destroy, status
+Bash:   idle, diagnose, repair, trust-ca, Fleet, legacy add-ons
 ```
 
 The Python path will be configurable for installed-command and testability
@@ -140,12 +140,11 @@ Python-supported locations or configure their paths.
 - Unit-test action-to-backend routing, Python argument/environment construction,
   Flatpak host forwarding, and missing-backend diagnostics.
 - Test Python status parsing/normalization against the installed command's
-  `2.0.0.dev2` output shape and structured Fleet state.
+  `2.0.0.dev2` output shape.
 - Test pull-secret candidate ordering across XDG and legacy locations.
 - Test deploy behavior on Windows to prove Python bypasses legacy subscription
   attachment while Bash deploy behavior remains unchanged where applicable.
-- Test Fleet visibility, enable/disable messages, state refresh, and legacy
-  add-on filtering in the webview helpers.
+- Keep Fleet and legacy add-on filtering unchanged in this slice.
 - Run the existing Vitest suite, typecheck, Python helper tests, and production
   build before implementation is considered complete.
 

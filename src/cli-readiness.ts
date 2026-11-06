@@ -19,10 +19,14 @@ export function shouldAutomaticallyInstallCli(options: {
 export function missingCliMessage(
   configuredPath: string,
   settingName = 'aap-demo.cliPath',
+  backend: 'legacy' | 'python' = 'legacy',
 ): string {
+  const guidance = backend === 'python'
+    ? 'Install aap-demo==2.0.0.dev2 with pipx, pip, or uv (for example: `pipx install \'aap-demo==2.0.0.dev2\'`), or set aap-demo.pythonCliPath to the installed executable.'
+    : `Open the AAP Demo dashboard and select Install aap-demo, or set ${settingName} to the installed executable.`;
   return [
     `The aap-demo CLI could not be found at "${configuredPath}".`,
-    `Open the AAP Demo dashboard and select Install aap-demo, or set ${settingName} to the installed executable.`,
+    guidance,
   ].join(' ');
 }
 

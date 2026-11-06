@@ -134,6 +134,8 @@ pipx install 'aap-demo==2.0.0.dev2'
 Set `aap-demo.pythonCliPath` if the executable is not on the extension's PATH.
 The **Install aap-demo** dashboard action continues to manage the legacy Bash
 CLI used by deferred commands and add-ons; it does not install Python packages.
+Configure `aap-demo.cliPath` as `aap-demo-v1` (or the path to your Bash
+launcher) when the legacy command has been renamed to coexist with Python.
 
 ## Updating
 

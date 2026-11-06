@@ -387,6 +387,13 @@ describe('getAddonTogglePresentation', () => {
     expect(pythonCliPath.description).toContain('core lifecycle');
   });
 
+  it('defaults the legacy CLI path to the renamed Bash command', () => {
+    const manifest = JSON.parse(packageJson);
+    const legacyCliPath = manifest.contributes.configuration.properties['aap-demo.cliPath'];
+    expect(legacyCliPath.default).toBe('aap-demo-v1');
+    expect(legacyCliPath.description).toContain('legacy Bash');
+  });
+
   it('sets the OpenShift Local CPU minimum to eight in Podman Desktop settings', () => {
     const manifest = JSON.parse(packageJson);
     expect(manifest.contributes.configuration.properties['aap-demo.cpus'].minimum).toBe(8);

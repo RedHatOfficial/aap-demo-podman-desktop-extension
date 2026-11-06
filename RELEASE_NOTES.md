@@ -7,6 +7,9 @@ understand, and troubleshoot from Podman Desktop.
 
 ### Python CLI transition
 
+See [ADR-009](docs/adr/009-python-lifecycle-transition.md) for the transition
+decision and backend boundary.
+
 - Core lifecycle, deploy, and status now use `aap-demo==2.0.0.dev2` and its
   structured status output.
 - Python pull-secret discovery supports XDG config/state locations with the
@@ -39,9 +42,3 @@ understand, and troubleshoot from Podman Desktop.
   cache-related deployment issues.
 - Expanded prerequisite and deployment status messaging so users know what is
   missing and how to resolve it.
-
-### Verification
-
-- 245 automated tests passed.
-- 1 test was skipped by design.
-- Type checking, backend and webview builds, and diff validation passed.

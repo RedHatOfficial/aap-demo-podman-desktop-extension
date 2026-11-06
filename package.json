@@ -94,8 +94,8 @@
         },
         "aap-demo.cliPath": {
           "type": "string",
-          "default": "aap-demo",
-          "description": "Path to the aap-demo executable."
+          "default": "aap-demo-v1",
+          "description": "Path to the legacy Bash aap-demo executable used for deferred commands and legacy add-ons."
         },
         "aap-demo.pythonCliPath": {
           "type": "string",

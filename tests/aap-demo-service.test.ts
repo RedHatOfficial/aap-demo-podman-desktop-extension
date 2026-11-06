@@ -86,6 +86,42 @@ describe('AapDemoService', () => {
     });
   });
 
+  it('isolates Python commands from legacy-only environment variables', async () => {
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor, {
+      legacy: '/opt/aap-demo-v1',
+      python: '/home/test/.local/bin/aap-demo',
+    });
+
+    await service.run('deploy', undefined, {
+      env: {
+        QUIET: 'true',
+        PULL_SECRET_PATH: '/legacy/pull-secret',
+        REDHAT_SUBSCRIPTION_CREDENTIALS_FILE: '/legacy/credentials',
+        AAP_DEMO_SKIP_CACHE: 'true',
+      },
+    });
+
+    expect(executor.calls[0]?.options?.env).toEqual(expect.not.objectContaining({
+      QUIET: expect.anything(),
+      PULL_SECRET_PATH: expect.anything(),
+      REDHAT_SUBSCRIPTION_CREDENTIALS_FILE: expect.anything(),
+      AAP_DEMO_SKIP_CACHE: expect.anything(),
+    }));
+  });
+
+  it('passes the resolved Python pull-secret path to deploy', async () => {
+    const executor = new RecordingExecutor();
+    const service = new AapDemoService(executor, '/home/test/.local/bin/aap-demo', {
+      pythonPullSecretPath: '/home/test/.config/aap-demo/pull-secret.json',
+    });
+
+    await service.run('deploy');
+
+    expect(executor.calls[0]?.options?.env?.AAP_DEMO_PULL_SECRET)
+      .toBe('/home/test/.config/aap-demo/pull-secret.json');
+  });
+
   it.each([
     ['create', ['--output', 'basic', '--yes', 'create']],
     ['start', ['--output', 'basic', '--yes', 'start']],
