@@ -16,12 +16,11 @@ Scope update: implement Python core lifecycle, deploy, and structured status in
 this slice. Defer Fleet routing/state/UI and leave Fleet on the existing path.
 
 - The Python package version remains exactly `2.0.0.dev2`.
-- Python owns `create`, `deploy`, `start`, `stop`, `destroy`, `status`, `enable fleet`, and `disable fleet`.
-- Bash remains responsible for `idle`, `diagnose`, `repair`, `trust-ca`, and legacy add-ons until a later migration.
+- Python owns `create`, `deploy`, `start`, `stop`, `destroy`, and `status`.
+- Bash remains responsible for `idle`, `diagnose`, `repair`, `trust-ca`, Fleet, and legacy add-ons until a later migration.
 - The Python CLI path defaults to `aap-demo`; the existing legacy CLI path remains separately configurable.
 - Python deploy uses `AAP_DEMO_PULL_SECRET` or `--pull-secret`; do not pass the Bash-only `PULL_SECRET_PATH` convention to Python.
 - Do not run the legacy Windows controller API subscription attachment after Python deploy.
-- Do not silently select Python Fleet `--no-import`.
 - Do not automatically install or update Python packages in this slice.
 - Do not put credentials or subscription manifest contents in process arguments or Podman Desktop settings.
 
@@ -78,20 +77,6 @@ it('routes deferred lifecycle actions to the legacy CLI', async () => {
   });
 });
 
-it('routes Fleet enable and disable to Python', async () => {
-  const executor = new RecordingExecutor();
-  const service = new AapDemoService(executor, {
-    legacy: '/opt/aap-demo-v1',
-    python: '/home/test/.local/bin/aap-demo',
-  });
-
-  await service.runAddon('enable', 'fleet');
-  await service.runAddon('disable', 'fleet');
-  expect(executor.calls.map(call => [call.command, call.args])).toEqual([
-    ['/home/test/.local/bin/aap-demo', ['--output', 'basic', '--yes', 'enable', 'fleet']],
-    ['/home/test/.local/bin/aap-demo', ['--output', 'basic', '--yes', 'disable', 'fleet']],
-  ]);
-});
 ```
 
 - [ ] **Step 2: Run the focused tests to verify they fail**
@@ -116,7 +101,6 @@ const PYTHON_ACTIONS = new Set<AapDemoAction>([
   'create', 'deploy', 'start', 'stop', 'destroy', 'status',
 ]);
 
-const PYTHON_ADDONS = new Set(['fleet']);
 ```
 
 Preserve the existing single-path constructor form for current callers by
@@ -124,8 +108,7 @@ normalizing a string/function into `{ legacy: value, python: value }`,
 while allowing the extension to pass both explicit paths. Add
 `runWithBackend(backend, action, idleState?, options?)` and make `run()` use
 the Python backend for `PYTHON_ACTIONS` and the legacy backend otherwise.
-Make `runAddon()` select Python only for `fleet`; all other addons remain
-legacy. For Python actions, prepend `['--output', 'basic', '--yes']`; for
+Keep `runAddon()` on the legacy backend for this slice. For Python actions, prepend `['--output', 'basic', '--yes']`; for
 Python `status`, use `['--output', 'json']` instead so the extension can parse
 structured output.
 
@@ -204,7 +187,7 @@ Add a Python parser test for the `--output json` TLS mapping.
 
 Run: `npm test -- tests/python-status.test.ts tests/status-parser.test.ts`
 
-Expected: FAIL because `src/python-status.ts` and the `fleet` status field do not exist.
+Expected: FAIL because `src/python-status.ts` does not exist.
 
 - [ ] **Step 3: Implement strict Python normalization**
 
@@ -362,7 +345,7 @@ Add this `package.json` property beside `aap-demo.cliPath`:
 "aap-demo.pythonCliPath": {
   "type": "string",
   "default": "aap-demo",
-  "description": "Path to the Python aap-demo executable used for the core lifecycle and Fleet."
+  "description": "Path to the Python aap-demo executable used for the core lifecycle, deploy, and status commands."
 }
 ```
 
@@ -383,12 +366,7 @@ Update `runAction()` so Python actions check the Python executable and use
 
 1. Run Python `status --output json` through `service.run()` and map it with
    `parsePythonStatusOutput()`.
-2. Run Python `config get addons.enabled --output json` through
-   `service.runPythonQuery(['config', 'get', 'addons.enabled'])` and map it with
-   `parsePythonFleetState()`.
-3. Best-effort run legacy `status` only to retain old add-on states; merge those
-   add-ons with Python core fields and the Python Fleet field.
-4. Update the status bar, post the merged status, and refresh prerequisites.
+2. Update the status bar, post the normalized status, and refresh prerequisites.
 
 If the optional legacy status fails, keep Python core status and report no
 legacy add-ons. If Python status fails, do not fall back silently to legacy
@@ -526,8 +504,7 @@ Add a short “Python CLI transition” section to `README.md` that explains:
 1. Install the beta with `pipx install aap-demo`, or explicitly install
    `aap-demo==2.0.0.dev2` with pip.
 2. Set `aap-demo.pythonCliPath` if the command is not on the host PATH.
-3. Python-backed dashboard actions are create/deploy/start/stop/destroy/status
-   and Fleet.
+3. Python-backed dashboard actions are create/deploy/start/stop/destroy/status.
 4. Bash-only actions still require the legacy command path until the full
    migration.
 5. Pull secrets can live in Python XDG config/state directories or legacy
@@ -566,6 +543,6 @@ git commit -m "docs: explain Python CLI transition"
 - [ ] `git log --oneline --decorate -8` contains the spec, ADR, and implementation commits.
 - [ ] `npm run verify:local` passes.
 - [ ] Python status output from `aap-demo 2.0.0.dev2` maps to a running/stopped/not-running dashboard state.
-- [ ] Python Fleet state is visible and routes enable/disable to Python.
+- [ ] Fleet remains on the existing legacy path in this slice; migrate it separately later.
 - [ ] Legacy Bash-only actions still route to the configured legacy CLI.
 - [ ] No credential or manifest contents appear in process arguments, settings, or documentation examples.
