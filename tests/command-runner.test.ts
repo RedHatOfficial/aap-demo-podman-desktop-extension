@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { CommandRunner, windowsCommandArguments } from '../src/command-runner';
+import { CommandRunner, mergeWindowsShellEnvironment, windowsCommandArguments } from '../src/command-runner';
 
 const temporaryRoots: string[] = [];
 
@@ -73,6 +73,20 @@ describe('CommandRunner', () => {
       'status',
       'two words',
     ]);
+  });
+
+  it('removes explicitly undefined environment variables from the Windows shim environment', () => {
+    const key = 'AAP_DEMO_COMMAND_RUNNER_TEST_SECRET';
+    const originalValue = process.env[key];
+    process.env[key] = 'inherited';
+
+    try {
+      const merged = mergeWindowsShellEnvironment({ [key]: undefined });
+      expect(merged[key]).toBeUndefined();
+    } finally {
+      if (originalValue === undefined) delete process.env[key];
+      else process.env[key] = originalValue;
+    }
   });
 
   it.runIf(process.platform === 'win32')('runs Windows command shims through the shell', async () => {

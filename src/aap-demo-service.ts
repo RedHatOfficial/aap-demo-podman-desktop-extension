@@ -221,10 +221,10 @@ export class AapDemoService {
       PYTHONUTF8: '1',
     };
     if (backend === 'python') {
-      delete configuredEnvironment.QUIET;
-      delete configuredEnvironment.PULL_SECRET_PATH;
-      delete configuredEnvironment.REDHAT_SUBSCRIPTION_CREDENTIALS_FILE;
-      delete configuredEnvironment.AAP_DEMO_SKIP_CACHE;
+      configuredEnvironment.QUIET = undefined;
+      configuredEnvironment.PULL_SECRET_PATH = undefined;
+      configuredEnvironment.REDHAT_SUBSCRIPTION_CREDENTIALS_FILE = undefined;
+      configuredEnvironment.AAP_DEMO_SKIP_CACHE = undefined;
     }
     if (quiet) configuredEnvironment.QUIET = 'true';
     if (skipInteractiveTrustSetup) {

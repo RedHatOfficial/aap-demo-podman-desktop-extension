@@ -290,7 +290,11 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       );
       statusBar.text = 'AAP Demo: CLI missing';
       statusBar.tooltip = message;
-      await postDashboardMessage({ type: 'cli-missing' });
+      await postDashboardMessage({
+        type: 'cli-missing',
+        backend: usesPython ? 'python' : 'legacy',
+        message,
+      });
       await refreshPrerequisites();
       if (!panel && action !== 'status') {
         await extensionApi.window.showWarningMessage(message);
@@ -692,7 +696,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       const message = missingCliMessage(configuredCliPath);
       statusBar.text = 'AAP Demo: CLI missing';
       statusBar.tooltip = message;
-      await postDashboardMessage({ type: 'cli-missing' });
+      await postDashboardMessage({ type: 'cli-missing', backend: 'legacy', message });
       await refreshPrerequisites();
       await postDashboardMessage({ type: 'command-error', action, addon, message });
       return;

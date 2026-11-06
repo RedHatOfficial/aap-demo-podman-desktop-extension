@@ -82,6 +82,8 @@ interface DashboardCommandMessage {
 
 interface DashboardCliMessage {
   type: 'cli-missing';
+  backend?: 'legacy' | 'python';
+  message?: string;
 }
 
 declare function acquirePodmanDesktopApi(): DesktopApi;
@@ -650,6 +652,7 @@ window.addEventListener('message', event => {
     handleCliMissing(
       { statusState, statusDot, statusSummary, toolVersion, installCli, updateCli },
       writeOutput,
+      { backend: message.backend, message: message.message },
     );
     return;
   }

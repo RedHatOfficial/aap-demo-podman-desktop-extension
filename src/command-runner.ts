@@ -67,7 +67,7 @@ export function windowsCommandArguments(
   ];
 }
 
-function mergeWindowsShellEnvironment(
+export function mergeWindowsShellEnvironment(
   environment: NodeJS.ProcessEnv | undefined,
 ): NodeJS.ProcessEnv {
   if (!environment) return process.env;
@@ -77,7 +77,11 @@ function mergeWindowsShellEnvironment(
       candidate.toLowerCase() === key.toLowerCase()
     ));
     if (existingKey && existingKey !== key) delete merged[existingKey];
-    merged[key] = value;
+    if (value === undefined) {
+      delete merged[key];
+    } else {
+      merged[key] = value;
+    }
   }
   return merged;
 }
