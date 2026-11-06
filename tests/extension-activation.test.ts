@@ -20,14 +20,14 @@ function createCliExecutable(root: string): { executable: string; logFile: strin
     ? [
       '@echo off',
       `echo %1>>"${logFile}"`,
-      'if "%1"=="status" echo Cluster: stopped',
+      'if "%3"=="status" echo {"cluster_state":"stopped","routes":[],"credentials":[],"addons":[]}',
       'exit /b 0',
       '',
     ].join('\r\n')
     : [
       '#!/bin/sh',
-      `printf '%s\\n' "$1" >> '${logFile}'`,
-      'if [ "$1" = "status" ]; then printf "%s\\n" "Cluster: stopped"; fi',
+      `printf '%s\\n' "$*" >> '${logFile}'`,
+      'if [ "$3" = "status" ]; then printf "%s\\n" "{\\"cluster_state\\":\\"stopped\\",\\"routes\\":[],\\"credentials\\":[],\\"addons\\":[]}"; fi',
       '',
     ].join('\n');
   writeFileSync(executable, script);
@@ -58,6 +58,7 @@ describe('extension activation', () => {
     const configuredCliPath = path.join(root, 'missing-aap-demo');
     mockPodmanDesktopState.configuration = {
       cliPath: configuredCliPath,
+      pythonCliPath: configuredCliPath,
       crcPath: path.join(root, 'missing-crc'),
       openDashboardOnStartup: false,
     };
@@ -83,6 +84,7 @@ describe('extension activation', () => {
     const { executable, logFile } = createCliExecutable(root);
     mockPodmanDesktopState.configuration = {
       cliPath: executable,
+      pythonCliPath: executable,
       crcPath: path.join(root, 'missing-crc'),
       openDashboardOnStartup: false,
       pullSecretPath: path.join(root, 'missing-pull-secret.txt'),
@@ -102,7 +104,7 @@ describe('extension activation', () => {
     expect(readFileSync(logFile, 'utf8')).not.toContain('start');
   });
 
-  it.runIf(process.platform === 'win32')('cancels Windows deploy when subscription credentials are not saved', async () => {
+  it.runIf(process.platform === 'win32')('runs Python deploy without legacy subscription prompting', async () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'aap-demo-extension-activation-'));
     temporaryRoots.push(root);
     const configuredCliPath = path.join(root, 'aap-demo.cmd');
@@ -118,6 +120,7 @@ describe('extension activation', () => {
     process.env.REDHAT_SUBSCRIPTION_CREDENTIALS_FILE = subscriptionCredentialsFile;
     mockPodmanDesktopState.configuration = {
       cliPath: configuredCliPath,
+      pythonCliPath: configuredCliPath,
       pullSecretPath,
       crcPath: path.join(root, 'missing-crc'),
       openDashboardOnStartup: false,
@@ -128,7 +131,7 @@ describe('extension activation', () => {
         return { exitCode: 0, stdout: 'aap-demo 1.0.48\n', stderr: '' };
       }
       if (args.includes('status')) {
-        return { exitCode: 0, stdout: 'Cluster: running\n', stderr: '' };
+        return { exitCode: 0, stdout: '{"cluster_state":"running","routes":[],"credentials":[],"addons":[]}\n', stderr: '' };
       }
       if (args.includes('deploy')) {
         return { exitCode: 0, stdout: 'deploy should not run\n', stderr: '' };
@@ -144,9 +147,9 @@ describe('extension activation', () => {
 
     await mockPodmanDesktopState.commandHandlers.get('aap-demo.deploy')?.();
 
-    expect(runSpy.mock.calls.some(([, args = []]) => args.includes('deploy'))).toBe(false);
-    expect(mockPodmanDesktopState.warningMessages).toEqual(expect.arrayContaining([
-      expect.stringContaining('Deployment canceled because Red Hat subscription credentials were not saved.'),
-    ]));
+    expect(runSpy.mock.calls.some(([, args = []]) => args.includes('deploy'))).toBe(true);
+    expect(window.showInputBox).not.toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Red Hat subscription credentials',
+    }));
   });
 });

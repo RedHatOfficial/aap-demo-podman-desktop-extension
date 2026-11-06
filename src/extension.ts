@@ -43,17 +43,8 @@ import {
 } from './install-script';
 import { parseStatusOutput } from './status-parser';
 import { formatStatusBarText } from './status-bar';
-import {
-  containsMissingSubscriptionWarning,
-  missingSubscriptionWarningMessage,
-} from './subscription-warning';
-import {
-  formatSubscriptionCredentials,
-  hasUsableSubscriptionCredentials,
-  parseSubscriptionCredentials,
-} from './subscription-credentials';
-import { attachRedHatSubscription } from './subscription-attach';
 import { cleanTerminalOutput } from './terminal-output';
+import { parsePythonStatusOutput } from './python-status';
 
 type NavigationWithExtensionsCatalog = typeof extensionApi.navigation & {
   navigateToExtensionsCatalog?: (options: { searchTerm?: string }) => Promise<void>;
@@ -103,6 +94,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
   const localExtensionCheckout = isLocalExtensionCheckout(extensionPath);
   const configuration = extensionApi.configuration.getConfiguration('aap-demo');
   const configuredCliPath = configuration.get('cliPath', 'aap-demo').trim() || 'aap-demo';
+  const configuredPythonCliPath = configuration.get('pythonCliPath', 'aap-demo').trim() || 'aap-demo';
   const installLocationSetting = configuration.get('installLocation', '~/.aap-demo/aap-demo');
   const extensionInstallLocationSetting = configuration.get(
     'extensionInstallLocation',
@@ -136,31 +128,30 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     pathValue: augmentPath(),
     skipCache: true,
   };
-  const pullSecretFile = settings.pullSecretPath?.trim() || path.join(
-    os.homedir(),
-    '.aap-demo',
-    'pull-secret.txt',
-  );
-  const subscriptionCredentialsFile = process.env.REDHAT_SUBSCRIPTION_CREDENTIALS_FILE?.trim() || path.join(
-    os.homedir(),
-    '.aap-demo',
-    'redhat-subscription-credentials',
-  );
-  settings.subscriptionCredentialsFile = subscriptionCredentialsFile;
+  const pullSecretFile = settings.pullSecretPath?.trim() || pullSecretCandidates('', process.env, os.homedir())[0];
   const findValidPullSecret = async (): Promise<string | undefined> => {
-    for (const candidate of pullSecretCandidates(settings.pullSecretPath)) {
+    for (const candidate of pullSecretCandidates(settings.pullSecretPath, process.env, os.homedir())) {
       const contents = await readHostFile(runner, candidate, settings.pathValue, process.env);
-      if (contents && isValidPullSecret(contents)) return candidate;
+      if (contents && isValidPullSecret(contents)) {
+        settings.pythonPullSecretPath = candidate;
+        return candidate;
+      }
     }
     return undefined;
   };
-  const resolveCliPath = (): string => process.env.FLATPAK_ID
+  const resolveLegacyCliPath = (): string => process.env.FLATPAK_ID
     ? configuredCliPath
     : resolveConfiguredExecutable(configuredCliPath, settings.pathValue);
-  const cliPath = resolveCliPath();
-  const service = new AapDemoService(runner, resolveCliPath, settings);
+  const resolvePythonCliPath = (): string => process.env.FLATPAK_ID
+    ? configuredPythonCliPath
+    : resolveConfiguredExecutable(configuredPythonCliPath, settings.pathValue);
+  const cliPath = resolvePythonCliPath();
+  const service = new AapDemoService(runner, {
+    legacy: resolveLegacyCliPath,
+    python: resolvePythonCliPath,
+  }, settings);
   const cliAvailable = await canInvokeCli(
-    configuredCliPath,
+    configuredPythonCliPath,
     settings.pathValue,
     process.env,
     process.platform,
@@ -230,111 +221,6 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       void postDashboardMessage({ type: 'pull-secret-request' });
     });
   };
-  const offerSubscriptionCredentials = async (options: { replaceExisting?: boolean } = {}): Promise<boolean> => {
-    const existingCredentials = await readHostFile(
-      runner,
-      subscriptionCredentialsFile,
-      settings.pathValue,
-      process.env,
-    );
-    if (!options.replaceExisting && existingCredentials && hasUsableSubscriptionCredentials(existingCredentials)) {
-      const replace = await extensionApi.window.showWarningMessage(
-        missingSubscriptionWarningMessage,
-        'Replace credentials',
-        'Keep existing',
-      );
-      if (replace !== 'Replace credentials') return true;
-    } else {
-      await extensionApi.window.showWarningMessage(missingSubscriptionWarningMessage);
-    }
-
-    const username = await extensionApi.window.showInputBox({
-      title: 'Red Hat subscription credentials',
-      prompt: 'Enter your Red Hat account username or email. It will be saved securely for subscription attachment.',
-      ignoreFocusOut: true,
-      placeHolder: 'username@example.com',
-      validateInput: value => value.trim() ? undefined : 'A Red Hat username is required.',
-    });
-    if (username === undefined) return false;
-
-    const password = await extensionApi.window.showInputBox({
-      title: 'Red Hat subscription credentials',
-      prompt: 'Enter your Red Hat account password. It will be saved securely and never shown in command output.',
-      password: true,
-      ignoreFocusOut: true,
-      validateInput: value => value ? undefined : 'A Red Hat password is required.',
-    });
-    if (password === undefined) return false;
-
-    try {
-      await saveHostFile(
-        runner,
-        subscriptionCredentialsFile,
-        settings.pathValue,
-        process.env,
-        formatSubscriptionCredentials(username, password),
-      );
-      await extensionApi.window.showInformationMessage(
-        'Red Hat subscription credentials saved securely. Deploy AAP will attach the subscription.',
-      );
-      return true;
-    } catch (error) {
-      const message = formatCommandError(error);
-      await extensionApi.window.showWarningMessage(`Could not save Red Hat subscription credentials: ${message}`);
-      return false;
-    }
-  };
-  const ensureWindowsSubscriptionCredentials = async (): Promise<boolean> => {
-    if (process.platform !== 'win32') return true;
-    const existingCredentials = await readHostFile(
-      runner,
-      subscriptionCredentialsFile,
-      settings.pathValue,
-      process.env,
-    );
-    if (existingCredentials && hasUsableSubscriptionCredentials(existingCredentials)) return true;
-
-    return offerSubscriptionCredentials();
-  };
-  const attachWindowsSubscription = async (statusOutput?: string): Promise<string | undefined> => {
-    if (process.platform !== 'win32') return undefined;
-    const savedCredentials = await readHostFile(
-      runner,
-      subscriptionCredentialsFile,
-      settings.pathValue,
-      process.env,
-    );
-    const subscriptionCredentials = savedCredentials
-      ? parseSubscriptionCredentials(savedCredentials)
-      : undefined;
-    if (!subscriptionCredentials) {
-      throw new Error('Red Hat subscription credentials are missing or incomplete.');
-    }
-
-    let status = parseStatusOutput(statusOutput ?? '');
-    if (!status.routes[0] || !status.credentials[0]) {
-      status = parseStatusOutput((await service.run('status')).stdout);
-    }
-    const controllerUrl = status.routes[0];
-    const controllerCredentials = status.credentials.find(credential => credential.username === 'admin')
-      ?? status.credentials[0];
-    if (!controllerUrl || !controllerCredentials) {
-      throw new Error('AAP route or admin credentials were not found in aap-demo status output.');
-    }
-
-    const result = await attachRedHatSubscription({
-      controller: {
-        url: controllerUrl,
-        username: controllerCredentials.username,
-        password: controllerCredentials.password,
-      },
-      subscription: subscriptionCredentials,
-    });
-    const suffix = result.subscriptionName ? ` (${result.subscriptionName})` : '';
-    return result.status === 'already-attached'
-      ? `Red Hat subscription is already attached${suffix}.`
-      : `Red Hat subscription attached${suffix}.`;
-  };
   const getPrerequisites = async () => {
     const resolvedPullSecretPath = await findValidPullSecret();
     return checkPrerequisites({
@@ -364,11 +250,17 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     void refreshPrerequisites();
   }));
 
+  const pythonActions = new Set<AapDemoAction>([
+    'create', 'start', 'deploy', 'stop', 'destroy', 'status',
+  ]);
   let automaticCliRepairAttempted = false;
   const runAction = async (action: AapDemoAction, idleState?: boolean): Promise<void> => {
     const actionLabel = action === 'trust-ca' ? 'Fix SSL' : action;
+    const usesPython = pythonActions.has(action);
+    const actionConfiguredCliPath = usesPython ? configuredPythonCliPath : configuredCliPath;
+    const actionCliPath = usesPython ? cliPath : resolveLegacyCliPath();
     if (!await canInvokeCli(
-      configuredCliPath,
+      actionConfiguredCliPath,
       settings.pathValue,
       process.env,
       process.platform,
@@ -379,9 +271,9 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         resolveInstallCliScriptPath(installLocationSetting)
         && existsSync(path.join(installSourceLocation, 'aap-demo.sh')),
       );
-      if (shouldAutomaticallyInstallCli({
+      if (!usesPython && shouldAutomaticallyInstallCli({
         action,
-        configuredPath: configuredCliPath,
+        configuredPath: actionConfiguredCliPath,
         flatpakId: process.env.FLATPAK_ID,
         installScriptAvailable,
         repairAlreadyAttempted: automaticCliRepairAttempted,
@@ -391,10 +283,18 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         return;
       }
 
-      const message = missingCliMessage(configuredCliPath);
+      const message = missingCliMessage(
+        actionConfiguredCliPath,
+        usesPython ? 'aap-demo.pythonCliPath' : 'aap-demo.cliPath',
+        usesPython ? 'python' : 'legacy',
+      );
       statusBar.text = 'AAP Demo: CLI missing';
       statusBar.tooltip = message;
-      await postDashboardMessage({ type: 'cli-missing' });
+      await postDashboardMessage({
+        type: 'cli-missing',
+        backend: usesPython ? 'python' : 'legacy',
+        message,
+      });
       await refreshPrerequisites();
       if (!panel && action !== 'status') {
         await extensionApi.window.showWarningMessage(message);
@@ -404,7 +304,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
 
     if (action === 'trust-ca' && process.platform === 'darwin') {
       try {
-        await launchTrustCaInTerminal(cliPath, settings.pathValue ?? process.env.PATH ?? '');
+        await launchTrustCaInTerminal(actionCliPath, settings.pathValue ?? process.env.PATH ?? '');
         await postDashboardMessage({
           type: 'trust-ca-terminal-opened',
           action,
@@ -444,6 +344,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
             process.env,
             enteredPullSecret.trim(),
           );
+          settings.pythonPullSecretPath = pullSecretFile;
         } catch (error) {
           const message = formatCommandError(error);
           await postDashboardMessage({ type: 'command-error', action, message });
@@ -451,14 +352,6 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
           await runAction('status');
           return;
         }
-      }
-      const subscriptionCredentialsReady = await ensureWindowsSubscriptionCredentials();
-      if (!subscriptionCredentialsReady) {
-        const message = 'Deployment canceled because Red Hat subscription credentials were not saved.';
-        await postDashboardMessage({ type: 'command-error', action, message });
-        await extensionApi.window.showWarningMessage(message);
-        await runAction('status');
-        return;
       }
       if (!prerequisites.cpus.valid || !prerequisites.memory.valid) {
         const resourceDetails = [
@@ -481,21 +374,11 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     }
 
     try {
-      let commandOutput = '';
-      let subscriptionWarningShown = false;
-      const inspectSubscriptionOutput = (chunk: string): void => {
-        if (action !== 'deploy' || subscriptionWarningShown) return;
-        commandOutput = `${commandOutput}${chunk}`.slice(-8_000);
-        if (containsMissingSubscriptionWarning(commandOutput)) {
-          subscriptionWarningShown = true;
-          void offerSubscriptionCredentials();
-        }
-      };
       let clusterState: Parameters<typeof shouldApplyCrcResourceSettings>[1] = 'unknown';
       if (action === 'deploy') {
         try {
           const statusResult = await service.run('status');
-          clusterState = parseStatusOutput(statusResult.stdout).cluster.state;
+          clusterState = parsePythonStatusOutput(statusResult.stdout).cluster.state;
         } catch {
           clusterState = 'unknown';
         }
@@ -511,20 +394,32 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       const result = await service.run(action, idleState, {
         onStdout: chunk => {
           console.log(`[aap-demo] ${chunk.trimEnd()}`);
-          inspectSubscriptionOutput(chunk);
           if (action !== 'status') {
             void postDashboardMessage({ type: 'command-output', stream: 'stdout', text: cleanTerminalOutput(chunk) });
           }
         },
         onStderr: chunk => {
           console.warn(`[aap-demo] ${chunk.trimEnd()}`);
-          inspectSubscriptionOutput(chunk);
           void postDashboardMessage({ type: 'command-output', stream: 'stderr', text: cleanTerminalOutput(chunk) });
         },
       });
 
       if (action === 'status') {
-        const status = parseStatusOutput(result.stdout);
+        const status = usesPython
+          ? parsePythonStatusOutput(result.stdout)
+          : parseStatusOutput(result.stdout);
+        if (usesPython) {
+          try {
+            const legacyStatus = parseStatusOutput((await service.runWithBackend('legacy', 'status')).stdout);
+            const pythonAddonNames = new Set(status.addons.map(addon => addon.name));
+            status.addons = [
+              ...status.addons,
+              ...legacyStatus.addons.filter(addon => !pythonAddonNames.has(addon.name)),
+            ];
+          } catch {
+            // Python core status remains authoritative when the legacy backend is unavailable.
+          }
+        }
         if (status.toolVersion) currentCliVersion = status.toolVersion;
         statusBar.text = formatStatusBarText(status);
         statusBar.tooltip = `Open the AAP Demo dashboard (${status.cluster.state})`;
@@ -543,32 +438,10 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
         stderr: result.stderr,
       });
       let completionMessage = `AAP Demo ${actionLabel} completed.`;
-      if (action === 'deploy') {
-        try {
-          const subscriptionMessage = await attachWindowsSubscription(result.stdout);
-          if (subscriptionMessage) {
-            completionMessage = `${completionMessage} ${subscriptionMessage}`;
-            await postDashboardMessage({
-              type: 'command-output',
-              stream: 'stdout',
-              text: `${subscriptionMessage}\n`,
-            });
-          }
-        } catch (error) {
-          const message = formatCommandError(error);
-          await postDashboardMessage({
-            type: 'command-output',
-            stream: 'stderr',
-            text: `Red Hat subscription attachment failed: ${message}\n`,
-          });
-          await extensionApi.window.showWarningMessage(`Red Hat subscription attachment failed: ${message}`);
-          await offerSubscriptionCredentials({ replaceExisting: true });
-        }
-      }
       await extensionApi.window.showInformationMessage(completionMessage);
       void runAction('status');
     } catch (error) {
-      const message = formatAapDemoActionError(action, formatCommandError(error), process.platform, cliPath);
+      const message = formatAapDemoActionError(action, formatCommandError(error), process.platform, actionCliPath);
       await postDashboardMessage({ type: 'command-error', action, message });
       await extensionApi.window.showWarningMessage(`AAP Demo ${actionLabel} failed: ${message}`);
     }
@@ -823,7 +696,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
       const message = missingCliMessage(configuredCliPath);
       statusBar.text = 'AAP Demo: CLI missing';
       statusBar.tooltip = message;
-      await postDashboardMessage({ type: 'cli-missing' });
+      await postDashboardMessage({ type: 'cli-missing', backend: 'legacy', message });
       await refreshPrerequisites();
       await postDashboardMessage({ type: 'command-error', action, addon, message });
       return;
@@ -997,6 +870,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
               process.env,
               enteredPullSecret.trim(),
             );
+            settings.pythonPullSecretPath = pullSecretFile;
           } catch (error) {
             const messageText = formatCommandError(error);
             await postDashboardMessage({ type: 'command-error', message: messageText });

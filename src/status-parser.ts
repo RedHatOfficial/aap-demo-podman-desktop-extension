@@ -40,7 +40,7 @@ function isMcpRoute(url: string): boolean {
   return /(?:^|[./-])mcp(?:[./-]|$)/i.test(url);
 }
 
-function combineTrustStates(states: Array<IngressCaTrustState | undefined>): IngressCaTrustState | undefined {
+export function combineTrustStates(states: Array<IngressCaTrustState | undefined>): IngressCaTrustState | undefined {
   if (states.includes('not-trusted')) return 'not-trusted';
   if (states.includes('unknown')) return 'unknown';
   return states.find(Boolean);

@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { resolveExecutablePath } from './executable-path';
@@ -31,20 +31,38 @@ export interface PrerequisiteStatus {
   ready: boolean;
 }
 
-export function pullSecretCandidates(configuredPath?: string): string[] {
+export function pullSecretCandidates(
+  configuredPath?: string,
+  environment: NodeJS.ProcessEnv = process.env,
+  homeDirectory = os.homedir(),
+): string[] {
   if (configuredPath?.trim()) return [configuredPath.trim()];
 
   return [
-    path.join(os.homedir(), '.aap-demo', 'pull-secret.txt'),
-    path.join(os.homedir(), '.aap-demo', 'pull-secret.json'),
-    path.join(os.homedir(), '.aap-demo', 'pull-secret'),
+    path.join(environment.XDG_CONFIG_HOME?.trim() || path.join(homeDirectory, '.config'), 'aap-demo', 'pull-secret.txt'),
+    path.join(environment.XDG_CONFIG_HOME?.trim() || path.join(homeDirectory, '.config'), 'aap-demo', 'pull-secret.json'),
+    path.join(environment.XDG_STATE_HOME?.trim() || path.join(homeDirectory, '.local', 'state'), 'aap-demo', 'pull-secret.txt'),
+    path.join(environment.XDG_STATE_HOME?.trim() || path.join(homeDirectory, '.local', 'state'), 'aap-demo', 'pull-secret.json'),
+    path.join(homeDirectory, '.aap-demo', 'pull-secret.txt'),
+    path.join(homeDirectory, '.aap-demo', 'pull-secret.json'),
+    path.join(homeDirectory, '.aap-demo', 'pull-secret'),
   ];
+}
+
+function isRegularFile(candidate: string): boolean {
+  try {
+    return statSync(candidate).isFile();
+  } catch {
+    return false;
+  }
 }
 
 function findPullSecret(
   configuredPath?: string,
   existsOverride?: boolean,
   resolvedPath?: string,
+  environment?: NodeJS.ProcessEnv,
+  homeDirectory = os.homedir(),
 ): {
   configured: boolean;
   exists: boolean;
@@ -59,16 +77,16 @@ function findPullSecret(
     };
   }
 
-  const candidates = pullSecretCandidates(configuredPath);
+  const candidates = pullSecretCandidates(configuredPath, environment, homeDirectory);
   if (configuredPath?.trim()) {
     const resolvedPath = configuredPath.trim();
     return {
       configured: true,
-      exists: existsSync(resolvedPath),
+      exists: existsSync(resolvedPath) && isRegularFile(resolvedPath),
       path: resolvedPath,
     };
   }
-  const existingPath = candidates.find(candidate => existsSync(candidate));
+  const existingPath = candidates.find(candidate => isRegularFile(candidate));
   return existingPath
     ? { configured: true, exists: true, path: existingPath }
     : { configured: false, exists: false };
@@ -96,6 +114,8 @@ export function checkPrerequisites(
     settings.pullSecretPath,
     settings.pullSecretExists,
     settings.pullSecretResolvedPath,
+    settings.environment,
+    os.homedir(),
   );
   const cpus = settings.cpus ?? 8;
   const cpuStatus = {

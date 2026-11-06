@@ -94,8 +94,13 @@
         },
         "aap-demo.cliPath": {
           "type": "string",
+          "default": "aap-demo-v1",
+          "description": "Path to the legacy Bash aap-demo executable used for deferred commands and legacy add-ons."
+        },
+        "aap-demo.pythonCliPath": {
+          "type": "string",
           "default": "aap-demo",
-          "description": "Path to the aap-demo executable."
+          "description": "Path to the Python aap-demo executable used for the core lifecycle, deploy, and status commands."
         },
         "aap-demo.installLocation": {
           "type": "string",
